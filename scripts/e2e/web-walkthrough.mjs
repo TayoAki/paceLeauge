@@ -36,7 +36,9 @@ mkdirSync(OUT_DIR, { recursive: true });
 
 /** Scripted geolocation: the page sees a normal Geolocation API fed by window.__geo.push(). */
 const FAKE_GEO = `(() => {
-  let permission = 'prompt';
+  // Like a real browser, a granted permission survives reloads (kept for the session).
+  let permission = sessionStorage.getItem('__geoPermission') || 'prompt';
+  const remember = (state) => { permission = state; sessionStorage.setItem('__geoPermission', state); };
   let current = null;
   let nextId = 1;
   const watchers = new Map();
@@ -45,7 +47,7 @@ const FAKE_GEO = `(() => {
   const geolocation = {
     getCurrentPosition(ok, fail) {
       if (permission === 'denied') { setTimeout(() => fail && fail({ code: 1, message: 'denied', PERMISSION_DENIED: 1 }), 0); return; }
-      permission = 'granted';
+      remember('granted');
       if (current) setTimeout(() => ok(position(current)), 0); else waiting.push(ok);
     },
     watchPosition(ok) { const id = nextId++; watchers.set(id, ok); return id; },
@@ -57,7 +59,7 @@ const FAKE_GEO = `(() => {
     ? Promise.resolve({ name: 'geolocation', state: permission, onchange: null, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } })
     : query(d);
   window.__geo = {
-    setPermission(state) { permission = state; },
+    setPermission(state) { remember(state); },
     push(lat, lon, acc) {
       current = { lat, lon, acc };
       if (permission !== 'granted') return;
@@ -118,7 +120,10 @@ async function newPage(browser) {
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
-    if (m.type() === 'error' && !/Download the React DevTools|findDOMNode|shadow\*|pointerEvents/.test(m.text())) errors.push(`console: ${m.text().slice(0, 300)}`);
+    // ERR_INTERNET_DISCONNECTED is the expected result of the deliberate offline step.
+    if (m.type() === 'error' && !/Download the React DevTools|findDOMNode|shadow\*|pointerEvents|ERR_INTERNET_DISCONNECTED/.test(m.text())) {
+      errors.push(`console: ${m.text().slice(0, 300)}`);
+    }
   });
   await page.clock.install({ time: START_TIME });
   return { context, page };
@@ -126,12 +131,13 @@ async function newPage(browser) {
 
 async function settle(page, ms = 600) {
   // Let queued fake-clock timers (query notifications, animations) run, then paint.
-  await page.clock.runFor(ms).catch(() => {});
+  if (ms > 0) await page.clock.runFor(ms).catch(() => {});
   await page.waitForTimeout(250);
 }
 
-async function shot(page, name) {
-  await settle(page);
+/** `advance: 0` keeps the test clock still (used while recording, so active time stays exact). */
+async function shot(page, name, { advance = 600 } = {}) {
+  await settle(page, advance);
   shots += 1;
   await page.screenshot({ path: resolve(OUT_DIR, `${name}.png`) });
   console.log(`  📸 ${name}`);
@@ -148,7 +154,13 @@ async function step(page, title, fn) {
 }
 
 const tab = (page, name) => page.getByRole('tab', { name: new RegExp(name) }).or(page.getByRole('link', { name: new RegExp(`^${name}`) })).first();
-const visible = (page, text, options = {}) => page.getByText(text, { exact: false, ...options }).first().waitFor({ state: 'visible', timeout: options.timeout ?? 20_000 });
+// Screens below the current one stay mounted (hidden), so only visible matches count.
+const visible = (page, text, options = {}) =>
+  page
+    .getByText(text, { exact: false })
+    .filter({ visible: true })
+    .first()
+    .waitFor({ state: 'visible', timeout: options.timeout ?? 20_000 });
 
 async function signIn(page, email) {
   await page.goto(APP_URL);
@@ -175,6 +187,38 @@ async function catchUp(page, distanceM) {
 async function pushFix(page, distanceM, acc = 4) {
   const p = loop(distanceM);
   await page.evaluate(([lat, lon, a]) => window.__geo.push(lat, lon, a), [p.lat, p.lon, acc]);
+}
+
+/** From Today: preflight → countdown → `activeS` seconds covering `distanceM` → pause → finish → summary. */
+async function recordRun(page, { activeS, distanceM, startAt = 0 }) {
+  await page.getByTestId('start-run').first().click();
+  await page.getByTestId('preflight-primary').waitFor();
+  const now = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(now + 1000);
+  for (let i = 0; i < 3; i += 1) {
+    await pushFix(page, startAt, 4);
+    await page.clock.runFor(1000);
+  }
+  await visible(page, 'Good');
+  await page.getByTestId('preflight-primary').click();
+  for (let i = 0; i < 3; i += 1) {
+    await pushFix(page, startAt, 4);
+    await page.clock.runFor(1000);
+    await page.waitForTimeout(100);
+  }
+  await page.getByTestId('pause-button').waitFor({ timeout: 20_000 });
+  const perSecond = distanceM / activeS;
+  await pushFix(page, startAt, 4);
+  for (let s = 1; s <= activeS; s += 1) {
+    await page.clock.runFor(1000);
+    await pushFix(page, startAt + s * perSecond, 4);
+    await page.waitForTimeout(40);
+  }
+  await catchUp(page, distanceM);
+  await page.getByTestId('pause-button').click();
+  await page.getByTestId('finish-button').click();
+  await page.getByTestId('summary-distance').waitFor({ timeout: 20_000 });
+  await page.clock.resume();
 }
 
 const browser = await chromium.launch({ headless: process.env.HEADED !== '1' });
@@ -247,17 +291,17 @@ try {
         await catchUp(page, s * perSecond);
         console.log(`    ${s}s`);
       }
-      if (s === 600) await shot(page, '05a-running-early');
+      if (s === 600) await shot(page, '05a-running-early', { advance: 0 });
     }
     await catchUp(page, RUN.distanceM);
     await visible(page, '5.24');
-    await shot(page, '05-running');
+    await shot(page, '05-running', { advance: 0 });
   });
 
   await step(page, 'S06 pause, then finish', async () => {
     await page.getByTestId('pause-button').click();
     await page.getByTestId('finish-button').waitFor();
-    await shot(page, '06-paused');
+    await shot(page, '06-paused', { advance: 0 });
     await page.getByTestId('finish-button').click();
     await page.getByTestId('summary-distance').waitFor({ timeout: 20_000 });
     await page.clock.resume();
@@ -336,8 +380,76 @@ try {
 
   await step(page, 'S15 export', async () => {
     await page.getByTestId('export-data').click();
-    await settle(page, 2500);
+    await visible(page, 'Your export is ready', { timeout: 30_000 });
     await shot(page, '15-export');
+  });
+
+  await step(page, 'league: last week, member sheet, manage', async () => {
+    await tab(page, 'League').click();
+    await visible(page, 'Friday Crew');
+    await page.getByText('Last week', { exact: true }).first().click();
+    await settle(page, 1500);
+    await shot(page, '09d-league-last-week');
+    await page.getByText('This week', { exact: true }).first().click();
+    await settle(page, 800);
+    await page.getByText('Maya', { exact: true }).first().click();
+    await visible(page, 'Report');
+    await shot(page, '09e-member-sheet');
+    await page.getByText('Close', { exact: true }).last().click();
+    await page.getByText('Manage league', { exact: true }).first().click();
+    await visible(page, 'League name');
+    await shot(page, '09f-manage-league');
+    await page.goBack();
+  });
+
+  await step(page, 'offline run, synced later (same-day XP adds only the difference)', async () => {
+    await tab(page, 'Today').click();
+    await page.context().setOffline(true);
+    await recordRun(page, { activeS: 150, distanceM: 420, startAt: 1000 });
+    await visible(page, 'Saved on this phone', { timeout: 20_000 });
+    await shot(page, '07b-summary-offline');
+    await page.context().setOffline(false);
+    // Friday now totals 5.66 km: 56 distance XP instead of 52, and the active-day bonus was already earned.
+    await visible(page, '+4 XP', { timeout: 90_000 });
+    await shot(page, '07c-summary-synced-later');
+    await page.getByTestId('summary-done').click();
+  });
+
+  await step(page, 'too-short run stays personal', async () => {
+    await page.getByTestId('start-run').first().waitFor();
+    await recordRun(page, { activeS: 40, distanceM: 70, startAt: 2000 });
+    await visible(page, 'doesn’t qualify', { timeout: 60_000 });
+    await shot(page, '07d-summary-personal-only');
+    await page.getByTestId('summary-done').click();
+  });
+
+  await step(page, 'S11 progress after three runs', async () => {
+    await tab(page, 'Progress').click();
+    await visible(page, 'Personal');
+    await shot(page, '11b-progress-after');
+  });
+
+  await step(page, 'profile screens', async () => {
+    // The Profile tab still shows Privacy from earlier; tapping the active tab pops to its root.
+    await tab(page, 'Profile').click();
+    await settle(page, 400);
+    if (!(await page.getByTestId('profile-edit').isVisible())) await tab(page, 'Profile').click();
+    await page.getByTestId('profile-edit').click();
+    await visible(page, 'Runner name');
+    await shot(page, '14c-edit-profile');
+    await page.goBack();
+    await page.getByText('Notifications', { exact: true }).first().click();
+    await settle(page, 800);
+    await shot(page, '14d-notifications');
+    await page.goBack();
+    await page.getByText('Blocked runners', { exact: true }).first().click();
+    await settle(page, 800);
+    await shot(page, '14e-blocked');
+    await page.goBack();
+    await page.getByText('Support & legal', { exact: true }).first().click();
+    await settle(page, 800);
+    await shot(page, '14f-support');
+    await page.goBack();
   });
 
   // ---------------------------------------------------------------- newcomer
@@ -386,6 +498,12 @@ try {
     await p2.getByTestId('delete-account').click();
     await settle(p2, 800);
     await shot(p2, '16-delete-account');
+    await p2.getByTestId('delete-account-start').click();
+    await visible(p2, 'This can’t be undone');
+    await shot(p2, '16b-delete-confirm');
+    await p2.getByRole('button', { name: 'Delete account' }).last().click();
+    await p2.getByTestId('continue-email').waitFor({ timeout: 30_000 });
+    await shot(p2, '16c-after-deletion');
   });
 } finally {
   await browser.close();

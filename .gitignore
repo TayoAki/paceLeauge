@@ -53,6 +53,6 @@ example
 
 # test and preview output
 coverage/
-artifacts/screenshots/tmp/
+artifacts/
 playwright-report/
 test-results/
