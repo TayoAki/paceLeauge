@@ -25,7 +25,7 @@ const APP_RULES = [
   [/\bsb_secret_/, 'contains a Supabase secret API key'],
   [/\.auth\.admin\b/, 'uses the Auth admin API'],
   [/from\s+['"](pg|postgres|node:[a-z_]+)['"]|require\(\s*['"](pg|postgres|node:[a-z_]+)['"]\s*\)/, 'imports a server-only module'],
-  [/from\s+['"][./]*(scripts|supabase|tests)\//, 'imports server or test code'],
+  [/from\s+['"][./]*(scripts|server|db|tests)\//, 'imports server or test code'],
   [/eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, 'hardcodes a JWT (keys must come from the environment)'],
 ];
 const REPO_RULES = [

@@ -5,7 +5,7 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*', 'docs/*', '.expo/*', 'coverage/*', 'artifacts/*', 'supabase/functions/*'],
+    ignores: ['dist/*', 'docs/*', '.expo/*', 'coverage/*', 'artifacts/*', 'server/dist/*', 'server/node_modules/*'],
   },
   {
     rules: {
@@ -21,7 +21,8 @@ module.exports = defineConfig([
     },
   },
   {
-    files: ['tests/**', 'scripts/**', '**/__tests__/**', 'jest.config.js'],
+    // The API service (server/) owns the database connection; so do tests and tooling.
+    files: ['server/**', 'tests/**', 'scripts/**', '**/__tests__/**', 'jest.config.js'],
     rules: { 'no-restricted-imports': 'off' },
   },
 ]);

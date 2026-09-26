@@ -5,7 +5,7 @@ import { competitionWeekAt } from '../../src/domain/calendar';
 import { chunk, encodeChunk } from '../../src/domain/route-codec';
 import { steadyRun } from '../../src/domain/synthetic';
 
-import { callRpc, type Claims } from './postgrest';
+import { callRpc, type Claims } from '../../server/src/rpc';
 
 /**
  * Fictional demo data matching the design packet (docs/packet/sample-fixtures.json): the

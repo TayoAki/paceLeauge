@@ -1,5 +1,6 @@
 docs/packet/
-supabase/
+db/
+server/dist/
 node_modules/
 .expo/
 dist/

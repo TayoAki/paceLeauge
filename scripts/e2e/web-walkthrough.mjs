@@ -4,7 +4,7 @@
 // GPS feed and a controlled clock, syncs it, visits every V1 screen, and saves screenshots.
 //
 //   npm run db:local && npm run dev:backend -- --reset --seed alex@demo.paceleague.test
-//   EXPO_PUBLIC_SUPABASE_URL=… EXPO_PUBLIC_SUPABASE_ANON_KEY=… npx expo start --web --port 8081
+//   EXPO_PUBLIC_API_URL=http://127.0.0.1:54400 EXPO_PUBLIC_API_KEY=pl_dev_public_key npx expo start --web --port 8081
 //   node scripts/e2e/web-walkthrough.mjs            # APP_URL, OUT_DIR, HEADED=1 optional
 //
 // Web is a development preview: this proves screens, flows and server integration, not GPS

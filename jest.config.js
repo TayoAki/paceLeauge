@@ -1,8 +1,8 @@
 /**
  * Two Jest projects:
  *  - unit: domain logic, local journal, recorder/sync services and components (jest-expo iOS preset).
- *  - db:   backend integration tests against a real PostgreSQL with the Supabase shim
- *          (run through `npm run test:db`, which provisions the database first).
+ *  - db:   backend and API integration tests against a real PostgreSQL built by the production
+ *          migrator (run through `npm run test:db`, which provisions the database first).
  */
 const transformIgnorePatterns = [
   '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|react-navigation|@react-navigation|lucide-react-native|standard-navigation))',
@@ -24,7 +24,7 @@ module.exports = {
       displayName: 'db',
       preset: 'jest-expo/node',
       testEnvironment: 'node',
-      testMatch: ['<rootDir>/tests/backend/**/*.test.ts'],
+      testMatch: ['<rootDir>/tests/backend/**/*.test.ts', '<rootDir>/tests/server/**/*.test.ts'],
       transformIgnorePatterns,
     },
   ],

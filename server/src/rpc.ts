@@ -1,13 +1,12 @@
-import type pg from 'pg';
+import type { Pool } from './db';
 
 /**
- * The slice of PostgREST the app uses: `POST /rest/v1/rpc/<fn>` with named JSON arguments,
- * executed like PostgREST executes it — one transaction, `role` switched to the caller's JWT
- * role, the claims in `request.jwt.claims` and the request headers in `request.headers` —
- * so RLS, grants, auth.uid() and the rate limiters behave as they do on Supabase.
- * Development only; production traffic goes to the real Supabase API.
+ * `POST /rest/v1/rpc/<fn>` with named JSON arguments, executed the way PostgREST executes it:
+ * one transaction, `role` switched to the caller's (anon or authenticated), the verified JWT
+ * claims in `request.jwt.claims` and selected request headers in `request.headers`, so grants,
+ * row-level security, auth.uid() and the SQL rate limiters apply exactly as written. Only
+ * functions in the `public` schema are callable, and each runs under a statement timeout.
  */
-
 export interface RpcResponse {
   status: number;
   body: unknown;
@@ -22,10 +21,11 @@ interface FunctionInfo {
 
 export type Claims = Record<string, unknown> & { role: 'anon' | 'authenticated' };
 
-const cache = new Map<string, FunctionInfo | null>();
+const cache = new Map<string, FunctionInfo>();
 
-async function describe(pool: pg.Pool, name: string): Promise<FunctionInfo | null> {
-  if (cache.has(name)) return cache.get(name) ?? null;
+async function describe(pool: Pool, name: string): Promise<FunctionInfo | null> {
+  const cached = cache.get(name);
+  if (cached) return cached;
   const { rows } = await pool.query<{ names: string[] | null; types: string[]; nargs: number; ndefaults: number; rettype: string; retset: boolean }>(
     `select p.proargnames as names,
             array(select format_type(t, null) from unnest(p.proargtypes::oid[]) with ordinality u(t, i) order by i) as types,
@@ -44,7 +44,8 @@ async function describe(pool: pg.Pool, name: string): Promise<FunctionInfo | nul
         returnsSet: row.retset,
       }
     : null;
-  cache.set(name, info);
+  // Only real functions are cached, so arbitrary names can't grow memory.
+  if (info) cache.set(name, info);
   return info;
 }
 
@@ -70,14 +71,16 @@ function toParam(type: string, value: unknown): unknown {
   return value;
 }
 
+const STATEMENT_TIMEOUT = '15s';
+
 export async function callRpc(
-  pool: pg.Pool,
+  pool: Pool,
   fn: string,
   args: Record<string, unknown>,
   claims: Claims,
   headers: Record<string, string> = {},
 ): Promise<RpcResponse> {
-  const info = /^[a-z_][a-z0-9_]*$/.test(fn) ? await describe(pool, fn) : null;
+  const info = /^[a-z_][a-z0-9_]{0,62}$/.test(fn) ? await describe(pool, fn) : null;
   const keys = Object.keys(args);
   const known = new Set(info?.args.map((a) => a.name));
   const missingRequired = info?.args.slice(0, info.requiredCount).some((a) => !(a.name in args));
@@ -99,11 +102,11 @@ export async function callRpc(
   const client = await pool.connect();
   try {
     await client.query('begin');
-    await client.query(`select set_config('request.jwt.claims', $1, true), set_config('request.headers', $2, true), set_config('role', $3, true)`, [
-      JSON.stringify(claims),
-      JSON.stringify(headers),
-      claims.role,
-    ]);
+    await client.query(
+      `select set_config('request.jwt.claims', $1, true), set_config('request.headers', $2, true),
+              set_config('statement_timeout', $4, true), set_config('role', $3, true)`,
+      [JSON.stringify(claims), JSON.stringify(headers), claims.role, STATEMENT_TIMEOUT],
+    );
     const result = await client.query<{ result: unknown }>(sql, used.map((a) => toParam(a.type, args[a.name])));
     await client.query('commit');
     if (info.returnsVoid) return { status: 204, body: null };

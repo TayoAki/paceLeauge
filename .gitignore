@@ -49,6 +49,7 @@ example
 
 # local Postgres used by the backend test harness
 .pgdata/
+.pgdata18/
 .pg-socket/
 
 # test and preview output
@@ -56,3 +57,7 @@ coverage/
 artifacts/
 playwright-report/
 test-results/
+
+# API build output
+server/dist/
+server/node_modules/

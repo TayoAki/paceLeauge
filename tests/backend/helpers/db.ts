@@ -3,7 +3,7 @@ import pg from 'pg';
 
 /**
  * Backend test harness. Each test file clones the migrated template database
- * (scripts/db/apply-migrations.mjs) and calls RPCs the way PostgREST does: inside a
+ * (scripts/db/apply-migrations.ts, the production migrator) and calls RPCs the way the API does: inside a
  * transaction with `SET LOCAL ROLE authenticated|anon` and the JWT claims in
  * `request.jwt.claims`, so RLS, grants and auth.uid() behave as in production.
  */
@@ -48,6 +48,11 @@ export class TestDb {
     readonly name: string,
     readonly pool: pg.Pool,
   ) {}
+
+  /** Connection string for this test database (the API under test connects with it). */
+  get url(): string {
+    return urlFor(this.name);
+  }
 
   static async create(): Promise<TestDb> {
     const name = `pl_test_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
