@@ -6,7 +6,7 @@ import { AppState } from 'react-native';
 import { api } from '@/api/client';
 import type { PaceApi } from '@/api/pace-api';
 import { env } from '@/config/env';
-import { cancelReminder } from '@/features/reminders/reminders';
+import { cancelReminder, restoreReminder } from '@/features/reminders/reminders';
 import { createRunActions, type RunActions } from '@/features/sync/run-actions';
 import { SyncEngine } from '@/features/sync/sync-engine';
 import { sha256Hex } from '@/lib/crypto';
@@ -85,6 +85,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           attempt,
           state: { status: 'ready', accountId, runtime, engine, actions: engine ? createRunActions(runtime.journal, engine) : null },
         });
+        void restoreReminder(runtime.journal).catch(() => undefined);
       },
       (error: Error) => {
         if (!cancelled) setOpened({ accountId, attempt, state: { status: 'error', accountId, error } });

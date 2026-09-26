@@ -8,3 +8,4 @@ export * from './route-codec';
 export * from './scoring';
 export * from './types';
 export * from './validator';
+export * from './splits';

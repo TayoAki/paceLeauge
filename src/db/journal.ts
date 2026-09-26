@@ -413,11 +413,15 @@ export class Journal {
     });
   }
 
-  getRunPoints(runId: string): Promise<TrackPoint[]> {
+  /** Points of a run in sequence order; `afterSeq` reads only newer points (live map). */
+  getRunPoints(runId: string, afterSeq = -1): Promise<TrackPoint[]> {
     return this.read(async () =>
-      (await this.db.getAllAsync<PointRow>('select seq, segment_index, t, lat, lon, accuracy from track_points where run_id = ? order by seq', [runId])).map(
-        toPoint,
-      ),
+      (
+        await this.db.getAllAsync<PointRow>(
+          'select seq, segment_index, t, lat, lon, accuracy from track_points where run_id = ? and seq > ? order by seq',
+          [runId, afterSeq],
+        )
+      ).map(toPoint),
     );
   }
 
