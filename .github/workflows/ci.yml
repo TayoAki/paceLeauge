@@ -23,19 +23,34 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
       - run: npm ci
+      - run: npm ci --prefix server
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run check:secrets
       - run: npm test -- --ci
+      - run: npm run build --prefix server
 
   backend:
-    name: Backend — migrations and integration tests on PostgreSQL 16
+    # Railway runs PostgreSQL 18 with the strict platform layer; 16 with Supabase-like
+    # permissive grants proves row-level security, not missing grants, protects the data.
+    name: Backend + API — PostgreSQL ${{ matrix.pg }} (${{ matrix.platform }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pg: 18
+            platform: strict
+          - pg: 16
+            platform: permissive
     services:
       postgres:
-        image: postgres:16
+        image: postgres:${{ matrix.pg }}
         env:
           POSTGRES_PASSWORD: postgres
         ports: ['5432:5432']
@@ -46,6 +61,7 @@ jobs:
           --health-retries 12
     env:
       PG_TEST_URL: postgres://postgres:postgres@localhost:5432/postgres
+      DB_PLATFORM: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,3 +70,43 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:db -- --ci
+
+  image:
+    name: API image — build, migrate, boot, health, RPC
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      IMAGE: paceleague-api:ci
+      API_ENV: >-
+        -e DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres
+        -e APP_ENV=staging -e PUBLIC_API_KEY=pl_ci_public_key_0123456789
+        -e EMAIL_PROVIDER=log -e BOOTSTRAP_ENABLE_COMPETITION=true -e PORT=8080
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f server/Dockerfile -t "$IMAGE" .
+      - name: Pre-deploy migrations (twice — the second run must apply nothing)
+        run: |
+          docker run --rm --network host $API_ENV "$IMAGE" node dist/migrate.js
+          docker run --rm --network host $API_ENV "$IMAGE" node dist/migrate.js | tee second.log
+          grep -q '"applied":0' second.log
+      - name: Boot and probe
+        run: |
+          docker run -d --name api --network host $API_ENV "$IMAGE"
+          for i in $(seq 1 30); do curl -fsS localhost:8080/health && break; sleep 1; done
+          curl -fsS -X POST localhost:8080/rest/v1/rpc/get_app_config \
+            -H 'apikey: pl_ci_public_key_0123456789' -H 'content-type: application/json' -d '{}' | tee config.json
+          grep -q '"competition_enabled":true' config.json
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8080/rest/v1/rpc/get_me -H 'apikey: wrong' -d '{}')" = 401
+      - if: always()
+        run: docker logs api || true
