@@ -16,16 +16,17 @@ Those checks are specified in [DEVICE_TEST_PROTOCOL.md](DEVICE_TEST_PROTOCOL.md)
 
 | Source | How to run | What it proves | Last result |
 |---|---|---|---|
-| Unit tests | `npm test` | Domain rules (golden fixtures, validator, calendar/DST, allocation, splits, formatting), recorder service and state machine against a real SQLite journal, XP-panel states (saved ≠ synced ≠ accepted), API error mapping and backoff, preflight readiness, reminders, design tokens and contrast, export packaging | 15 suites, 111 tests passing |
-| Backend + API | `npm run test:db` | The database built by the production migrator; RLS and grants across the whole catalog; upload protocol, idempotency and concurrency; scoring in SQL; leagues; export/deletion/moderation lifecycle; TypeScript ↔ SQL validator parity on 40 adversarial routes; the real client recorder + sync engine against real SQL; the API service — sign-in codes (hashed, single use, expiry, guess limit, cooldown, per-IP limits), refresh rotation and reuse detection, logout scopes, Sign in with Apple checks, forged and `none`-algorithm tokens, RPC limits, the migrator, jobs and email providers | 8 suites, 104 tests passing on PostgreSQL 18 and 16 (strict platform) and 16 with Supabase-style permissive grants; CI runs 18 strict and 16 permissive plus a build-and-boot test of the API image |
-| Browser walkthrough | `npm run e2e:web` | The real app (web build) against the development backend: email sign-in, preflight with a scripted GPS feed, a 31:28 recording with pause, finish, sync and the server's +77 XP, offline finish synced later (+4 XP as a same-day delta), a too-short personal-only run, share poster, league standings, invite preview and explicit join by a second identity, export, and account deletion | All steps passing (43 screenshots; the only console errors are the expected network failures during the deliberate offline step) — contact sheets in [evidence/web](evidence/README.md) |
-| Staging smoke test | `npm run smoke:api` ([OPERATIONS.md](OPERATIONS.md#smoke-test)) | The deployed API on Railway over HTTPS, through the app's own client: health and HSTS, wrong key and forged token refused, email-code sign-in, profile save, a full run upload (+77 XP), neither account can read the other's run, private functions hidden, refresh rotation, logout, and account deletion carried out by the job loop | 12 of 12 checks passing on 26 Sep 2026 against `api-staging-753f.up.railway.app`; both test accounts deleted 25 s later |
+| Unit tests | `npm test` | Domain rules (golden fixtures, validator, calendar/DST, allocation, splits, formatting), recorder service and state machine against a real SQLite journal, XP-panel states (saved ≠ synced ≠ accepted), API error mapping and backoff, preflight readiness, reminders, design tokens and contrast, export packaging | 16 suites, 113 tests passing |
+| Backend + API | `npm run test:db` | The database built by the production migrator; RLS and grants across the whole catalog; upload protocol, idempotency and concurrency; scoring in SQL; leagues; export/deletion/moderation lifecycle; TypeScript ↔ SQL validator parity on 40 adversarial routes; the real client recorder + sync engine against real SQL; the API service — password accounts (scrypt hashes, rules, attempt limits, change with recent sign-in, reclaim by a proven address, operator reset), sign-in codes (hashed, single use, expiry, guess limit, cooldown, per-IP limits), refresh rotation and reuse detection, logout scopes, Sign in with Apple checks, forged and `none`-algorithm tokens, RPC limits, the migrator, jobs, email providers and the legal pages | 9 suites, 122 tests passing on PostgreSQL 18 and 16 (strict platform) and 16 with Supabase-style permissive grants; CI runs 18 strict and 16 permissive plus a build-and-boot test of the API image |
+| Browser walkthrough | `npm run e2e:web` | The real app (web build) against the development backend: account creation and password sign-in (a wrong password refused), preflight with a scripted GPS feed, a 31:28 recording with pause, finish, sync and the server's +77 XP, offline finish synced later (+4 XP as a same-day delta), a too-short personal-only run, share poster, league standings, invite preview and explicit join by a second identity, a password change, export, and account deletion | All steps passing (44 screenshots; the only console errors are the expected network failures during the deliberate offline step) — contact sheets in [evidence/web](evidence/README.md) |
+| Staging smoke test | `npm run smoke:api` ([OPERATIONS.md](OPERATIONS.md#smoke-test)) | The deployed API on Railway over HTTPS, through the app's own client: health and HSTS, wrong key and forged token refused, the legal pages, password sign-up with wrong-password, duplicate and weak-password refusals and a password change, profile save, a full run upload (+77 XP), neither account can read the other's run, private functions hidden, refresh rotation, logout, and account deletion carried out by the job loop | 15 of 15 checks passing on 26 Sep 2026 against `api-staging-753f.up.railway.app` after the password deploy (the earlier emailed-code run passed 12 of 12); the job loop deleted both test accounts within a minute |
 | Physical iPhone | [DEVICE_TEST_PROTOCOL.md](DEVICE_TEST_PROTOCOL.md) | Background location, accuracy, battery, encryption at rest, Apple sign-in, notifications, share sheet, accessibility | **Not run** — no device available to this build |
 
 The development backend is the production API service run in development mode over the same
-migrations. Staging runs on Railway (API + PostgreSQL 18); two settings there are still
-placeholders: sign-in codes go to the service logs until an email provider key is added, and
-`APPLE_AUDIENCES` holds a placeholder bundle identifier (see [OPERATIONS.md](OPERATIONS.md)).
+migrations. Staging runs on Railway (API + PostgreSQL 18). During the beta, runners sign in with
+email and a password, so no email service is needed. Still to do there: `APPLE_AUDIENCES` holds a
+placeholder bundle identifier, and the Privacy Policy and Terms it serves are drafts with
+placeholders for the operator's details (see [OPERATIONS.md](OPERATIONS.md)).
 
 ## Requirements
 
@@ -35,7 +36,7 @@ acceptance criteria also need the device checks listed · **Deferred** — inten
 
 | Req | Scope | Status | Automated evidence | Still required |
 |---|---|---|---|---|
-| REQ-001 | Account and onboarding | Implemented, device pending | Email code sign-in, onboarding and profile validation in the walkthrough and on staging; codes single use, expiring and guess-limited, Apple token checks (`tests/server/auth.test.ts`); alias rules and case-insensitive uniqueness (`access.test.ts`); per-account journals and "another account cannot see or claim this run" (`client-sync.test.ts`) | Sign in with Apple on device; cold-restart session restore; codes delivered by real email on staging (EV-001) |
+| REQ-001 | Account and onboarding | Implemented, device pending | Email + password sign-up and sign-in, a password change, onboarding and profile validation in the walkthrough and on staging; password rules, attempt limits, reclaim by a proven address (`tests/server/passwords.test.ts`); codes single use, expiring and guess-limited, Apple token checks (`tests/server/auth.test.ts`); alias rules and case-insensitive uniqueness (`access.test.ts`); per-account journals and "another account cannot see or claim this run" (`client-sync.test.ts`) | Sign in with Apple on device; cold-restart session restore; password autofill and the iOS keyboard on device (EV-001) |
 | REQ-002 | Permission and preflight | Implemented, device pending | Readiness only with permission + fresh accurate fix, each blocker in order (`preflight.test.ts`); prompt → grant → "GPS good" → countdown in the walkthrough | Allow Once, permanent denial, approximate location, revocation mid-run on iOS (EV-002) |
 | REQ-003 | Record, pause, resume, recover | Implemented, device pending | 15 recorder-service and 7 state-machine tests: pause excluded, one active run, recovery after process death ends at last evidence, permission loss interrupts, point limit; 31:28 with pause in the walkthrough | **F01**: locked-screen 30-minute run, phone call, force-quit/reboot, distance error (NFR-002) and battery (NFR-003) on two iPhones (EV-003) |
 | REQ-004 | Finish and preserve | Implemented, device pending | Repeated Finish → one run; failed local write never reports success and keeps the session (`recorder.test.ts`); offline finish shows "saved on this phone" and syncs later (walkthrough, `client-sync.test.ts`) | Relaunch after offline finish and crash-during-save on device; NFR-004 timings (EV-004) |
@@ -55,7 +56,7 @@ acceptance criteria also need the device checks listed · **Deferred** — inten
 
 | Screen | Route | Walkthrough screenshot(s) |
 |---|---|---|
-| S01 Welcome / sign-in | `/welcome`, `/sign-in` | `01-welcome`, `01b-sign-in-email`, `01c-sign-in-code` |
+| S01 Welcome / sign-in | `/welcome`, `/sign-in` | `01-welcome`, `01b-create-account`, `01c-sign-in-wrong-password` |
 | S02 Onboarding | `/onboarding` | `02-onboarding`, `02b-onboarding-filled` |
 | S03 Today | `/(tabs)` | `03-today`, `03b-today-after`, `03c-today-new-runner` |
 | S04 Preflight | `/run/preflight` | `04a-preflight-permission`, `04-preflight-ready`, `04b-countdown` |
@@ -68,7 +69,7 @@ acceptance criteria also need the device checks listed · **Deferred** — inten
 | S11 Progress | `/(tabs)/progress` | `11-progress`, `11b-progress-after` |
 | S12 Run detail | `/(tabs)/progress/runs/[id]` | `12-run-detail`, `12b-run-detail-splits` |
 | S13 Share | `/share/[id]` | `13-share` |
-| S14 Profile / privacy | `/(tabs)/profile`, `/profile/privacy` | `14-profile`, `14b-privacy`, `14c-edit-profile`, `14d-notifications`, `14e-blocked`, `14f-support` |
+| S14 Profile / privacy | `/(tabs)/profile`, `/profile/privacy`, `/profile/password` | `14-profile`, `14b-privacy`, `14c-edit-profile`, `14d-notifications`, `14e-blocked`, `14f-support`, `14g-change-password` |
 | S15 Export | `/profile/privacy` | `15-export` |
 | S16 Delete account | `/profile/delete-account` | `16-delete-account`, `16b-delete-confirm`, `16c-after-deletion` |
 | S17 Pro | — | Deferred (REQ-013) |
@@ -84,9 +85,8 @@ also show each runner's tier.
 
 1. **F01 on two physical iPhones** — the packet's first gate. Nothing about background GPS,
    distance accuracy or battery is claimed until it is run.
-2. **Finish staging** — add the email provider key (Resend or Postmark) and the real bundle
-   identifier in `APPLE_AUDIENCES`, rerun the smoke test with real inboxes, then the load checks
-   (NFR-005, NFR-009).
+2. **Finish staging** — set the real bundle identifier in `APPLE_AUDIENCES`, fill in and publish
+   the Privacy Policy and Terms (`legal/`), then the load checks (NFR-005, NFR-009).
 3. **Operations** — support/reviewer contacts, moderation rota, alerting on
    `private.health_report()` and the API's error logs, Railway backups (daily + weekly), the
    production environment, and legal pages (terms/privacy URLs).
