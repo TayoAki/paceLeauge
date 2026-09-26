@@ -18,6 +18,7 @@
     "verify": "npm run typecheck && npm run lint && npm run check:secrets && npm test",
     "db:local": "bash scripts/db/local-db.sh",
     "dev:backend": "tsx scripts/dev-backend/server.ts",
+    "smoke:api": "tsx scripts/smoke/api-smoke.ts",
     "export:web": "expo export --platform web",
     "e2e:web": "node scripts/e2e/web-walkthrough.mjs"
   },

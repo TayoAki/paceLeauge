@@ -8,15 +8,32 @@ the reason is stated here.
 
 | Decision | Why | Consequence |
 |---|---|---|
-| All authority in PostgreSQL: RLS + SECURITY DEFINER RPCs, no Edge Functions | Validation, allocation, scoring and ledger writes happen in one transaction under a per-user advisory lock, so concurrency and idempotency are provable with a real database; no service-role key exists anywhere in the system | Business rules live in SQL migrations; the TypeScript validator mirrors them for live estimates and is held equal by the parity suite |
+| All authority in PostgreSQL: RLS + SECURITY DEFINER RPCs behind a thin API | Validation, allocation, scoring and ledger writes happen in one transaction under a per-user advisory lock, so concurrency and idempotency are provable with a real database; no privileged API key exists — the API only ever acts as `anon` or the signed-in runner | Business rules live in SQL migrations; the TypeScript validator mirrors them for live estimates and is held equal by the parity suite |
 | XP is always recomputed from day allocations, and the ledger stores deltas | Re-scoring after a delete, a review decision or a paused competition converges on the same totals; "splitting runs to beat the cap" is impossible by construction | Scoring is O(affected days), not O(history) |
 | Standings computed at read time, with week revisions recorded after settlement | Corrections (deleted runs, review decisions) can't leave stale materialized ranks; revisions make later changes visible instead of silent | League reads do a bounded aggregation (≤ 20 members × 7 days) |
-| `competition_enabled` ships **off** | The packet: keep ranking disabled until accepted-run validation and concurrency pass in staging | Recording, history and uploads work regardless; the dev backend and test suites turn it on |
+| `competition_enabled` ships **off** | The packet: keep ranking disabled until accepted-run validation and concurrency pass in staging | Recording, history and uploads work regardless; the dev backend and test suites turn it on, and staging turns it on once at its first deploy |
 | Join/invite failures are returned as values, not raised | A raised error rolls back the rate-limit counter, which would make invite-code guessing unlimited — found and fixed during testing | The client converts `{error}` values back into typed errors |
 | Invite codes: 8 Crockford base32 characters, stored as SHA-256 hashes, 7-day expiry, ≤ 10 live per league | Short enough to read aloud, ambiguity-free (I/L→1, O→0), useless if the table leaks | Rotation revokes all live codes |
 | One encrypted journal per account, plus a pinned "recording account" | Account B can never read or claim A's queue (AC-REQ-001-02), and the headless background task always writes to the account that started the run | Sign-out waits for an active run to be finished or discarded |
 | Telemetry stored in the project's own database (`log_events`), allowlisted and enumerated | Minimization (REQ-015) without a third-party analytics SDK or new data processor | Dashboards read `private.operational_events`; retention 14 days |
-| Email one-time **codes**, not magic links | Links opening the wrong app/browser are a common mobile failure; codes work across devices | Template in `supabase/templates/sign-in-code.html` |
+| Email one-time **codes**, not magic links | Links opening the wrong app/browser are a common mobile failure; codes work across devices | Template in `db/templates/sign-in-code.html` |
+
+## Backend hosting: Railway instead of Supabase
+
+The packet assumes Supabase; the backend runs on Railway instead — one API service next to a
+Railway Postgres. The data model, RLS policies and RPCs are unchanged; what Supabase's platform
+did is now done by the pieces below.
+
+| Decision | Why | Consequence |
+|---|---|---|
+| The API (`server/`) implements the parts of Supabase Auth and PostgREST the app uses: email codes, Apple identity tokens, refresh, logout, current user, and RPC | The app keeps its client (supabase-js) and every rule stays in SQL, so neither had to be rewritten | We own the sign-in code Supabase used to run; it is covered by the API suite (24 tests) and the staging smoke test |
+| Email codes go through Resend or Postmark over HTTPS | Railway blocks outbound SMTP below the Pro plan | Needs a provider key and a verified sending domain; until then staging writes codes to its private logs |
+| Codes are stored as an HMAC keyed by the server secret; limits per address and per IP live in Postgres | A leaked table can't be used to sign in; limits hold across restarts and replicas | Expired codes and old rate-limit windows are purged hourly |
+| 1-hour HS256 access tokens plus opaque rotating refresh tokens with reuse detection | Access tokens are checked without a database round trip; a refresh token can be revoked, and a stolen one is caught when reused | As with Supabase, an access token stays valid until it expires after logout |
+| Apple identity tokens are verified against Apple's published keys | Native Sign in with Apple needs no client secret; the audience is the bundle identifier | `APPLE_AUDIENCES` must list the real bundle identifiers |
+| An own forward-only migrator, run as Railway's pre-deploy step | Checksummed ledger and advisory lock; a failing migration fails the deploy and the previous version keeps serving | Never edit an applied migration — add one |
+| Scheduled jobs run inside the API under advisory locks | Railway's Postgres has no `pg_cron` | One instance runs each job at a time, however many replicas |
+| `db/platform` recreates the roles and auth schema Supabase provided, with no default privileges | Nothing is reachable unless a migration grants it | The suite also runs with Supabase-style permissive grants, proving RLS alone protects the data |
 
 ## Client
 
@@ -55,6 +72,6 @@ the reason is stated here.
 
 | Decision | Why | Limitation |
 |---|---|---|
-| A small Node server (`scripts/dev-backend`) emulates Supabase Auth (email codes, refresh rotation) and PostgREST RPC over the real migrations | This environment has no Docker daemon for the Supabase CLI stack; the app still runs end to end against the production SQL | Not a replacement for a staging Supabase project: GoTrue specifics (email delivery, Apple, rate limits) are exercised only there |
+| `npm run dev:backend` runs the production API service in development mode (code `123456` for every address, codes printed, competition on) over a local Postgres | The app runs end to end against the same code as staging and production, without Docker | Email delivery and Sign in with Apple are exercised only on staging and a device |
 | Web preview kept runnable | Enables the browser walkthrough and fast UI review | Unencrypted SQLite, no background location/share sheet/notifications — never a product target |
 | Browser walkthrough uses a scripted Geolocation API and Playwright's clock | Reproduces the packet's exact run (5.24 km in 31:28) deterministically | Proves flows and integration only — not GPS quality (see DEVICE_TEST_PROTOCOL.md) |

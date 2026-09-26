@@ -10,7 +10,7 @@ simulator, fixture or synthetic route as a real outdoor run. Anything not run st
 | Item | Requirement |
 |---|---|
 | Devices | Two physical iPhones on different models and iOS versions (e.g. one current flagship, one ≥ 3 years old). Record model, iOS version, battery health, Low Power Mode, and Location Services settings. |
-| Build | `eas build --profile development` (or `pilot`) pointing at a **staging** Supabase project with `competition_enabled` on. Never production. |
+| Build | `eas build --profile development` (or `pilot`) pointing at the **staging** API on Railway (`EXPO_PUBLIC_API_URL` / `EXPO_PUBLIC_API_KEY`) with `competition_enabled` on. Never production. |
 | Accounts | Two test accounts per provider (Apple, email). Staff/test accounts are excluded from pilot metrics. |
 | Routes | At least ten measured open-sky routes of 1–5 km (a 400 m track counts laps; otherwise a surveyed course or a wheel-measured path), plus one poor-signal route (tall buildings or trees). Write down the reference distance before running. |
 | Capture | Screen recordings for permission flows; the in-app export (JSON + GPX) after each run; iOS Settings → Battery screenshots before/after; a written log using the template below. |

@@ -1,7 +1,7 @@
 /**
  * Versioned product rules. These mirror the "Score contract — version 1" and recorder
  * tuning inputs in docs/packet/specs/TECHNICAL_SPEC.md. The SQL backend
- * (supabase/migrations) implements the same numbers; tests/backend/parity.test.ts keeps
+ * (db/migrations) implements the same numbers; tests/backend/parity.test.ts keeps
  * the two in lockstep. Changing any value requires a new version, never an in-place edit.
  */
 

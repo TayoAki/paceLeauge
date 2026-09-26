@@ -36,7 +36,7 @@ packages), so each matches SDK 57. Re-run the three commands above after any upg
 | react-native-svg | 15.15.4 | Art and charts |
 | react-native-view-shot | 5.1.0 | Stats-only poster capture |
 | react-native-reanimated / gesture-handler / screens / safe-area-context | 4.5.1 / 2.32.0 / 4.26.2 / 5.7.0 | SDK-managed |
-| @supabase/supabase-js | 2.117.2 | Auth (email OTP, id-token) and PostgREST RPC |
+| @supabase/supabase-js | 2.117.2 | Client for the API's Supabase-compatible auth (email OTP, id-token) and RPC endpoints |
 | @tanstack/react-query | 5.103.3 | Server cache with journal-backed offline snapshots |
 | zod | 4.6.5 | Every RPC response is parsed |
 | lucide-react-native | 1.48.0 | One icon set (the boards' glyphs differ; the packet asks for one set) |
@@ -48,18 +48,18 @@ packages), so each matches SDK 57. Re-run the three commands above after any upg
 | typescript | 6.0.3 | |
 | jest / jest-expo | 29.7.0 / 57.0.5 | Unit project (jest-expo preset) and db project (node) |
 | eslint | 9.39.5 | Flat config |
-| pg | 8.23.0 | Backend tests, migration runner, dev backend |
-| tsx | 4.23.15 | Runs the TypeScript dev backend |
+| pg | 8.23.0 | Backend tests, test-database builder, dev backend |
+| tsx | 4.23.15 | Runs the dev backend and the smoke test |
 | playwright-core | 1.56.1 | Browser walkthrough; pinned to match the preinstalled Chromium 141 build (`PLAYWRIGHT_BROWSERS_PATH`) |
 
 ## Backend
 
 | Component | Version | Notes |
 |---|---|---|
-| PostgreSQL | 16 | Local harness (`scripts/db/local-db.sh`) and CI service; Supabase projects currently run 15–17 — the migrations use only features available in 15+ |
-| Supabase CLI config | `supabase/config.toml` | Email OTP (6 digits, 600 s), Apple provider via env, Edge Functions/Storage/Realtime disabled |
-| pg_cron | provider extension | Optional: schedules are created only if the extension is available |
-| Node.js | ≥ 22.13 | `engines` in `package.json`; CI uses Node 22 |
+| PostgreSQL | 18 on Railway (template image `postgres-ssl:18`); 16 and 18 in tests | CI runs the backend and API suites on 18 with the strict platform layer and on 16 with Supabase-style permissive grants; verified locally on 16 and 18.6. The migrations use only features available in 15+ |
+| API service (`server/`) | Node 22 (`node:22-bookworm-slim`) | Runtime dependency `pg` 8.23.0 only; bundled with esbuild 0.28.2; lockfile `server/package-lock.json` |
+| pg_cron | not used on Railway | The API runs the jobs; the maintenance migration still creates schedules where the extension exists |
+| Node.js | ≥ 22.13 | `engines` in `package.json`; CI and the API image use Node 22 |
 
 ## Known constraints
 
@@ -67,6 +67,8 @@ packages), so each matches SDK 57. Re-run the three commands above after any upg
   without cross-origin isolation (the app uses only the asynchronous API); there is no background
   location, share sheet, Photos or notifications. The web target exists for development and the
   browser walkthrough, not as a product.
-- **Supabase compatibility shim** (`supabase/tests/shim/`) reproduces the roles, `auth.uid()` /
-  `auth.jwt()` and the permissive default grants of a Supabase database so tests prove that RLS and
-  explicit revokes — not missing grants — protect the data. It is not applied to real projects.
+- **Platform layer** (`db/platform/`) creates the `anon` / `authenticated` / `service_role`
+  roles, the `auth` schema and `auth.uid()` / `auth.jwt()` that the migrations expect, with no
+  default privileges. `db/test-support/` adds Supabase-style permissive default grants for tests
+  only (`DB_PLATFORM=permissive`), so the suite proves that RLS and explicit revokes — not missing
+  grants — protect the data. The deploy migrator never applies it.

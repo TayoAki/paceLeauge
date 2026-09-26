@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * Runtime schemas for every RPC response (types alone cannot validate a hostile or
- * mismatched payload). Field names mirror the SQL functions in supabase/migrations.
+ * mismatched payload). Field names mirror the SQL functions in db/migrations.
  */
 
 const xpParts = z.object({ distance_xp: z.number(), active_day_bonus: z.number(), xp: z.number() });

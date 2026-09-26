@@ -48,7 +48,7 @@ export default function ReauthScreen() {
 
   const user = auth.status === 'signed_in' ? auth.session.user : null;
   const email = auth.status === 'signed_in' ? auth.email : null;
-  // The Apple user identifier linked to this account (Supabase stores it as the identity's `sub`).
+  // The Apple user identifier linked to this account (the API returns it as the identity's `sub`).
   const appleIdentity = user?.identities?.find((i) => i.provider === 'apple');
   const appleSub = typeof appleIdentity?.identity_data?.sub === 'string' ? appleIdentity.identity_data.sub : undefined;
   const offerApple = appleAvailable && appleSub !== undefined;

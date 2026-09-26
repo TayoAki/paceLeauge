@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Local PostgreSQL 16 cluster for backend tests and the development backend.
+# Local PostgreSQL cluster (16 or newer) for backend tests and the development backend.
 #   scripts/db/local-db.sh start|stop|status|reset
 # Listens on 127.0.0.1:${PGPORT:-54329} with trust auth for local connections only.
+# A new cluster uses the newest installed version (or PG_BIN); an existing one keeps its own.
 # Not used when PG_TEST_URL is set (e.g. CI provides its own Postgres service).
 set -euo pipefail
 
@@ -9,7 +10,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PGDATA="${PGDATA_DIR:-$ROOT/.pgdata}"
 SOCKET_DIR="$ROOT/.pg-socket"
 PORT="${PGPORT:-54329}"
-BIN="${PG_BIN:-$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1)}"
+CLUSTER_VERSION="$(cat "$PGDATA/PG_VERSION" 2>/dev/null || true)"
+if [[ -z "${PG_BIN:-}" && -n "$CLUSTER_VERSION" && -x "/usr/lib/postgresql/$CLUSTER_VERSION/bin/pg_ctl" ]]; then
+  BIN="/usr/lib/postgresql/$CLUSTER_VERSION/bin"
+else
+  BIN="${PG_BIN:-$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1)}"
+fi
 
 if [[ -z "$BIN" || ! -x "$BIN/pg_ctl" ]]; then
   echo "PostgreSQL server binaries not found (set PG_BIN)." >&2

@@ -62,7 +62,7 @@ export async function isAppleSignInAvailable(): Promise<boolean> {
 }
 
 /**
- * Native Sign in with Apple. Apple receives the SHA-256 of a one-time nonce; Supabase
+ * Native Sign in with Apple. Apple receives the SHA-256 of a one-time nonce; the API
  * receives the raw nonce and verifies the pair. Only the email scope is requested.
  *
  * `expectedAppleUser` (re-authentication) is the Apple user identifier already linked to the

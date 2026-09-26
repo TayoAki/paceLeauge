@@ -1,7 +1,7 @@
 import { deviceStore } from '@/lib/device-store';
 
 /**
- * Supabase session storage in the Keychain. Sessions can exceed SecureStore's recommended
+ * Auth session storage in the Keychain. Sessions can exceed SecureStore's recommended
  * value size, so values are split into chunks. Tokens never touch AsyncStorage.
  */
 const CHUNK = 1800;

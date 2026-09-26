@@ -6,16 +6,25 @@ allocates them to competition days and awards XP. No XP, rank or membership is e
 the client.
 
 ```
- iPhone                                                    Supabase (PostgreSQL 16)
-┌───────────────────────────────────────────────┐        ┌────────────────────────────────────┐
-│ Background location task (expo-task-manager)  │        │ public RPCs (SECURITY DEFINER,      │
-│   └─▶ RecorderService ──▶ Journal (SQLCipher) │        │   search_path = '', role checks)    │
-│          │  live metrics      │ outbox         │  HTTPS │   start_run_upload / put_route_chunk│
-│          ▼                    ▼                │ ─────▶ │   finalize_run ─▶ validate_run (SQL)│
-│      Screens (Expo Router) ◀─ SyncEngine ──────│        │   ─▶ day allocations ─▶ daily_scores│
-│          ▲                                     │ ◀───── │   ─▶ xp_ledger ─▶ profile_stats     │
-│   TanStack Query cache + offline snapshots     │ JSON   │ RLS: owner-only reads, no writes    │
-└───────────────────────────────────────────────┘        └────────────────────────────────────┘
+ iPhone                                                  Railway
+┌───────────────────────────────────────────────┐        ┌──────────────────────────────────────┐
+│ Background location task (expo-task-manager)  │        │ api — server/ (Node 22)              │
+│   └─▶ RecorderService ──▶ Journal (SQLCipher) │        │   /auth/v1      email codes, Apple,  │
+│          │  live metrics      │ outbox        │        │                 sessions             │
+│          ▼                    ▼               │  HTTPS │   /rest/v1/rpc  per request: role,   │
+│      Screens (Expo Router) ◀─ SyncEngine ─────│ ─────▶ │                 claims, 15 s limit   │
+│          ▲                                    │ ◀───── │   jobs · migrator (pre-deploy)       │
+│   TanStack Query cache + offline snapshots    │  JSON  └───────────────────┬──────────────────┘
+└───────────────────────────────────────────────┘                            │ SQL
+                                                         ┌───────────────────▼──────────────────┐
+                                                         │ PostgreSQL 18 (private network)      │
+                                                         │   public RPCs (SECURITY DEFINER,     │
+                                                         │     search_path = '', role checks)   │
+                                                         │   finalize_run ─▶ validate_run (SQL) │
+                                                         │   ─▶ day allocations ─▶ daily_scores │
+                                                         │   ─▶ xp_ledger ─▶ profile_stats      │
+                                                         │   RLS: owner-only reads, no writes   │
+                                                         └──────────────────────────────────────┘
 ```
 
 ## Layers
@@ -25,9 +34,33 @@ the client.
 | Domain | `src/domain/` | Pure TypeScript, no React/Expo imports: validator v1, score contract v1, competition calendar (America/Chicago, DST-correct), recorder state machine, formatting, route codec, splits. Mirrored in SQL and proven equal by `tests/backend/parity.test.ts`. |
 | Local data | `src/db/` | One encrypted SQLite journal per account: active session, track points, session events, saved runs, upload outbox, telemetry queue, small key-value store. Every write is a transaction serialized through a mutex. |
 | Services | `src/features/` | `RecorderService` (recording lifecycle), `SyncEngine` (outbox → server), account runtime (opens/closes per-account resources), telemetry, reminders, export, leagues. |
-| API | `src/api/` | `PaceApi`: one typed method per RPC, every response parsed with Zod, failures mapped to stable `ApiError` codes (retryable / auth / permanent). The transport is pluggable: Supabase in the app, direct SQL in integration tests. |
+| API client | `src/api/` | `PaceApi`: one typed method per RPC, every response parsed with Zod, failures mapped to stable `ApiError` codes (retryable / auth / permanent). The transport is pluggable: supabase-js against the PaceLeague API in the app, direct SQL in integration tests. |
 | UI | `src/app/`, `src/components/`, `src/design/` | Expo Router screens, design-system components built on the packet's tokens. |
-| Backend | `supabase/migrations/` | Schema, RLS, RPCs, SQL validator and scoring, leagues, safety/lifecycle, maintenance jobs. |
+| API service | `server/` | Sign-in (email codes, Sign in with Apple), sessions, the RPC endpoint, the migrator and the scheduled jobs. Holds no business rules. |
+| Database | `db/` | `platform/`: roles and the auth schema. `migrations/`: schema, RLS, RPCs, SQL validator and scoring, leagues, safety/lifecycle, maintenance jobs. |
+
+## Backend service
+
+The API (`server/`, deployed on Railway) is deliberately thin. It speaks the two protocols the
+app's client library (supabase-js) already uses, so the app's API client and every SQL rule carried
+over unchanged when the backend moved off Supabase:
+
+- **`/auth/v1`** — email one-time codes (6 digits, stored only as an HMAC, single use, 10 minutes,
+  5 guesses, resend cooldown and hourly caps per address and per IP, delivered through Resend or
+  Postmark over HTTPS); Sign in with Apple (identity token checked against Apple's keys: issuer,
+  audience, expiry, hashed nonce); sessions as 1-hour HS256 access tokens plus opaque rotating
+  refresh tokens with reuse detection. The token's sign-in time (`amr`) never moves on refresh, so
+  "recent sign-in" checks for export and deletion keep their meaning.
+- **`/rest/v1/rpc/<function>`** — each call runs in its own transaction as `anon` or
+  `authenticated`, with the verified claims in `request.jwt.claims` (read by `auth.uid()`), a
+  15-second statement timeout and only `public` functions reachable. Errors keep PostgREST's shape.
+- **Migrator** — forward-only, checksummed and advisory-locked; Railway runs it before each deploy.
+- **Jobs** — the minute and hourly maintenance functions, each under an advisory lock (Railway's
+  Postgres has no `pg_cron`).
+
+Configuration is validated at boot, and production refuses unsafe settings (log-only email, a
+development code, the competition bootstrap). The API holds the database connection and the
+token signing secret; the app holds only the API URL and a public key.
 
 ## Recording pipeline (REQ-002 – REQ-004)
 
@@ -107,7 +140,9 @@ remove (and ban) members and transfer ownership; parallel joins cannot exceed ca
   policies and no write grants; all mutations are SECURITY DEFINER functions that derive the
   caller from `auth.uid()` and pin `search_path`. Anonymous callers can execute exactly two
   functions (app config, invite preview). `tests/backend/access.test.ts` checks this across the
-  whole catalog against Supabase's permissive default grants (reproduced by the test shim).
+  whole catalog both with the strict platform layer that runs on Railway and with Supabase-style
+  permissive default grants (`db/test-support/`), so RLS and explicit revokes — not missing
+  grants — are what protect the data.
 - **Routes are owner-only**: stored in the `private` schema and returned only by owner-checked
   functions. League views expose alias, tier and weekly XP — nothing else. The share poster is a
   separate composition with statistics only, so no map or coordinates can be captured.
@@ -127,8 +162,8 @@ remove (and ban) members and transfer ownership; parallel joins cannot exceed ca
 
 ## Accounts and runtime
 
-`AuthProvider` owns the Supabase session (email one-time code; Sign in with Apple with a hashed
-nonce). `AccountProvider` opens an `AccountRuntime` for the signed-in user — journal, recorder,
+`AuthProvider` owns the auth session (supabase-js against the API's `/auth/v1`: email one-time
+code; Sign in with Apple with a hashed nonce). `AccountProvider` opens an `AccountRuntime` for the signed-in user — journal, recorder,
 telemetry, sync engine — and closes it on sign-out. A run in progress pins its account, so the
 background task keeps writing to the right journal even if the UI signs out; sign-out waits for
 the run to be finished or discarded.

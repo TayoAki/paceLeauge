@@ -4,8 +4,9 @@ Snapshot: 26 September 2026 · rule version 1 · validator version 1.
 
 **Summary.** Every V1 requirement except the deferred Pro purchase (REQ-013) is implemented, and
 every screen S01–S16 exists and has been exercised in a browser against the real SQL backend. The
-server-side rules (scoring, validation, leagues, access control, lifecycle) are proven by
-automated tests against PostgreSQL. What is **not** proven yet is anything that needs a physical
+server-side rules (scoring, validation, leagues, access control, lifecycle) and the API service
+(sign-in, sessions, RPC) are proven by automated tests against PostgreSQL, and a staging backend
+runs on Railway, smoke-tested over HTTPS. What is **not** proven yet is anything that needs a physical
 iPhone: locked-screen GPS recording, real-world distance accuracy and battery, SQLCipher on
 device, Sign in with Apple, notifications, the native share sheet, VoiceOver and 200 % text.
 Those checks are specified in [DEVICE_TEST_PROTOCOL.md](DEVICE_TEST_PROTOCOL.md) and remain
@@ -16,13 +17,15 @@ Those checks are specified in [DEVICE_TEST_PROTOCOL.md](DEVICE_TEST_PROTOCOL.md)
 | Source | How to run | What it proves | Last result |
 |---|---|---|---|
 | Unit tests | `npm test` | Domain rules (golden fixtures, validator, calendar/DST, allocation, splits, formatting), recorder service and state machine against a real SQLite journal, XP-panel states (saved ≠ synced ≠ accepted), API error mapping and backoff, preflight readiness, reminders, design tokens and contrast, export packaging | 15 suites, 111 tests passing |
-| Backend integration | `npm run test:db` | All migrations applied to PostgreSQL 16 with Supabase's permissive default grants; RLS and grants across the whole catalog; upload protocol, idempotency and concurrency; scoring in SQL; leagues; export/deletion/moderation lifecycle; TypeScript ↔ SQL validator parity on 40 adversarial routes; the real client recorder + sync engine against real SQL | 6 suites, 80 tests passing |
+| Backend + API | `npm run test:db` | The database built by the production migrator; RLS and grants across the whole catalog; upload protocol, idempotency and concurrency; scoring in SQL; leagues; export/deletion/moderation lifecycle; TypeScript ↔ SQL validator parity on 40 adversarial routes; the real client recorder + sync engine against real SQL; the API service — sign-in codes (hashed, single use, expiry, guess limit, cooldown, per-IP limits), refresh rotation and reuse detection, logout scopes, Sign in with Apple checks, forged and `none`-algorithm tokens, RPC limits, the migrator, jobs and email providers | 8 suites, 104 tests passing on PostgreSQL 18 and 16 (strict platform) and 16 with Supabase-style permissive grants; CI runs 18 strict and 16 permissive plus a build-and-boot test of the API image |
 | Browser walkthrough | `npm run e2e:web` | The real app (web build) against the development backend: email sign-in, preflight with a scripted GPS feed, a 31:28 recording with pause, finish, sync and the server's +77 XP, offline finish synced later (+4 XP as a same-day delta), a too-short personal-only run, share poster, league standings, invite preview and explicit join by a second identity, export, and account deletion | All steps passing (43 screenshots; the only console errors are the expected network failures during the deliberate offline step) — contact sheets in [evidence/web](evidence/README.md) |
+| Staging smoke test | `npm run smoke:api` ([OPERATIONS.md](OPERATIONS.md#smoke-test)) | The deployed API on Railway over HTTPS, through the app's own client: health and HSTS, wrong key and forged token refused, email-code sign-in, profile save, a full run upload (+77 XP), neither account can read the other's run, private functions hidden, refresh rotation, logout, and account deletion carried out by the job loop | 12 of 12 checks passing on 26 Sep 2026 against `api-staging-753f.up.railway.app`; both test accounts deleted 25 s later |
 | Physical iPhone | [DEVICE_TEST_PROTOCOL.md](DEVICE_TEST_PROTOCOL.md) | Background location, accuracy, battery, encryption at rest, Apple sign-in, notifications, share sheet, accessibility | **Not run** — no device available to this build |
 
-The development backend emulates the two Supabase surfaces the app uses (Auth email codes and
-PostgREST RPC) over the same migrations; it is not a substitute for a staging Supabase project,
-which has not been provisioned yet (see [OPERATIONS.md](OPERATIONS.md)).
+The development backend is the production API service run in development mode over the same
+migrations. Staging runs on Railway (API + PostgreSQL 18); two settings there are still
+placeholders: sign-in codes go to the service logs until an email provider key is added, and
+`APPLE_AUDIENCES` holds a placeholder bundle identifier (see [OPERATIONS.md](OPERATIONS.md)).
 
 ## Requirements
 
@@ -32,7 +35,7 @@ acceptance criteria also need the device checks listed · **Deferred** — inten
 
 | Req | Scope | Status | Automated evidence | Still required |
 |---|---|---|---|---|
-| REQ-001 | Account and onboarding | Implemented, device pending | Email code sign-in, onboarding and profile validation in the walkthrough; alias rules and case-insensitive uniqueness (`access.test.ts`); per-account journals and "another account cannot see or claim this run" (`client-sync.test.ts`) | Sign in with Apple on device; cold-restart session restore; used/expired code against real Supabase Auth (EV-001) |
+| REQ-001 | Account and onboarding | Implemented, device pending | Email code sign-in, onboarding and profile validation in the walkthrough and on staging; codes single use, expiring and guess-limited, Apple token checks (`tests/server/auth.test.ts`); alias rules and case-insensitive uniqueness (`access.test.ts`); per-account journals and "another account cannot see or claim this run" (`client-sync.test.ts`) | Sign in with Apple on device; cold-restart session restore; codes delivered by real email on staging (EV-001) |
 | REQ-002 | Permission and preflight | Implemented, device pending | Readiness only with permission + fresh accurate fix, each blocker in order (`preflight.test.ts`); prompt → grant → "GPS good" → countdown in the walkthrough | Allow Once, permanent denial, approximate location, revocation mid-run on iOS (EV-002) |
 | REQ-003 | Record, pause, resume, recover | Implemented, device pending | 15 recorder-service and 7 state-machine tests: pause excluded, one active run, recovery after process death ends at last evidence, permission loss interrupts, point limit; 31:28 with pause in the walkthrough | **F01**: locked-screen 30-minute run, phone call, force-quit/reboot, distance error (NFR-002) and battery (NFR-003) on two iPhones (EV-003) |
 | REQ-004 | Finish and preserve | Implemented, device pending | Repeated Finish → one run; failed local write never reports success and keeps the session (`recorder.test.ts`); offline finish shows "saved on this phone" and syncs later (walkthrough, `client-sync.test.ts`) | Relaunch after offline finish and crash-during-save on device; NFR-004 timings (EV-004) |
@@ -41,7 +44,7 @@ acceptance criteria also need the device checks listed · **Deferred** — inten
 | REQ-007 | Private weekly league | **Verified** | Preview + explicit join; unknown/revoked/expired/full/closed invites; 25 parallel joins never exceed 20; best three days; ties; post-join segments only; settlement deadline; fall-back week; removal denies reads immediately and blocks old invites; blocked members stay hidden rows (`leagues.test.ts`); second identity joins via invite in the walkthrough | — |
 | REQ-008 | Progress and history | Implemented, device pending | Keyset pagination, rename (title only, versioned), delete with tombstone and XP reversal (`runs.test.ts`); miles without changing stored metres (`format-codec.test.ts`); empty/offline states in the walkthrough | History after app relaunch on device (EV-008) |
 | REQ-009 | Safe share card | Implemented, device pending | Poster is a separate stats-only composition (no map component can be captured); rendered and exported in the walkthrough; accessible text summary on the preview | Inspect the exported PNG for metadata; share-sheet cancellation; Photos permission denied (EV-009) |
-| REQ-010 | Privacy, export, deletion | **Verified** (server) · device pending (local) | Other users, league owners and anonymous callers can't read routes or exports, including guessed IDs; recent sign-in required; 3 exports/day; deletion hides immediately, hands over or closes the league, retries an interrupted cleanup and completes (`lifecycle.test.ts`, `access.test.ts`); export and deletion flows in the walkthrough | Local journal and key removal on device; provider backup retention setting (NFR-010) |
+| REQ-010 | Privacy, export, deletion | **Verified** (server) · device pending (local) | Other users, league owners and anonymous callers can't read routes or exports, including guessed IDs; recent sign-in required; 3 exports/day; deletion hides immediately, hands over or closes the league, retries an interrupted cleanup and completes (`lifecycle.test.ts`, `access.test.ts`); export and deletion flows in the walkthrough | Local journal and key removal on device; Railway backup schedule of 30 days or less (NFR-010) |
 | REQ-011 | Abuse controls | **Verified** (server) · ops pending | Name filter; report queue with snapshot, staff-only, audited moderator action; blocked/removed users can't bypass via cached invite or direct API (`leagues.test.ts`, `lifecycle.test.ts`) | Real reviewer contact and moderation rota before launch (OPERATIONS.md) |
 | REQ-012 | Optional reminders | Implemented, device pending | One identifier replaced on every change (never duplicated), cancelled on opt-out and sign-out, restored after sign-in only when enabled and permitted, changes applied strictly in order (`reminders.test.ts`); calm copy; web preview disables it | Permission denial, DST and sign-out on device (EV-012) |
 | REQ-013 | Pro purchase | **Deferred (V1.1)** | No purchase UI, no "Manage subscription" row, no simulated paywall; nothing in V1 depends on it | F10 per the packet |
@@ -81,9 +84,10 @@ also show each runner's tier.
 
 1. **F01 on two physical iPhones** — the packet's first gate. Nothing about background GPS,
    distance accuracy or battery is claimed until it is run.
-2. **Staging Supabase project** — apply the migrations with the Supabase CLI, configure email
-   templates and Sign in with Apple, then rerun the integration suite against it and the load
-   checks (NFR-005, NFR-009).
+2. **Finish staging** — add the email provider key (Resend or Postmark) and the real bundle
+   identifier in `APPLE_AUDIENCES`, rerun the smoke test with real inboxes, then the load checks
+   (NFR-005, NFR-009).
 3. **Operations** — support/reviewer contacts, moderation rota, alerting on
-   `private.health_report()`, backup retention, and legal pages (terms/privacy URLs).
+   `private.health_report()` and the API's error logs, Railway backups (daily + weekly), the
+   production environment, and legal pages (terms/privacy URLs).
 4. **Human accessibility review** — VoiceOver, 200 % text and outdoor legibility on device.
