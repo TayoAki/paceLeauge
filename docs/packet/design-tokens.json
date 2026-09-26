@@ -1,0 +1,72 @@
+{
+  "name": "PaceLeague",
+  "version": "1.0",
+  "status": "proposed-design-tokens",
+  "referenceCanvasPt": {
+    "width": 390,
+    "height": 844
+  },
+  "color": {
+    "background": "#101315",
+    "surface": "#1B2024",
+    "surfaceElevated": "#272E33",
+    "textPrimary": "#F5F3EA",
+    "textSecondary": "#AAB2B8",
+    "accent": "#D5FF45",
+    "onAccent": "#101315",
+    "danger": "#FF9A85",
+    "controlOutline": "#70808C",
+    "decorativeDivider": "#354047"
+  },
+  "type": {
+    "family": "system",
+    "sizesPt": {
+      "hero": 64,
+      "workout": 72,
+      "title": 32,
+      "section": 22,
+      "body": 17,
+      "label": 15,
+      "caption": 13
+    },
+    "weights": {
+      "regular": "400",
+      "medium": "500",
+      "semibold": "600",
+      "bold": "700"
+    },
+    "numbers": "tabular-nums",
+    "supportsDynamicType": true
+  },
+  "spacePt": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    48
+  ],
+  "layout": {
+    "screenPaddingPt": 20,
+    "cardPaddingPt": 20,
+    "minimumTapTargetIosPt": 44,
+    "minimumTapTargetAndroidDp": 48
+  },
+  "radiusPt": {
+    "card": 24,
+    "button": 16,
+    "control": 12
+  },
+  "heightPt": {
+    "primaryButtonMinimum": 56,
+    "runningPauseMinimum": 72
+  },
+  "motionMs": {
+    "standardMin": 160,
+    "standardMax": 220,
+    "optionalTierReveal": 400
+  },
+  "reducedMotion": "Replace transforms and celebrations with immediate state changes",
+  "authorityNote": "Written values override raster approximations. Verify implemented screens."
+}

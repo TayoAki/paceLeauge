@@ -1,0 +1,103 @@
+{
+  "fictional": true,
+  "use": "Design and scoring fixtures only",
+  "ruleVersion": 1,
+  "competitionTimezone": "America/Chicago",
+  "weekStart": "2026-09-21",
+  "lifetimeXpBeforeWeek": 640,
+  "runs": [
+    {
+      "id": "fixture-mon",
+      "title": "Monday run",
+      "startedAt": "2026-09-21T12:00:00Z",
+      "distanceM": 6600,
+      "activeSeconds": 2340,
+      "expectedDayXp": 91
+    },
+    {
+      "id": "fixture-wed",
+      "title": "Wednesday run",
+      "startedAt": "2026-09-23T12:00:00Z",
+      "distanceM": 6400,
+      "activeSeconds": 2342,
+      "expectedDayXp": 89
+    },
+    {
+      "id": "fixture-fri",
+      "title": "Friday morning",
+      "startedAt": "2026-09-25T12:00:00Z",
+      "distanceM": 5240,
+      "activeSeconds": 1888,
+      "expectedDayXp": 77
+    }
+  ],
+  "beforeFriday": {
+    "lifetimeXp": 820,
+    "tier": "Stride",
+    "toTempoXp": 680,
+    "goalCompletedDays": 2,
+    "goalDays": 3
+  },
+  "afterFriday": {
+    "lifetimeXp": 897,
+    "tier": "Stride",
+    "toTempoXp": 603,
+    "tierProgressFraction": 0.397,
+    "weeklyLeagueXp": 257,
+    "goalCompletedDays": 3,
+    "goalDays": 3
+  },
+  "league": {
+    "name": "Friday Crew",
+    "members": 8,
+    "visibleRows": [
+      {
+        "rank": 1,
+        "alias": "Maya",
+        "weeklyXp": 289
+      },
+      {
+        "rank": 2,
+        "alias": "You",
+        "weeklyXp": 257
+      },
+      {
+        "rank": 3,
+        "alias": "Jules",
+        "weeklyXp": 245
+      },
+      {
+        "rank": 4,
+        "alias": "Theo",
+        "weeklyXp": 230
+      }
+    ]
+  },
+  "tiers": [
+    {
+      "name": "Seed",
+      "minimumXp": 0
+    },
+    {
+      "name": "Stride",
+      "minimumXp": 500
+    },
+    {
+      "name": "Tempo",
+      "minimumXp": 1500
+    },
+    {
+      "name": "Surge",
+      "minimumXp": 4000
+    },
+    {
+      "name": "Elite",
+      "minimumXp": 10000
+    }
+  ],
+  "privacy": {
+    "routeVisibility": "owner-only",
+    "shareCard": "statistics-only",
+    "routeCoordinatesIncluded": false
+  }
+}
