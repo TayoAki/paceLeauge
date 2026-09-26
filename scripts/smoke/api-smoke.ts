@@ -27,8 +27,10 @@ import { chunk, encodeChunk } from '../../src/domain/route-codec';
 import { steadyRun } from '../../src/domain/synthetic';
 import { signJwt } from '../../server/src/jwt';
 
-const url = (process.env.SMOKE_API_URL ?? '').replace(/\/+$/, '');
-const key = process.env.SMOKE_API_KEY ?? '';
+// Typed explicitly: without Expo's generated env types, process.env values are `any`.
+const env: Record<string, string | undefined> = process.env;
+const url = (env.SMOKE_API_URL ?? '').replace(/\/+$/, '');
+const key = env.SMOKE_API_KEY ?? '';
 const statePath = resolve(import.meta.dirname, '../../artifacts/smoke-state.json');
 
 function client(): SupabaseClient {
@@ -66,8 +68,8 @@ async function rejectsWith(promise: Promise<unknown>, code: string) {
 }
 
 async function send() {
-  const emails = process.env.SMOKE_EMAILS
-    ? process.env.SMOKE_EMAILS.split(',').map((e) => e.trim().toLowerCase())
+  const emails = env.SMOKE_EMAILS
+    ? env.SMOKE_EMAILS.split(',').map((e) => e.trim().toLowerCase())
     : [1, 2].map(() => `smoke-${randomBytes(4).toString('hex')}@example.com`);
   expect(emails.length === 2, 'SMOKE_EMAILS must list exactly two addresses');
   for (const email of emails) {
