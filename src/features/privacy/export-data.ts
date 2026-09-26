@@ -1,10 +1,9 @@
-import { Directory, File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-
 import { toApiError } from '@/api/errors';
 import type { PaceApi } from '@/api/pace-api';
 import type { ExportData, RunRoute } from '@/api/schemas';
 import { fromCompact, toGpx } from '@/domain/route-codec';
+
+import { deviceExportWriter, deviceSharer, EXPORT_FOLDER_PREFIX } from './export-device';
 
 /**
  * "Export my data" (REQ-010). The server hands the owner their export through authenticated,
@@ -42,7 +41,6 @@ export type ExportProgress =
   | { stage: 'saving' };
 
 export const EXPORT_DATA_FILE = 'paceleague-export.json';
-const FOLDER_PREFIX = 'paceleague-export-';
 const ROUTE_FETCH_CONCURRENCY = 4;
 
 type ExportRun = ExportData['runs'][number];
@@ -137,30 +135,8 @@ export interface ExportWriter {
   write(folderName: string, files: readonly ExportFile[]): SavedExportFile[] | Promise<SavedExportFile[]>;
 }
 
-/** Removes exported files from this phone's cache (they contain private routes). Best effort. */
-export function clearExportFiles(): void {
-  try {
-    for (const entry of new Directory(Paths.cache).list()) {
-      if (entry instanceof Directory && entry.name.startsWith(FOLDER_PREFIX)) entry.delete();
-    }
-  } catch {
-    // Nothing to remove, or the system already purged the cache.
-  }
-}
-
-/** Writes into a fresh folder in the cache directory; only the newest export is kept. */
-export const deviceExportWriter: ExportWriter = {
-  write(folderName, files) {
-    clearExportFiles();
-    const folder = new Directory(Paths.cache, folderName);
-    folder.create({ intermediates: true, idempotent: true });
-    return files.map((file) => {
-      const target = new File(folder, file.name);
-      target.write(file.contents);
-      return { ...file, uri: target.uri };
-    });
-  },
-};
+// The platform file handling lives in ./export-device(.web).ts.
+export { clearExportFiles, deviceExportWriter } from './export-device';
 
 export async function prepareExport(
   api: ExportApi,
@@ -168,18 +144,13 @@ export async function prepareExport(
 ): Promise<SavedExportFile[]> {
   const files = await buildExportFiles(api, options.onProgress);
   options.onProgress?.({ stage: 'saving' });
-  return (options.writer ?? deviceExportWriter).write(`${FOLDER_PREFIX}${options.now}`, files);
+  return (options.writer ?? deviceExportWriter).write(`${EXPORT_FOLDER_PREFIX}${options.now}`, files);
 }
 
 export interface ExportSharer {
   isAvailable(): Promise<boolean>;
   share(uri: string, options: { mimeType: string; UTI: string; dialogTitle: string }): Promise<void>;
 }
-
-export const deviceSharer: ExportSharer = {
-  isAvailable: () => Sharing.isAvailableAsync(),
-  share: (uri, options) => Sharing.shareAsync(uri, options),
-};
 
 /** Opens the system share sheet for one file; the runner chooses where it goes. */
 export async function shareExportFile(file: SavedExportFile, sharer: ExportSharer = deviceSharer): Promise<'opened' | 'unavailable'> {

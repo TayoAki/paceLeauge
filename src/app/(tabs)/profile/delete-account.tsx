@@ -193,9 +193,7 @@ export default function DeleteAccountScreen() {
         ]}
       />
 
-      <Text variant="label" tone="secondary">
-        If you ever buy a subscription, cancel it in your Apple ID settings — deleting your account doesn’t cancel it.
-      </Text>
+      {/* The pilot sells nothing. When a subscription exists (F10), add the store-billing notice here (S16). */}
       <TextButton label="Export my data first" tone="primary" onPress={() => router.dismissTo('/profile/privacy')} style={styles.inlineAction} />
 
       {session && !status ? <InlineStatus tone={RUN_IN_PROGRESS.tone} title={RUN_IN_PROGRESS.title} body={RUN_IN_PROGRESS.body} /> : null}

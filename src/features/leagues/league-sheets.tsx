@@ -99,7 +99,8 @@ export function InviteSheet({ visible, onClose, leagueName }: { visible: boolean
       </Text>
       {invite ? (
         <View style={styles.code} accessible accessibilityLabel={`Invite code ${invite.code.split('').join(' ')}`}>
-          <Text variant="hero" style={{ letterSpacing: 4 }} numberOfLines={1} adjustsFontSizeToFit selectable>
+          {/* Sized to fit the sheet at any width; with very large text it wraps at the hyphen rather than truncating. */}
+          <Text variant="title" style={styles.codeText} align="center" maxFontSizeMultiplier={1.6} selectable>
             {formatCode(invite.code)}
           </Text>
           <Text variant="caption" tone="secondary">
@@ -230,5 +231,13 @@ const styles = StyleSheet.create({
     padding: layout.cardPadding + 4,
     gap: space.md,
   },
-  code: { alignItems: 'center', gap: space.xs, paddingVertical: space.md, backgroundColor: colors.surface, borderRadius: radius.control },
+  code: {
+    alignItems: 'center',
+    gap: space.xs,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.control,
+  },
+  codeText: { fontSize: 34, lineHeight: 42, letterSpacing: 3, fontVariant: ['tabular-nums'] },
 });

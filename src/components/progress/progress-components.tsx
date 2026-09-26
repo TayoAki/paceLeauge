@@ -174,7 +174,7 @@ export function DistanceBars({ weeks, units }: { weeks: { weekStart: string; dis
             return (
               <View key={w.weekStart} style={styles.barCell}>
                 <Text variant="caption" tone="secondary" maxFontSizeMultiplier={1.2}>
-                  {d.value}
+                  {w.distanceM > 0 ? d.value : '–'}
                 </Text>
                 <View style={styles.barTrack}>
                   <View

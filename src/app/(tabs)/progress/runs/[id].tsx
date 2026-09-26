@@ -191,22 +191,20 @@ export default function RunDetailScreen() {
       <XpPanel state={xp} />
 
       <Card>
+        <View accessible accessibilityLabel={`Distance, ${describeDistance(distanceM, units)}`} style={styles.distanceRow}>
+          <Text variant="hero">{distance.value}</Text>
+          <Text variant="title"> {distance.unit}</Text>
+        </View>
         <View style={styles.row}>
           <MetricBlock
-            value={`${distance.value}`}
-            label={distance.unitLong}
-            align="flex-start"
-            accessibilityLabel={`Distance, ${describeDistance(distanceM, units)}`}
-          />
-          <MetricBlock
             value={formatDuration(activeMs)}
-            label="Active time"
+            label="Time"
             align="flex-start"
             accessibilityLabel={`Active time, ${describeDuration(activeMs)}`}
           />
           <MetricBlock
             value={pace.value}
-            label={`Avg ${pace.unit}`}
+            label={`Avg ${pace.unit.replace('/', '/ ')}`}
             align="flex-start"
             accessibilityLabel={`Average pace, ${describePace(activeMs, distanceM, units)}`}
           />
@@ -245,11 +243,12 @@ export default function RunDetailScreen() {
                 style={styles.split}
                 accessible
                 accessibilityLabel={`${s.partial ? `Last ${d.value} ${d.unitLong}` : `${units === 'imperial' ? 'Mile' : 'Kilometer'} ${s.index}`}: ${describeDuration(s.activeMs)}`}>
-                <Text variant="body" tone="secondary" style={{ width: 72 }}>
-                  {s.partial ? `${d.value}` : `${s.index} ${d.unit}`}
+                <Text variant="body" tone="secondary" style={{ width: 80 }}>
+                  {s.partial ? `${d.value} ${d.unit}` : `${s.index} ${d.unit}`}
                 </Text>
+                {/* Whole seconds, rounded like the pace column, so a 5:59.9 split reads 6:00 in both. */}
                 <Text variant="bodyStrong" style={{ flex: 1, fontVariant: ['tabular-nums'] }}>
-                  {formatDuration(s.activeMs)}
+                  {formatDuration(Math.round(s.activeMs / 1000) * 1000)}
                 </Text>
                 <Text variant="body" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
                   {p.value} {p.unit}
@@ -280,6 +279,7 @@ const styles = StyleSheet.create({
   blank: { flex: 1, backgroundColor: colors.background },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   row: { flexDirection: 'row', gap: space.md },
+  distanceRow: { flexDirection: 'row', alignItems: 'baseline' },
   private: {
     flexDirection: 'row',
     alignItems: 'center',

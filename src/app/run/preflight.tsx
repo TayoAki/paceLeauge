@@ -162,7 +162,11 @@ export default function PreflightScreen() {
     );
   }
 
-  const copy = block ? blockerCopy[block] : null;
+  const copy = block
+    ? block === 'needs_foreground' && !locationDriver.supportsBackground
+      ? { ...blockerCopy[block], title: 'Use location to prepare and record your run.' }
+      : blockerCopy[block]
+    : null;
   const primary = (() => {
     if (!copy)
       return {
