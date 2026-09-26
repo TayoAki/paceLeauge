@@ -825,7 +825,7 @@ returns jsonb
 language sql stable security definer set search_path = ''
 as $$
   with days as (
-    select d::date as day, ds.xp, ds.active_day_bonus, ds.distance_cm
+    select d::date as day, ds.xp, ds.active_day_bonus, ds.distance_cm, ds.active_ms
     from generate_series(p_week, p_week + 6, interval '1 day') d
     left join public.daily_scores ds
       on ds.owner_id = p_user and ds.competition_date = d::date and ds.rule_version = 1
@@ -837,7 +837,8 @@ as $$
     'settles_at_ms', private.ts_to_ms(private.day_start(p_week + 7) + interval '24 hours'),
     'days', (select jsonb_agg(jsonb_build_object('date', day, 'xp', coalesce(xp, 0),
                                                  'active', coalesce(active_day_bonus, 0) > 0,
-                                                 'distance_cm', coalesce(distance_cm, 0)) order by day) from days),
+                                                 'distance_cm', coalesce(distance_cm, 0),
+                                                 'active_ms', coalesce(active_ms, 0)) order by day) from days),
     'active_days', (select count(*) from days where coalesce(active_day_bonus, 0) > 0),
     'weekly_xp', (select coalesce(sum(xp), 0) from (select xp from days where xp is not null order by xp desc limit 3) top3),
     'goal_days', (select goal_days from public.profiles where user_id = p_user)

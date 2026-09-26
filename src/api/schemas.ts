@@ -102,7 +102,7 @@ export const weekSummarySchema = z.object({
   starts_at_ms: z.number(),
   ends_at_ms: z.number(),
   settles_at_ms: z.number(),
-  days: z.array(z.object({ date: z.string(), xp: z.number(), active: z.boolean(), distance_cm: z.number() })),
+  days: z.array(z.object({ date: z.string(), xp: z.number(), active: z.boolean(), distance_cm: z.number(), active_ms: z.number() })),
   active_days: z.number(),
   weekly_xp: z.number(),
   goal_days: z.number().nullable(),

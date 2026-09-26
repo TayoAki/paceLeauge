@@ -2,14 +2,9 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
-import { Journal } from '@/db/journal';
-import { openAccountDatabase } from '@/db/open';
-import { newId } from '@/lib/crypto';
-import { deviceStore } from '@/lib/device-store';
+import { openAccountRuntime, recordingAccountId } from '@/features/account/runtime';
 
-import { LOCATION_TASK, RECORDING_ACCOUNT_KEY } from './constants';
-import { locationDriver } from './location-driver';
-import { RecorderService } from './recorder-service';
+import { LOCATION_TASK } from './constants';
 import { recorderForTask, setHeadlessResolver } from './registry';
 
 /**
@@ -18,12 +13,9 @@ import { recorderForTask, setHeadlessResolver } from './registry';
  */
 if (Platform.OS !== 'web') {
   setHeadlessResolver(async () => {
-    const accountId = await deviceStore.get(RECORDING_ACCOUNT_KEY).catch(() => null);
+    const accountId = await recordingAccountId();
     if (!accountId) return null;
-    const journal = await Journal.open(await openAccountDatabase(accountId));
-    const recorder = new RecorderService({ journal, location: locationDriver, newRunId: newId });
-    await recorder.init();
-    return recorder;
+    return (await openAccountRuntime(accountId)).recorder;
   });
 
   TaskManager.defineTask<{ locations: Location.LocationObject[] }>(LOCATION_TASK, async ({ data, error }) => {
