@@ -1,18 +1,19 @@
 /**
  * Smoke-tests a deployed PaceLeague API over HTTPS with the app's own client code.
  *
- *   send    asks for sign-in codes for two throwaway accounts;
- *   verify  signs both in with those codes, then checks a profile save, a full run upload
- *           (+77 XP), that neither runner can read the other's run, that a forged token and a
- *           private function are refused, refresh and logout; finally it requests deletion of
- *           both accounts, which the service's job loop carries out within a minute.
- *
- * With EMAIL_PROVIDER=log the codes are in the service's deploy logs (search "sign-in code");
- * otherwise they are emailed, so set SMOKE_EMAILS to two inboxes you can read.
+ *   (default)  creates two throwaway accounts with passwords and checks: password rules, wrong
+ *              and duplicate sign-ups refused, a password change, a profile save, a full run
+ *              upload (+77 XP), that neither runner can read the other's run, that a forged token
+ *              and a private function are refused, the legal pages, refresh and logout; finally it
+ *              requests deletion of both accounts, which the service's job loop carries out
+ *              within a minute.
+ *   send / verify <codeA> <codeB>
+ *              the same checks for emailed sign-in codes. With EMAIL_PROVIDER=log the codes are
+ *              in the service's deploy logs (search "sign-in code"); otherwise they are emailed,
+ *              so set SMOKE_EMAILS to two inboxes you can read.
  *
  *   export SMOKE_API_URL=https://… SMOKE_API_KEY=…    # the app's EXPO_PUBLIC_API_URL / _KEY
- *   npm run smoke:api -- send
- *   npm run smoke:api -- verify <codeA> <codeB>
+ *   npm run smoke:api
  */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -21,7 +22,7 @@ import { dirname, resolve } from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { ApiError } from '../../src/api/errors';
-import { createPaceApi } from '../../src/api/pace-api';
+import { createPaceApi, type PaceApi } from '../../src/api/pace-api';
 import { supabaseTransport } from '../../src/api/supabase-transport';
 import { chunk, encodeChunk } from '../../src/domain/route-codec';
 import { steadyRun } from '../../src/domain/synthetic';
@@ -81,11 +82,13 @@ async function send() {
   console.log(`Codes requested for ${emails.join(' and ')}.\nThen run: npm run smoke:api -- verify <codeA> <codeB>`);
 }
 
-async function verify(codes: string[]) {
-  const state = JSON.parse(readFileSync(statePath, 'utf8')) as { url: string; emails: string[] };
-  expect(state.url === url, `the codes were requested from ${state.url}`);
-  expect(codes.length === 2, 'pass both codes, in the order the addresses were printed');
+interface Runner {
+  email: string;
+  client: SupabaseClient;
+  api: PaceApi;
+}
 
+async function baseChecks() {
   await check('health', async () => {
     const res = await fetch(`${url}/health`);
     expect(res.status === 200, `HTTP ${res.status}`);
@@ -106,6 +109,22 @@ async function verify(codes: string[]) {
     );
     expect((await raw('/rest/v1/rpc/get_me', forged)).status === 401, 'expected 401');
   });
+  await check('privacy policy and terms pages', async () => {
+    const pages = await Promise.all(['privacy', 'terms'].map((doc) => fetch(`${url}/legal/${doc}`)));
+    expect(
+      pages.every((res) => res.status === 200 && res.headers.get('content-type')?.startsWith('text/html')),
+      pages.map((res) => res.status).join(', '),
+    );
+    const drafts = (await Promise.all(pages.map((res) => res.text()))).filter((html) => html.includes('class="draft"')).length;
+    return drafts > 0 ? `${drafts} still marked as drafts` : 'published';
+  });
+}
+
+async function verify(codes: string[]) {
+  const state = JSON.parse(readFileSync(statePath, 'utf8')) as { url: string; emails: string[] };
+  expect(state.url === url, `the codes were requested from ${state.url}`);
+  expect(codes.length === 2, 'pass both codes, in the order the addresses were printed');
+  await baseChecks();
 
   const runners = state.emails.map((email) => ({ email, client: client() }));
   await check('sign in with the emailed codes', async () => {
@@ -116,7 +135,41 @@ async function verify(codes: string[]) {
   });
   const [a, b] = runners.map((r) => ({ ...r, api: createPaceApi(supabaseTransport(r.client)) }));
   if (!a || !b || failures > 0) return;
+  await accountChecks(a, b);
+}
 
+async function passwords() {
+  await baseChecks();
+  const password = () => `smoke ${randomBytes(9).toString('base64url')}`;
+  const runners = [1, 2].map(() => ({ email: `smoke-${randomBytes(4).toString('hex')}@example.com`, password: password(), client: client() }));
+  await check('create two accounts with passwords', async () => {
+    for (const r of runners) {
+      const { data, error } = await r.client.auth.signUp({ email: r.email, password: r.password });
+      expect(!error && data.session, `${r.email}: ${error?.message}`);
+    }
+  });
+  const [a, b] = runners.map((r) => ({ ...r, api: createPaceApi(supabaseTransport(r.client)) }));
+  if (!a || !b || failures > 0) return;
+
+  await check('wrong password, duplicate account and weak password are refused', async () => {
+    const wrong = await client().auth.signInWithPassword({ email: a.email, password: 'not the password' });
+    expect(wrong.error?.code === 'invalid_credentials', `wrong password: ${wrong.error?.code ?? 'accepted'}`);
+    const duplicate = await client().auth.signUp({ email: a.email, password: password() });
+    expect(duplicate.error?.code === 'user_already_exists', `duplicate: ${duplicate.error?.code ?? 'accepted'}`);
+    const weak = await client().auth.signUp({ email: `smoke-${randomBytes(4).toString('hex')}@example.com`, password: 'password1' });
+    expect(weak.error?.code === 'weak_password', `weak: ${weak.error?.code ?? 'accepted'}`);
+  });
+  await check('change password: the old one stops working', async () => {
+    const next = password();
+    const { error } = await a.client.auth.updateUser({ password: next });
+    expect(!error, `change failed: ${error?.message}`);
+    expect((await client().auth.signInWithPassword({ email: a.email, password: a.password })).error, 'the old password still works');
+    expect(!(await client().auth.signInWithPassword({ email: a.email, password: next })).error, 'the new password does not work');
+  });
+  await accountChecks(a, b);
+}
+
+async function accountChecks(a: Runner, b: Runner) {
   await check('save both profiles', async () => {
     for (const r of [a, b]) {
       await r.api.saveProfile({
@@ -204,13 +257,11 @@ async function main() {
   expect(/^https?:\/\//.test(url) && key, 'set SMOKE_API_URL and SMOKE_API_KEY');
   const [command, ...args] = process.argv.slice(2);
   if (command === 'send') return send();
-  if (command === 'verify') {
-    await verify(args);
-    console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) failed.`);
-    process.exitCode = failures === 0 ? 0 : 1;
-    return;
-  }
-  throw new Error('usage: api-smoke.ts send | verify <codeA> <codeB>');
+  if (command === 'verify') await verify(args);
+  else if (command === undefined) await passwords();
+  else throw new Error('usage: api-smoke.ts [send | verify <codeA> <codeB>]');
+  console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) failed.`);
+  process.exitCode = failures === 0 ? 0 : 1;
 }
 
 main().catch((error: unknown) => {

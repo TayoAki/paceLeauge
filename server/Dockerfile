@@ -1,4 +1,5 @@
-# PaceLeague API. Build context: the repository root (it needs db/ for migrations).
+# PaceLeague API. Build context: the repository root (it needs db/ for migrations and legal/ for
+# the Privacy Policy and Terms pages).
 FROM node:22-bookworm-slim AS build
 WORKDIR /srv
 COPY server/package.json server/package-lock.json ./
@@ -16,6 +17,7 @@ COPY --from=build /srv/dist ./dist
 COPY db/platform ./db/platform
 COPY db/migrations ./db/migrations
 COPY db/templates ./db/templates
+COPY legal ./legal
 USER node
 EXPOSE 8080
 CMD ["node", "--enable-source-maps", "dist/main.js"]

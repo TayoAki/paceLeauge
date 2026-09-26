@@ -1,12 +1,14 @@
 import { useRouter } from 'expo-router';
-import { Bell, ChevronDown, ChevronUp, Download, Info, MapPinned, Route, Share, ShieldCheck, Trash2, Users } from 'lucide-react-native';
+import { Bell, ChevronDown, ChevronUp, Download, Info, KeyRound, MapPinned, Route, Share, ShieldCheck, Trash2, Users } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { DangerButton, PrimaryButton } from '@/components/ui/buttons';
 import { InlineStatus, Row, RowGroup } from '@/components/ui/elements';
 import { NavHeader, Screen } from '@/components/ui/layout';
+import { env } from '@/config/env';
 import { useAccount } from '@/features/account/account-provider';
+import { useAuth } from '@/features/account/auth-provider';
 import {
   clearExportFiles,
   describeExportError,
@@ -42,6 +44,8 @@ function runDate(ms: number | null): string | undefined {
 export default function PrivacyScreen() {
   const router = useRouter();
   const { api } = useAccount();
+  const auth = useAuth();
+  const canChangePassword = env.emailSignIn === 'password' && auth.status === 'signed_in' && !!auth.email;
   const [exportState, setExportState] = useState<ExportState>({ status: 'idle' });
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -123,6 +127,12 @@ export default function PrivacyScreen() {
         <Row icon={Users} label="League profile" value="Members only" hint="Your league sees your runner name, tier and weekly XP." />
         <Row icon={Bell} label="Notifications" value="Manage" onPress={() => router.push('/profile/notifications')} last />
       </RowGroup>
+
+      {canChangePassword ? (
+        <RowGroup>
+          <Row icon={KeyRound} label="Change password" onPress={() => router.push('/profile/password')} last testID="change-password" />
+        </RowGroup>
+      ) : null}
 
       <RowGroup>
         <Row

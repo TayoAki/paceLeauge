@@ -12,7 +12,9 @@ import { loadUser, userJson, type UserRecord } from './users';
  * timestamp is the original sign-in time and never moves on refresh, so "recent sign-in"
  * checks on the server (export, account deletion) keep meaning what they say.
  */
-export type SignInMethod = 'otp' | 'apple';
+export type SignInMethod = 'otp' | 'apple' | 'password';
+
+const AMR_METHOD: Record<SignInMethod, string> = { otp: 'otp', apple: 'oauth', password: 'password' };
 
 export type SessionError = 'refresh_token_not_found' | 'refresh_token_already_used' | 'session_expired' | 'user_not_found';
 
@@ -51,7 +53,7 @@ export class SessionService {
         phone: '',
         role: 'authenticated',
         aal: 'aal1',
-        amr: [{ method: method === 'apple' ? 'oauth' : 'otp', timestamp: Math.floor(signedInAt.getTime() / 1000) }],
+        amr: [{ method: AMR_METHOD[method], timestamp: Math.floor(signedInAt.getTime() / 1000) }],
         session_id: sessionId,
         is_anonymous: false,
         app_metadata: { provider: providers[0] ?? 'email', providers },

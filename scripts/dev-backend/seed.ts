@@ -5,7 +5,12 @@ import { competitionWeekAt } from '../../src/domain/calendar';
 import { chunk, encodeChunk } from '../../src/domain/route-codec';
 import { steadyRun } from '../../src/domain/synthetic';
 
+import { hashPassword } from '../../server/src/auth/passwords';
 import { callRpc, type Claims } from '../../server/src/rpc';
+
+/** Every seeded runner signs in with this password (development only). */
+export const DEMO_PASSWORD = process.env.DEV_SEED_PASSWORD ?? 'run-with-the-crew';
+let demoHash: Promise<string> | null = null;
 
 /**
  * Fictional demo data matching the design packet (docs/packet/sample-fixtures.json): the
@@ -132,8 +137,13 @@ async function rpc<T = any>(pool: pg.Pool, claims: Claims, fn: string, args: Rec
 
 async function ensureRunner(pool: pg.Pool, member: Member): Promise<Claims> {
   const { rows } = await pool.query<{ id: string }>(
-    `insert into auth.users (email) values ($1) on conflict (email) do update set email = excluded.email returning id`,
-    [member.email],
+    `insert into auth.users (email, email_verified, encrypted_password) values ($1, true, $2)
+     on conflict (email) do update set email = excluded.email returning id`,
+    [member.email, await (demoHash ??= hashPassword(DEMO_PASSWORD))],
+  );
+  await pool.query(
+    `insert into auth.identities (user_id, provider, provider_id, email) values ($1, 'email', $2, $2) on conflict (provider, provider_id) do nothing`,
+    [rows[0]!.id, member.email],
   );
   const claims = claimsFor(rows[0]!.id, member.email);
   const me = await rpc<{ profile: unknown }>(pool, claims, 'get_me');

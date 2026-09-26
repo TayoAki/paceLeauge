@@ -5,7 +5,7 @@ project, `paceleague`, with two services per environment:
 
 | Service | What it is |
 |---|---|
-| `api` | The PaceLeague API (`server/`), built from `server/Dockerfile`: email sign-in codes, Sign in with Apple, sessions, and the RPC endpoint the app calls. It also runs the scheduled jobs. |
+| `api` | The PaceLeague API (`server/`), built from `server/Dockerfile`: email + password sign-in (emailed codes when enabled), Sign in with Apple, sessions, the RPC endpoint the app calls, and the Privacy Policy and Terms pages. It also runs the scheduled jobs. |
 | `Postgres` | Railway's PostgreSQL 18 template with a 50 GB volume, reachable only on the private network (no public TCP proxy). Every rule — validation, scoring, leagues, access control — lives here. |
 
 Everything operational is a PostgreSQL function in the `private` schema. The app's roles cannot
@@ -15,8 +15,8 @@ call them; run them as the database owner through `railway connect` (below).
 
 | Environment | Where | App profile (`eas.json`) | Notes |
 |---|---|---|---|
-| Local | `npm run dev:backend` (the same `server/` code in development mode, over a local Postgres) | web preview / simulator | Fixed code `123456` for every address, codes also printed in the terminal — never deploy |
-| Staging | Railway environment `staging` — `https://api-staging-753f.up.railway.app` | `development`, `pilot` | Device protocol, load checks, pilot rehearsal; `competition_enabled` on; sign-in codes go to the service logs until an email key is added |
+| Local | `npm run dev:backend` (the same `server/` code in development mode, over a local Postgres) | web preview / simulator | Seeded runners use the password `run-with-the-crew`; in code mode every address accepts `123456` — never deploy |
+| Staging | Railway environment `staging` — `https://api-staging-753f.up.railway.app` | `pilot` (already pointed here), `development` | Device protocol, load checks, beta; `competition_enabled` on; email + password sign-in |
 | Production | Railway environment `production` (not created yet — see below) | `production` | Only after the STATUS.md gates pass |
 
 Each environment has its own database, keys and accounts; nothing is shared. Telemetry events
@@ -26,8 +26,8 @@ carry the environment, and staff/test accounts are excluded from pilot metrics.
 
 1. A push to the branch the `api` service follows (staging: `claude/eager-johnson-glz1cu` —
    switch it to `main` in *api → Settings → Source* once merged) starts a build. Only changes
-   under `server/`, `db/platform/`, `db/migrations/` or `db/templates/` redeploy; app-only commits
-   don't.
+   under `server/`, `db/platform/`, `db/migrations/`, `db/templates/` or `legal/` redeploy;
+   app-only commits don't.
 2. Railway builds `server/Dockerfile` (Node 22, bundled with esbuild, runs as the `node` user).
 3. **Pre-deploy** runs `node dist/migrate.js`: it applies new files from `db/platform/` and
    `db/migrations/` in order, each in its own transaction, under an advisory lock, and records a
@@ -50,7 +50,7 @@ migration; add a new one.
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | same | Private-network URL; `DATABASE_SSL` stays `disable` there |
 | `APP_ENV` | `staging` | `production` | Production refuses unsafe settings at boot (below) |
 | `PUBLIC_API_KEY` | random, ≥ 16 characters | a different random value | Identifies the app; **public by design** (it ships in the app as `EXPO_PUBLIC_API_KEY`). Changing it needs an app update |
-| `EMAIL_PROVIDER` | `log` for now | `resend` or `postmark` (required) | `log` writes each code to the private deploy logs |
+| `EMAIL_PROVIDER` | `log` | `resend` or `postmark` (required) | Only emailed codes use it, and the beta signs in with passwords; `log` writes codes to the private deploy logs |
 | `EMAIL_API_KEY` | — | provider key | Secret: set it only in Railway, as a sealed variable |
 | `EMAIL_FROM` | — | e.g. `PaceLeague <codes@your-domain>` | Must be on a domain verified with the provider |
 | `EMAIL_REPLY_TO` | optional | support address | |
@@ -59,7 +59,8 @@ migration; add a new one.
 | `BOOTSTRAP_ENABLE_COMPETITION` | `true` | unset | Applied once per database; refused in production |
 | `PORT` | `8080` | `8080` | The public domain targets this port |
 
-Optional: `JWT_SECRET` (≥ 32 characters; otherwise one is generated on first boot and kept in
+Optional: `PASSWORD_SIGN_IN` (true; false turns off sign-up, password sign-in and password
+changes), `JWT_SECRET` (≥ 32 characters; otherwise one is generated on first boot and kept in
 `platform.settings`), `ACCESS_TOKEN_TTL_SECONDS` (3600), `REFRESH_TOKEN_TTL_DAYS` (60),
 `CODE_TTL_SECONDS` (600), `CODE_MAX_ATTEMPTS` (5), `CODE_RESEND_COOLDOWN_SECONDS` (60),
 `CODE_MAX_PER_EMAIL_PER_HOUR` (5), `REVIEW_ACCOUNT_EMAIL` + `REVIEW_ACCOUNT_CODE` (one address
@@ -70,17 +71,60 @@ The service will not start in production with log-only email, a development sign
 competition bootstrap, a short `JWT_SECRET`, a missing `PUBLIC_API_KEY`, or only half of the
 review account — the deploy fails instead.
 
+## Passwords
+
+During the beta, runners create an account with their email address and a password, or use Sign
+in with Apple. No email service is involved.
+
+- Passwords are stored only as salted scrypt hashes. They must be 8–128 characters and not
+  trivially guessable; sign-up is limited per IP address, and sign-in attempts per address and per
+  IP address (ten tries per address every 15 minutes).
+- Changing a password (Profile → Privacy → Change password) needs a sign-in in the last 10
+  minutes, like export and deletion, and signs the account out on every other device.
+- A new account's address is **unverified**: nothing proved the person owns it. If the owner of
+  the address later proves it — an emailed code, or Sign in with Apple with the same verified
+  email — the account becomes theirs: the unproven password is cleared and its sessions end. So
+  registering someone else's address can't lock them out or give access to their data later. (If
+  the same person signed up with a password and then uses Apple with that address, they can set a
+  new password in Profile.)
+
+**Forgotten password.** There is no reset email yet. Once you've confirmed who is asking (for
+example, a message from the address on the account):
+
+```bash
+railway link                                  # project paceleague, environment staging
+railway ssh --service api                     # a shell in the running API container
+node dist/admin.js set-password runner@example.com
+```
+
+It prints a temporary password once and signs the account out everywhere. Send it to the runner
+over a channel you trust; they can change it in Profile → Privacy → Change password.
+
+## Privacy Policy and Terms
+
+Drafts live in [`legal/privacy-policy.md`](../legal/privacy-policy.md) and
+[`legal/terms.md`](../legal/terms.md), written from what the app actually collects and keeps. The
+API serves them at `/legal/privacy` and `/legal/terms`, and the `pilot` build links to the staging
+copies. Until every `[placeholder]` is filled in (operator name, mailing address, contact email,
+state, county, effective date), each page carries a **Draft** banner.
+
+To publish: fill in the placeholders, have someone qualified review both documents, commit and
+push (the service redeploys), and check that the banner is gone. External TestFlight testing and
+the App Store need the privacy page's URL.
+
 ## Email delivery
 
-Railway blocks outbound SMTP below the Pro plan, so codes are sent through an email API over
-HTTPS. With Resend:
+Not needed for the beta. You need an email provider to turn emailed sign-in codes back on
+(build the app with `EXPO_PUBLIC_EMAIL_SIGN_IN=code`) or, later, for password-reset emails.
+Railway blocks outbound SMTP below the Pro plan, so email goes through an email API over HTTPS.
+With Resend:
 
 1. Create a Resend account, add your sending domain and create the DNS records it shows.
 2. Create an API key with sending access only.
 3. In Railway → `api` → *Variables* (per environment): `EMAIL_PROVIDER=resend`,
    `EMAIL_API_KEY=<key>` (sealed), `EMAIL_FROM=PaceLeague <codes@your-domain>`, and optionally
    `EMAIL_REPLY_TO`. Deploy the staged change.
-4. Sign in with a real inbox, or run the smoke test with `SMOKE_EMAILS` (below).
+4. Sign in with a real inbox, or run the smoke test's code mode with `SMOKE_EMAILS` (below).
 
 Postmark works the same way with `EMAIL_PROVIDER=postmark` and a server API token (messages use
 the `outbound` stream). The email shows the code from `db/templates/sign-in-code.html`; codes
@@ -110,17 +154,49 @@ After a deploy, check the API end to end over HTTPS with the app's own client:
 
 ```bash
 export SMOKE_API_URL=https://api-staging-753f.up.railway.app SMOKE_API_KEY=<staging PUBLIC_API_KEY>
-npm run smoke:api -- send            # asks for codes for two throwaway @example.com accounts
-npm run smoke:api -- verify <codeA> <codeB>
+npm run smoke:api
 ```
 
-With `EMAIL_PROVIDER=log`, the codes are in *api → Deployments → Logs* (search `sign-in code`;
-they appear in the order the addresses were printed). With real email, set
-`SMOKE_EMAILS=a@…,b@…` to two inboxes you can read. The run checks health and HSTS, refusal of a
-wrong key and a forged token, sign-in, profile save, a full run upload (+77 XP), that neither
+It creates two throwaway `@example.com` accounts with passwords and checks health and HSTS,
+refusal of a wrong key and a forged token, the legal pages, wrong-password / duplicate / weak
+sign-ups being refused, a password change, profile save, a full run upload (+77 XP), that neither
 account can read the other's run, that private functions are hidden, refresh rotation and logout,
 then requests deletion of both accounts; the job loop logs `frequent jobs` with
 `deletions_completed` within a minute.
+
+For emailed codes: `npm run smoke:api -- send`, then `npm run smoke:api -- verify <codeA>
+<codeB>`. With `EMAIL_PROVIDER=log` the codes are in *api → Deployments → Logs* (search
+`sign-in code`, in the order the addresses were printed); with real email, set
+`SMOKE_EMAILS=a@…,b@…` to two inboxes you can read.
+
+## iPhone builds for testers (TestFlight)
+
+The `pilot` profile in `eas.json` already points at staging: the API URL, its public key and the
+legal pages. One-time setup:
+
+1. Join the Apple Developer Program and create an Expo account.
+2. Pick the app's bundle identifier (for example `com.yourname.paceleague`). Add it to the
+   `pilot` profile's `env` in `eas.json` as `IOS_BUNDLE_IDENTIFIER`, and to `APPLE_AUDIENCES` on
+   Railway so Sign in with Apple works.
+3. `npm i -g eas-cli && eas login`, then `eas init` in the repository. Add the project ID it
+   prints to the `pilot` profile's `env` as `EAS_PROJECT_ID` (the app config is dynamic, so EAS
+   can't write it for you).
+
+Each build:
+
+```bash
+eas build --platform ios --profile pilot       # EAS creates and manages the signing credentials
+eas submit --platform ios --profile pilot --latest
+```
+
+`eas submit` uploads the build to App Store Connect (creating the app there the first time). When
+it has processed, open App Store Connect → TestFlight, add yourself (and up to 100 people on your
+App Store Connect team) to an internal testing group, and install through the TestFlight app — no
+review needed. For testers outside your team, create an external group, fill in the Test
+Information (feedback email, description, and the published privacy page's URL) and submit the
+build for Beta App Review. The build declares no non-exempt encryption; the app encrypts its local
+database with SQLCipher, so confirm that declaration against Apple's export-compliance guidance
+before external testing.
 
 ## Flags
 
@@ -167,7 +243,7 @@ A failure logs `job failed` with the job name, and the job runs again on its nex
 | `open_reports` / `oldest_open_report_hours` | any older than 24 h | Moderation (below) |
 
 The service logs one JSON line per event. Request lines carry the method, route, status and
-duration — never emails, tokens, codes (outside `log` mode), bodies or coordinates. Alert on
+duration — never emails, passwords, tokens, codes (outside `log` mode), bodies or coordinates. Alert on
 `level: error` lines, on the HTTP 5xx rate and on failed health checks (Railway's service metrics
 and observability tools), and wire `health_report()` into the same place before the pilot
 (EV-015). Recording and history never depend on analytics or these jobs.
@@ -235,9 +311,9 @@ keeps it as personal history.
    (*api → Settings → Networking*).
 4. Schedule backups, run the smoke test with real inboxes, and turn competition on with
    `private.set_flag` when the STATUS.md gates allow.
-5. Put the URL and key in the EAS `production` environment (`EXPO_PUBLIC_API_URL`,
-   `EXPO_PUBLIC_API_KEY`), plus `EXPO_PUBLIC_SUPPORT_EMAIL`, `EXPO_PUBLIC_TERMS_URL` and
-   `EXPO_PUBLIC_PRIVACY_URL`. Nothing privileged ever goes into the app; `npm run check:secrets`
+5. Put the URL and key in the `production` build profile's `env` (`EXPO_PUBLIC_API_URL`,
+   `EXPO_PUBLIC_API_KEY`), plus `EXPO_PUBLIC_SUPPORT_EMAIL`, and `EXPO_PUBLIC_TERMS_URL` /
+   `EXPO_PUBLIC_PRIVACY_URL` pointing at the production `/legal/terms` and `/legal/privacy`. Nothing privileged ever goes into the app; `npm run check:secrets`
    fails CI if it does.
 
 ## Incident playbook
@@ -246,7 +322,7 @@ keeps it as personal history.
 |---|---|
 | Scoring bug or suspicious standings | `competition_enabled` off (recording continues), fix, deploy a new migration, turn back on — pending runs are rescored |
 | Invite spam or abusive league names | `invites_enabled` off; moderate reports; rotate affected invites |
-| Sign-up abuse | `registration_enabled` off; the per-address and per-IP code limits apply meanwhile |
+| Sign-up abuse | `registration_enabled` off (new accounts can't finish onboarding); per-IP sign-up limits apply meanwhile, or set `PASSWORD_SIGN_IN=false` to stop new password accounts |
 | Bad API deploy | Roll back the `api` deployment in Railway (the schema stays; migrations are forward-only) |
 | Bad app release | Roll back JavaScript only with a tested compatible runtime; native changes need a new build |
 | Suspected token or key exposure | Set a new `JWT_SECRET` and redeploy (every existing access token stops working at once); revoke sessions with `update auth.sessions set revoked_at = now() where revoked_at is null` (refreshing then fails, so everyone signs in again); rotate `EMAIL_API_KEY` at the provider; review `private.audit_log`; follow the privacy notice's breach process |

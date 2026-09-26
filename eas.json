@@ -7,21 +7,35 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": { "resourceClass": "m-medium" },
-      "env": { "EXPO_PUBLIC_APP_ENV": "development" }
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development"
+      }
     },
     "development-simulator": {
       "extends": "development",
-      "ios": { "simulator": true }
+      "ios": {
+        "simulator": true
+      }
     },
     "pilot": {
       "distribution": "store",
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_APP_ENV": "staging" }
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "EXPO_PUBLIC_API_URL": "https://api-staging-753f.up.railway.app",
+        "EXPO_PUBLIC_API_KEY": "pl_stg_jbc7CrDKpVir0z0eqkPc_AJv",
+        "EXPO_PUBLIC_PRIVACY_URL": "https://api-staging-753f.up.railway.app/legal/privacy",
+        "EXPO_PUBLIC_TERMS_URL": "https://api-staging-753f.up.railway.app/legal/terms"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_APP_ENV": "production" }
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production"
+      }
     }
   },
   "submit": {

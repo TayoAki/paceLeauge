@@ -9,11 +9,11 @@ the client.
  iPhone                                                  Railway
 ┌───────────────────────────────────────────────┐        ┌──────────────────────────────────────┐
 │ Background location task (expo-task-manager)  │        │ api — server/ (Node 22)              │
-│   └─▶ RecorderService ──▶ Journal (SQLCipher) │        │   /auth/v1      email codes, Apple,  │
-│          │  live metrics      │ outbox        │        │                 sessions             │
+│   └─▶ RecorderService ──▶ Journal (SQLCipher) │        │   /auth/v1      passwords, Apple,    │
+│          │  live metrics      │ outbox        │        │                 sessions (codes)     │
 │          ▼                    ▼               │  HTTPS │   /rest/v1/rpc  per request: role,   │
 │      Screens (Expo Router) ◀─ SyncEngine ─────│ ─────▶ │                 claims, 15 s limit   │
-│          ▲                                    │ ◀───── │   jobs · migrator (pre-deploy)       │
+│          ▲                                    │ ◀───── │   jobs · migrator · /legal pages     │
 │   TanStack Query cache + offline snapshots    │  JSON  └───────────────────┬──────────────────┘
 └───────────────────────────────────────────────┘                            │ SQL
                                                          ┌───────────────────▼──────────────────┐
@@ -36,7 +36,7 @@ the client.
 | Services | `src/features/` | `RecorderService` (recording lifecycle), `SyncEngine` (outbox → server), account runtime (opens/closes per-account resources), telemetry, reminders, export, leagues. |
 | API client | `src/api/` | `PaceApi`: one typed method per RPC, every response parsed with Zod, failures mapped to stable `ApiError` codes (retryable / auth / permanent). The transport is pluggable: supabase-js against the PaceLeague API in the app, direct SQL in integration tests. |
 | UI | `src/app/`, `src/components/`, `src/design/` | Expo Router screens, design-system components built on the packet's tokens. |
-| API service | `server/` | Sign-in (email codes, Sign in with Apple), sessions, the RPC endpoint, the migrator and the scheduled jobs. Holds no business rules. |
+| API service | `server/` | Sign-in (email + password, emailed codes, Sign in with Apple), sessions, the RPC endpoint, the migrator, the scheduled jobs and the legal pages. Holds no business rules. |
 | Database | `db/` | `platform/`: roles and the auth schema. `migrations/`: schema, RLS, RPCs, SQL validator and scoring, leagues, safety/lifecycle, maintenance jobs. |
 
 ## Backend service
@@ -45,9 +45,12 @@ The API (`server/`, deployed on Railway) is deliberately thin. It speaks the two
 app's client library (supabase-js) already uses, so the app's API client and every SQL rule carried
 over unchanged when the backend moved off Supabase:
 
-- **`/auth/v1`** — email one-time codes (6 digits, stored only as an HMAC, single use, 10 minutes,
-  5 guesses, resend cooldown and hourly caps per address and per IP, delivered through Resend or
-  Postmark over HTTPS); Sign in with Apple (identity token checked against Apple's keys: issuer,
+- **`/auth/v1`** — email + password accounts for the beta (scrypt hashes, per-address and per-IP
+  attempt limits; changing a password needs a recent sign-in and ends other sessions; proving the
+  address later — a code or Apple's verified email — reclaims an account registered without proof);
+  email one-time codes, off in the app for the beta (6 digits, stored only as an HMAC, single use,
+  10 minutes, 5 guesses, resend cooldown and hourly caps per address and per IP, delivered through
+  Resend or Postmark over HTTPS); Sign in with Apple (identity token checked against Apple's keys: issuer,
   audience, expiry, hashed nonce); sessions as 1-hour HS256 access tokens plus opaque rotating
   refresh tokens with reuse detection. The token's sign-in time (`amr`) never moves on refresh, so
   "recent sign-in" checks for export and deletion keep their meaning.
@@ -57,6 +60,8 @@ over unchanged when the backend moved off Supabase:
 - **Migrator** — forward-only, checksummed and advisory-locked; Railway runs it before each deploy.
 - **Jobs** — the minute and hourly maintenance functions, each under an advisory lock (Railway's
   Postgres has no `pg_cron`).
+- **Legal pages** — the Privacy Policy and Terms from `legal/`, served as HTML at `/legal/privacy`
+  and `/legal/terms` (marked as drafts while placeholders remain).
 
 Configuration is validated at boot, and production refuses unsafe settings (log-only email, a
 development code, the competition bootstrap). The API holds the database connection and the
@@ -162,8 +167,8 @@ remove (and ban) members and transfer ownership; parallel joins cannot exceed ca
 
 ## Accounts and runtime
 
-`AuthProvider` owns the auth session (supabase-js against the API's `/auth/v1`: email one-time
-code; Sign in with Apple with a hashed nonce). `AccountProvider` opens an `AccountRuntime` for the signed-in user — journal, recorder,
+`AuthProvider` owns the auth session (supabase-js against the API's `/auth/v1`: email and password,
+or an emailed code when `EXPO_PUBLIC_EMAIL_SIGN_IN=code`; Sign in with Apple with a hashed nonce). `AccountProvider` opens an `AccountRuntime` for the signed-in user — journal, recorder,
 telemetry, sync engine — and closes it on sign-out. A run in progress pins its account, so the
 background task keeps writing to the right journal even if the UI signs out; sign-out waits for
 the run to be finished or discarded.

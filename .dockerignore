@@ -1,4 +1,4 @@
-# Only the API and its SQL go into the image build context.
+# Only the API, its SQL and the legal documents go into the image build context.
 *
 !server/package.json
 !server/package-lock.json
@@ -7,3 +7,4 @@
 !db/platform/**
 !db/migrations/**
 !db/templates/**
+!legal/**

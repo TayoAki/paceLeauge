@@ -16,7 +16,8 @@ the reason is stated here.
 | Invite codes: 8 Crockford base32 characters, stored as SHA-256 hashes, 7-day expiry, ≤ 10 live per league | Short enough to read aloud, ambiguity-free (I/L→1, O→0), useless if the table leaks | Rotation revokes all live codes |
 | One encrypted journal per account, plus a pinned "recording account" | Account B can never read or claim A's queue (AC-REQ-001-02), and the headless background task always writes to the account that started the run | Sign-out waits for an active run to be finished or discarded |
 | Telemetry stored in the project's own database (`log_events`), allowlisted and enumerated | Minimization (REQ-015) without a third-party analytics SDK or new data processor | Dashboards read `private.operational_events`; retention 14 days |
-| Email one-time **codes**, not magic links | Links opening the wrong app/browser are a common mobile failure; codes work across devices | Template in `db/templates/sign-in-code.html` |
+| Beta sign-in is email + **password** (plus Apple) instead of the packet's emailed codes | The founder's call: the beta can start without an email service or a verified sending domain | Passwords are scrypt hashes with per-address and per-IP limits. No self-service reset yet: an operator sets a temporary password (OPERATIONS.md). An address is unverified until someone proves it (a code, or Apple's verified email), and that proof reclaims the account — clearing the unproven password and its sessions. As with Supabase, access tokens already issued stay valid until they expire (at most an hour) |
+| When codes are on: email one-time **codes**, not magic links | Links opening the wrong app/browser are a common mobile failure; codes work across devices | Built and tested; enabled in the app with `EXPO_PUBLIC_EMAIL_SIGN_IN=code` once an email provider is set up. Template in `db/templates/sign-in-code.html` |
 
 ## Backend hosting: Railway instead of Supabase
 
@@ -72,6 +73,6 @@ did is now done by the pieces below.
 
 | Decision | Why | Limitation |
 |---|---|---|
-| `npm run dev:backend` runs the production API service in development mode (code `123456` for every address, codes printed, competition on) over a local Postgres | The app runs end to end against the same code as staging and production, without Docker | Email delivery and Sign in with Apple are exercised only on staging and a device |
+| `npm run dev:backend` runs the production API service in development mode (seeded runners share a demo password, `123456` works for every address in code mode, competition on) over a local Postgres | The app runs end to end against the same code as staging and production, without Docker | Email delivery and Sign in with Apple are exercised only on staging and a device |
 | Web preview kept runnable | Enables the browser walkthrough and fast UI review | Unencrypted SQLite, no background location/share sheet/notifications — never a product target |
 | Browser walkthrough uses a scripted Geolocation API and Playwright's clock | Reproduces the packet's exact run (5.24 km in 31:28) deterministically | Proves flows and integration only — not GPS quality (see DEVICE_TEST_PROTOCOL.md) |

@@ -7,18 +7,21 @@ import type { Edge } from 'react-native-safe-area-context';
 import { PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { InlineStatus, TextField } from '@/components/ui/elements';
 import { NavHeader, Screen } from '@/components/ui/layout';
-import { AuthError, isAppleSignInAvailable, sendEmailCode, signInWithApple, verifyEmailCode } from '@/features/account/auth-actions';
+import { env } from '@/config/env';
+import { AuthError, isAppleSignInAvailable, sendEmailCode, signInWithApple, signInWithPassword, verifyEmailCode } from '@/features/account/auth-actions';
 import { useAuth } from '@/features/account/auth-provider';
 import { Text } from '@/design/text';
 import { heights, radius, space } from '@/design/tokens';
 
 const RESEND_SECONDS = 60;
-const PURPOSE: Record<string, string> = { export: 'to export your data', delete: 'to delete your account' };
+const PURPOSE: Record<string, string> = { export: 'to export your data', delete: 'to delete your account', password: 'to change your password' };
+const USE_PASSWORD = env.emailSignIn === 'password';
 /** An iOS page sheet sits below the status bar, so only the bottom inset applies. */
 const EDGES: Edge[] = Platform.OS === 'ios' ? ['bottom'] : ['top', 'bottom'];
 
 /**
- * "Confirm it's you" — a fresh sign-in for the same account before export or deletion.
+ * "Confirm it's you" — a fresh sign-in for the same account before export, deletion or a
+ * password change: the account's password (or an emailed code, when codes are in use), or Apple.
  * The email is fixed to the signed-in address, and Apple is offered only when this account
  * already uses Sign in with Apple, so confirming can never switch accounts.
  */
@@ -29,6 +32,8 @@ export default function ReauthScreen() {
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [step, setStep] = useState<'choose' | 'code'>('choose');
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [reveal, setReveal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -89,6 +94,19 @@ export default function ReauthScreen() {
     }
   };
 
+  const confirmPassword = async () => {
+    if (!email) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await signInWithPassword(email, password);
+      finish();
+    } catch (e) {
+      setError(e instanceof AuthError ? e.message : 'Couldn’t check your password. Try again.');
+      setBusy(false);
+    }
+  };
+
   const apple = async () => {
     setError(null);
     try {
@@ -100,23 +118,31 @@ export default function ReauthScreen() {
     }
   };
 
-  const footer =
-    step === 'code' ? (
+  const appleButton = offerApple ? (
+    <AppleAuthentication.AppleAuthenticationButton
+      buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+      cornerRadius={radius.button}
+      style={styles.apple}
+      onPress={() => void apple()}
+    />
+  ) : null;
+
+  const footer = USE_PASSWORD ? (
+    <View style={styles.actions}>
+      {email ? (
+        <PrimaryButton label="Confirm" onPress={() => void confirmPassword()} loading={busy} disabled={password.length === 0} testID="reauth-password-confirm" />
+      ) : null}
+      {appleButton}
+    </View>
+  ) : step === 'code' ? (
       <View style={styles.actions}>
         <PrimaryButton label="Confirm" onPress={() => void verify()} loading={busy} disabled={code.length !== 6} testID="reauth-verify" />
         <TextButton label={cooldown > 0 ? `Send a new code in ${cooldown}s` : 'Send a new code'} disabled={cooldown > 0 || busy} onPress={() => void sendCode()} />
       </View>
     ) : (
       <View style={styles.actions}>
-        {offerApple ? (
-          <AppleAuthentication.AppleAuthenticationButton
-            buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-            cornerRadius={radius.button}
-            style={styles.apple}
-            onPress={() => void apple()}
-          />
-        ) : null}
+        {appleButton}
         {email ? (
           offerApple ? (
             <SecondaryButton label="Email me a code instead" onPress={() => void sendCode()} loading={busy} testID="reauth-send-code" />
@@ -149,7 +175,29 @@ export default function ReauthScreen() {
             <InlineStatus tone="warning" title="This account can’t confirm here." body="Sign out and sign back in, then try again." />
           ) : null}
 
-          {step === 'code' ? (
+          {USE_PASSWORD && email ? (
+            <>
+              <TextField
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!reveal}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="current-password"
+                textContentType="password"
+                returnKeyType="go"
+                onSubmitEditing={() => void confirmPassword()}
+                error={error}
+                testID="reauth-password"
+              />
+              <TextButton label={reveal ? 'Hide password' : 'Show password'} onPress={() => setReveal((r) => !r)} style={styles.reveal} />
+            </>
+          ) : USE_PASSWORD ? (
+            error ? (
+              <InlineStatus tone="danger" title={error} />
+            ) : null
+          ) : step === 'code' ? (
             <>
               <Text variant="body" tone="secondary">
                 Enter the code we sent to {email}. It expires in 10 minutes.
@@ -182,5 +230,6 @@ const styles = StyleSheet.create({
   sheetTop: { paddingTop: space.sm },
   actions: { gap: space.sm },
   apple: { height: heights.primaryButton, width: '100%' },
+  reveal: { alignSelf: 'flex-start', paddingHorizontal: 0 },
   code: { fontSize: 28, letterSpacing: 8, fontVariant: ['tabular-nums'] },
 });

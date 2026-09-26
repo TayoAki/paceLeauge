@@ -4,6 +4,7 @@ import { createAppleVerifier, type AppleVerifier } from './auth/apple';
 import type { ServerConfig } from './config';
 import type { Pool } from './db';
 import { createApi } from './http';
+import { legalDir, loadLegalPages } from './legal';
 import type { Logger } from './log';
 import { createMailer, loadCodeTemplate, type Mailer } from './mailer';
 import { findDbDir } from './migrate';
@@ -29,12 +30,15 @@ export async function createService(options: { config: ServerConfig; pool: Pool;
   const { config, pool, log } = options;
   const secret = await resolveSigningSecret(pool, config);
   let template: string | null = null;
+  let legal: ReturnType<typeof loadLegalPages> = {};
   try {
-    template = loadCodeTemplate(findDbDir());
+    const dbDir = findDbDir();
+    template = loadCodeTemplate(dbDir);
+    legal = loadLegalPages(legalDir(dbDir));
   } catch {
     template = null;
   }
   const mailer = options.mailer ?? createMailer(config, log, template, options.fetchImpl);
   const apple = options.apple ?? createAppleVerifier(config.appleAudiences, options.fetchImpl);
-  return createApi({ config, pool, secret, mailer, apple, log });
+  return createApi({ config, pool, secret, mailer, apple, log, legal });
 }

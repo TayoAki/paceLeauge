@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Browser walkthrough of the real app (web development preview) against the local development
-// backend. It signs in, records Friday's 5.24 km run from the design packet with a scripted
-// GPS feed and a controlled clock, syncs it, visits every V1 screen, and saves screenshots.
+// backend. It signs in with a password, records Friday's 5.24 km run from the design packet with a
+// scripted GPS feed and a controlled clock, syncs it, visits every V1 screen, and saves screenshots.
 //
 //   npm run db:local && npm run dev:backend -- --reset --seed alex@demo.paceleague.test
 //   EXPO_PUBLIC_API_URL=http://127.0.0.1:54400 EXPO_PUBLIC_API_KEY=pl_dev_public_key npx expo start --web --port 8081
@@ -27,11 +27,14 @@ const { chromium } = await loadPlaywright();
 const APP_URL = process.env.APP_URL ?? 'http://localhost:8081';
 const OUT_DIR = resolve(process.env.OUT_DIR ?? 'artifacts/screenshots/web');
 const VIEWER = process.env.VIEWER_EMAIL ?? 'alex@demo.paceleague.test';
+const VIEWER_PASSWORD = process.env.VIEWER_PASSWORD ?? 'run-with-the-crew';
 const NEWCOMER = `new-${Date.now().toString(36)}@demo.paceleague.test`;
-const OTP = process.env.DEV_BACKEND_OTP ?? '123456';
+const NEWCOMER_PASSWORD = 'riley runs fridays';
 // Friday 25 September 2026, 06:55 in Chicago — the packet's "Friday morning" run.
 const START_TIME = new Date(process.env.START_TIME ?? '2026-09-25T06:55:00-05:00');
 const RUN = { distanceM: 5246, activeS: 1888 };
+// Requests the walkthrough makes fail on purpose (a wrong password); the browser logs each one.
+let expectedRejections = 0;
 mkdirSync(OUT_DIR, { recursive: true });
 
 /** Scripted geolocation: the page sees a normal Geolocation API fed by window.__geo.push(). */
@@ -121,9 +124,12 @@ async function newPage(browser) {
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
     // ERR_INTERNET_DISCONNECTED is the expected result of the deliberate offline step.
-    if (m.type() === 'error' && !/Download the React DevTools|findDOMNode|shadow\*|pointerEvents|ERR_INTERNET_DISCONNECTED/.test(m.text())) {
-      errors.push(`console: ${m.text().slice(0, 300)}`);
+    if (m.type() !== 'error' || /Download the React DevTools|findDOMNode|shadow\*|pointerEvents|ERR_INTERNET_DISCONNECTED/.test(m.text())) return;
+    if (expectedRejections > 0 && /status of 400/.test(m.text())) {
+      expectedRejections -= 1;
+      return;
     }
+    errors.push(`console: ${m.text().slice(0, 300)}`);
   });
   await page.clock.install({ time: START_TIME });
   return { context, page };
@@ -162,14 +168,13 @@ const visible = (page, text, options = {}) =>
     .first()
     .waitFor({ state: 'visible', timeout: options.timeout ?? 20_000 });
 
-async function signIn(page, email) {
+async function createAccount(page, email, password) {
   await page.goto(APP_URL);
   await page.getByTestId('continue-email').waitFor({ timeout: 60_000 });
   await page.getByTestId('continue-email').click();
   await page.getByTestId('email-input').fill(email);
-  await page.getByTestId('send-code').click();
-  await page.getByTestId('code-input').fill(OTP);
-  await page.getByTestId('verify-code').click();
+  await page.getByTestId('password-input').fill(password);
+  await page.getByTestId('password-submit').click();
 }
 
 /** Waits (without advancing the test clock) until the live distance shows `distanceM`. */
@@ -232,15 +237,19 @@ try {
     await shot(page, '01-welcome');
   });
 
-  await step(page, 'sign in with email code', async () => {
+  await step(page, 'sign in with email and password', async () => {
     await page.getByTestId('continue-email').click();
+    await page.getByTestId('password-submit').waitFor();
+    await shot(page, '01b-create-account');
+    await page.getByRole('tab', { name: 'Sign in' }).click();
     await page.getByTestId('email-input').fill(VIEWER);
-    await shot(page, '01b-sign-in-email');
-    await page.getByTestId('send-code').click();
-    await page.getByTestId('code-input').waitFor();
-    await page.getByTestId('code-input').fill(OTP);
-    await shot(page, '01c-sign-in-code');
-    await page.getByTestId('verify-code').click();
+    await page.getByTestId('password-input').fill('not my password');
+    expectedRejections += 1;
+    await page.getByTestId('password-submit').click();
+    await visible(page, 'That email and password');
+    await shot(page, '01c-sign-in-wrong-password');
+    await page.getByTestId('password-input').fill(VIEWER_PASSWORD);
+    await page.getByTestId('password-submit').click();
     await page.getByTestId('start-run').waitFor({ timeout: 30_000 });
   });
 
@@ -458,7 +467,7 @@ try {
   await newcomer.page.clock.resume();
 
   await step(p2, 'S02 onboarding', async () => {
-    await signIn(p2, NEWCOMER);
+    await createAccount(p2, NEWCOMER, NEWCOMER_PASSWORD);
     await p2.getByTestId('alias-input').waitFor({ timeout: 30_000 });
     await shot(p2, '02-onboarding');
     await p2.getByTestId('alias-input').fill('Riley');
@@ -492,9 +501,18 @@ try {
     errors.push('walkthrough: no invite code found on the invite sheet');
   }
 
-  await step(p2, 'S16 delete account', async () => {
+  await step(p2, 'change password', async () => {
     await tab(p2, 'Profile').click();
     await p2.getByTestId('profile-privacy').click();
+    await p2.getByTestId('change-password').click();
+    await p2.getByTestId('new-password').fill('riley runs saturdays too');
+    await p2.getByTestId('password-save').click();
+    await visible(p2, 'Password changed.');
+    await shot(p2, '14g-change-password');
+    await p2.goBack();
+  });
+
+  await step(p2, 'S16 delete account', async () => {
     await p2.getByTestId('delete-account').click();
     await settle(p2, 800);
     await shot(p2, '16-delete-account');

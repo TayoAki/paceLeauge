@@ -10,6 +10,11 @@ export class AuthError extends Error {
       | 'not_configured'
       | 'invalid_email'
       | 'invalid_code'
+      | 'invalid_credentials'
+      | 'weak_password'
+      | 'account_exists'
+      | 'same_password'
+      | 'reauth_needed'
       | 'rate_limited'
       | 'network'
       | 'cancelled'
@@ -28,23 +33,75 @@ function client() {
   return supabase;
 }
 
-function mapAuthError(error: { message?: string; status?: number; code?: string } | null): AuthError {
+export const PASSWORD_MIN_LENGTH = 8;
+
+/** Maps an auth failure to calm, specific copy — by the server's error code first. */
+export function mapAuthError(error: { message?: string; status?: number; code?: string; reasons?: string[] } | null): AuthError {
   const message = error?.message ?? '';
-  if (error?.status === 429 || /rate limit|too many/i.test(message)) {
-    return new AuthError('rate_limited', 'Too many attempts. Wait a minute and try again.');
+  const code = error?.code ?? '';
+  if (error?.status === 429 || /rate_limit/.test(code) || /rate limit|too many/i.test(message)) {
+    return new AuthError('rate_limited', 'Too many attempts. Wait a few minutes and try again.');
   }
-  if (/expired|invalid|otp/i.test(message) || error?.code === 'otp_expired') {
-    return new AuthError('invalid_code', 'That code didn’t work. Check it, or request a new one.');
+  switch (code) {
+    case 'invalid_credentials':
+      return new AuthError('invalid_credentials', 'That email and password don’t match.');
+    case 'user_already_exists':
+      return new AuthError('account_exists', 'There’s already an account with this email. Sign in instead.');
+    case 'weak_password':
+      return new AuthError(
+        'weak_password',
+        /at most/i.test(message)
+          ? 'Use 128 characters or fewer.'
+          : error?.reasons?.includes('length')
+            ? `Use at least ${PASSWORD_MIN_LENGTH} characters.`
+            : 'That password is too easy to guess. Try a short phrase instead.',
+      );
+    case 'same_password':
+      return new AuthError('same_password', 'That’s your current password. Choose a new one.');
+    case 'reauthentication_needed':
+      return new AuthError('reauth_needed', 'For your security, confirm it’s you first.');
+    case 'validation_failed':
+      return new AuthError('invalid_email', 'Enter a valid email address.');
+    case 'otp_expired':
+      return new AuthError('invalid_code', 'That code didn’t work. Check it, or request a new one.');
   }
   if (/network|fetch/i.test(message)) return new AuthError('network', 'You’re offline. Connect and try again.');
+  if (/expired|invalid|otp/i.test(message)) return new AuthError('invalid_code', 'That code didn’t work. Check it, or request a new one.');
   return new AuthError('unknown', 'Something went wrong. Please try again.');
 }
 
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export async function sendEmailCode(email: string): Promise<void> {
+function emailAddress(email: string): string {
   const address = email.trim().toLowerCase();
   if (!EMAIL_PATTERN.test(address)) throw new AuthError('invalid_email', 'Enter a valid email address.');
+  return address;
+}
+
+/** A new account with a password. The session starts at once; no confirmation email is sent. */
+export async function signUpWithPassword(email: string, password: string): Promise<void> {
+  const address = emailAddress(email);
+  if ([...password].length < PASSWORD_MIN_LENGTH) throw new AuthError('weak_password', `Use at least ${PASSWORD_MIN_LENGTH} characters.`);
+  const { error } = await client().auth.signUp({ email: address, password });
+  if (error) throw mapAuthError(error);
+}
+
+export async function signInWithPassword(email: string, password: string): Promise<void> {
+  const address = emailAddress(email);
+  if (!password) throw new AuthError('invalid_credentials', 'Enter your password.');
+  const { error } = await client().auth.signInWithPassword({ email: address, password });
+  if (error) throw mapAuthError(error);
+}
+
+/** Needs a recent sign-in (`reauth_needed` otherwise); other devices are signed out. */
+export async function changePassword(password: string): Promise<void> {
+  if ([...password].length < PASSWORD_MIN_LENGTH) throw new AuthError('weak_password', `Use at least ${PASSWORD_MIN_LENGTH} characters.`);
+  const { error } = await client().auth.updateUser({ password });
+  if (error) throw mapAuthError(error);
+}
+
+export async function sendEmailCode(email: string): Promise<void> {
+  const address = emailAddress(email);
   const { error } = await client().auth.signInWithOtp({ email: address, options: { shouldCreateUser: true } });
   if (error) throw mapAuthError(error);
 }

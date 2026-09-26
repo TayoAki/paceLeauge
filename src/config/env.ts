@@ -17,6 +17,8 @@ export const env = {
   supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '',
   termsUrl: process.env.EXPO_PUBLIC_TERMS_URL ?? '',
   privacyUrl: process.env.EXPO_PUBLIC_PRIVACY_URL ?? '',
+  /** Email sign-in: a password (the beta default), or an emailed one-time `code`. */
+  emailSignIn: process.env.EXPO_PUBLIC_EMAIL_SIGN_IN === 'code' ? 'code' : 'password',
 } as const;
 
 export const isBackendConfigured = env.apiUrl.length > 0 && env.apiKey.length > 0;

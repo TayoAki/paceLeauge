@@ -2,7 +2,7 @@
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: { main: 'src/main.ts', migrate: 'src/migrate-cli.ts' },
+  entryPoints: { main: 'src/main.ts', migrate: 'src/migrate-cli.ts', admin: 'src/admin-cli.ts' },
   outdir: 'dist',
   bundle: true,
   platform: 'node',

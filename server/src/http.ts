@@ -3,21 +3,33 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 
 import { AppleTokenError, type AppleVerifier } from './auth/apple';
 import { CodeService } from './auth/codes';
+import { hashPassword, PASSWORD_MAX_LENGTH, passwordProblem, verifyPassword } from './auth/passwords';
 import { hashKey, takeRateLimit } from './auth/rate-limit';
 import { SessionService } from './auth/sessions';
-import { loadUser, signInWithAppleId, signInWithEmail, userJson } from './auth/users';
+import {
+  createPasswordAccount,
+  findByEmail,
+  loadUser,
+  markPasswordSignIn,
+  passwordHashOf,
+  setPassword,
+  signInWithAppleId,
+  signInWithEmail,
+  userJson,
+} from './auth/users';
 import type { ServerConfig } from './config';
 import { transaction, type Pool } from './db';
 import { verifyJwt, type Claims } from './jwt';
+import type { LegalDoc } from './legal';
 import type { Logger } from './log';
 import type { Mailer } from './mailer';
 import { callRpc, type Claims as RpcClaims } from './rpc';
 
 /**
  * The PaceLeague API. It speaks the two protocols the app's client library (supabase-js)
- * already uses — Supabase Auth's email-code/session endpoints under /auth/v1 and PostgREST's RPC
- * endpoint under /rest/v1/rpc — so the app needs no custom networking code, while all business
- * rules stay in PostgreSQL.
+ * already uses — Supabase Auth's email-code, password and session endpoints under /auth/v1 and
+ * PostgREST's RPC endpoint under /rest/v1/rpc — so the app needs no custom networking code, while
+ * all business rules stay in PostgreSQL. It also serves the Privacy Policy and Terms pages.
  */
 export interface ApiDeps {
   config: ServerConfig;
@@ -27,6 +39,8 @@ export interface ApiDeps {
   mailer: Mailer;
   apple: AppleVerifier;
   log: Logger;
+  /** Rendered /legal pages (server/src/legal.ts). */
+  legal?: Partial<Record<LegalDoc, string>>;
 }
 
 class HttpError extends Error {
@@ -42,9 +56,24 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const AUTH_BODY_LIMIT = 16 * 1024;
 const RPC_BODY_LIMIT = 1024 * 1024;
 const AUTH_HEADERS = { 'X-Supabase-Api-Version': '2024-01-01' };
+/** Same window as private.has_recent_auth(): changing the password needs a fresh sign-in. */
+const RECENT_SIGN_IN_S = 600;
+const WEAK_PASSWORD: Record<NonNullable<ReturnType<typeof passwordProblem>>, { msg: string; reasons: string[] }> = {
+  too_short: { msg: 'Password should be at least 8 characters.', reasons: ['length'] },
+  too_long: { msg: `Password should be at most ${PASSWORD_MAX_LENGTH} characters.`, reasons: ['length'] },
+  too_common: { msg: 'Password is too easy to guess.', reasons: ['pwned'] },
+};
+const LEGAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 function authError(status: number, code: string, msg: string): HttpError {
   return new HttpError(status, { code, error_code: code, msg });
+}
+
+function weakPassword(password: string, email: string): HttpError | null {
+  const problem = passwordProblem(password, email);
+  if (!problem) return null;
+  const { msg, reasons } = WEAK_PASSWORD[problem];
+  return new HttpError(422, { code: 'weak_password', error_code: 'weak_password', msg, weak_password: { reasons } });
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -94,6 +123,16 @@ function str(value: unknown, max = 512): string | null {
   return typeof value === 'string' && value.length > 0 && value.length <= max ? value : null;
 }
 
+function emailOf(value: unknown): string {
+  return str(value, 254)?.trim().toLowerCase() ?? '';
+}
+
+/** When the token's session signed in (the JWT `amr` timestamp, which refreshing never moves). */
+function signedInAt(claims: Claims): number {
+  const amr = Array.isArray(claims.amr) ? (claims.amr as { timestamp?: unknown }[]) : [];
+  return Math.max(0, ...amr.map((entry) => (typeof entry?.timestamp === 'number' ? entry.timestamp : 0)));
+}
+
 export function createApi(deps: ApiDeps): { server: Server; handle: (req: IncomingMessage, res: ServerResponse) => Promise<void> } {
   const { config, pool, log, apple } = deps;
   const codes = new CodeService(pool, config, deps.secret, deps.mailer, log);
@@ -124,7 +163,7 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
     if (!allowAll && !(config.corsOrigins as string[]).includes(origin)) return;
     res.setHeader('Access-Control-Allow-Origin', allowAll ? '*' : origin);
     res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
     const requested = req.headers['access-control-request-headers'];
     res.setHeader('Access-Control-Allow-Headers', typeof requested === 'string' ? requested : 'authorization, apikey, content-type, x-client-info');
     res.setHeader('Access-Control-Expose-Headers', 'X-Supabase-Api-Version');
@@ -140,10 +179,57 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
 
   async function auth(req: IncomingMessage, res: ServerResponse, route: string, url: URL): Promise<void> {
     const ip = hashKey(clientIp(req));
+    if (route === 'POST /signup') {
+      if (!config.passwordSignIn) throw authError(422, 'signup_disabled', 'Signups not allowed for this instance');
+      await limit(`signup:ip:${ip}`, 20, 3600);
+      const body = await readJson(req, AUTH_BODY_LIMIT);
+      const email = emailOf(body.email);
+      if (!EMAIL.test(email)) throw authError(400, 'validation_failed', 'Unable to validate email address: invalid format');
+      const password = typeof body.password === 'string' ? body.password : '';
+      const weak = weakPassword(password, email);
+      if (weak) throw weak;
+      const hash = await hashPassword(password);
+      const session = await transaction(pool, async (client) => {
+        const userId = await createPasswordAccount(client, email, hash);
+        return userId ? sessions.create(client, userId, 'password') : null;
+      });
+      if (!session) throw authError(422, 'user_already_exists', 'User already registered');
+      return send(res, 200, session, AUTH_HEADERS);
+    }
+    if (route === 'PUT /user') {
+      const claims = verifiedUser(req);
+      if (!claims) throw authError(401, 'bad_jwt', 'invalid JWT: unable to parse or verify signature');
+      const userId = claims.sub as string;
+      await limit(`user:update:${hashKey(userId)}`, 10, 3600);
+      const body = await readJson(req, AUTH_BODY_LIMIT);
+      if (body.email != null || body.phone != null) throw authError(422, 'validation_failed', 'Only the password can be changed');
+      if (typeof body.password !== 'string') throw authError(422, 'validation_failed', 'Password is required');
+      if (!config.passwordSignIn) throw authError(422, 'provider_disabled', 'Password sign-in is disabled');
+      if (Date.now() / 1000 - signedInAt(claims) > RECENT_SIGN_IN_S) {
+        throw authError(400, 'reauthentication_needed', 'Password update requires reauthentication');
+      }
+      const current = await transaction(pool, (client) => passwordHashOf(client, userId));
+      if (!current) throw authError(403, 'user_not_found', 'User from sub claim in JWT does not exist');
+      if (!current.email) throw authError(422, 'validation_failed', 'This account has no email address to sign in with');
+      const weak = weakPassword(body.password, current.email);
+      if (weak) throw weak;
+      if (current.passwordHash && (await verifyPassword(body.password, current.passwordHash))) {
+        throw authError(422, 'same_password', 'New password should be different from the old password.');
+      }
+      const hash = await hashPassword(body.password);
+      const user = await transaction(pool, async (client) => {
+        await setPassword(client, userId, hash);
+        return loadUser(client, userId);
+      });
+      if (!user) throw authError(403, 'user_not_found', 'User from sub claim in JWT does not exist');
+      // A new password ends every other session; this device stays signed in.
+      await sessions.revoke(userId, typeof claims.session_id === 'string' ? claims.session_id : null, 'others');
+      return send(res, 200, userJson(user), AUTH_HEADERS);
+    }
     if (route === 'POST /otp') {
       await limit(`code:send:ip:${ip}`, 30, 3600, 'over_email_send_rate_limit');
       const body = await readJson(req, AUTH_BODY_LIMIT);
-      const email = str(body.email, 254)?.trim().toLowerCase() ?? '';
+      const email = emailOf(body.email);
       if (!EMAIL.test(email)) throw authError(400, 'validation_failed', 'Unable to validate email address: invalid format');
       if (body.create_user === false) {
         const exists = await pool.query(`select 1 from auth.identities where provider = 'email' and provider_id = $1`, [email]);
@@ -159,7 +245,7 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
     if (route === 'POST /verify') {
       await limit(`code:verify:ip:${ip}`, 60, 3600);
       const body = await readJson(req, AUTH_BODY_LIMIT);
-      const email = str(body.email, 254)?.trim().toLowerCase() ?? '';
+      const email = emailOf(body.email);
       const code = str(body.token, 16) ?? '';
       const type = body.type;
       if (!EMAIL.test(email) || !['email', 'magiclink', 'signup'].includes(String(type)) || !(await codes.verify(email, code))) {
@@ -186,6 +272,31 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
           throw authError(400, result.error, msg);
         }
         return send(res, 200, result.session, AUTH_HEADERS);
+      }
+      if (grant === 'password') {
+        if (!config.passwordSignIn) throw authError(400, 'provider_disabled', 'Email logins are disabled');
+        await limit(`password:ip:${ip}`, 60, 3600);
+        const body = await readJson(req, AUTH_BODY_LIMIT);
+        const email = emailOf(body.email);
+        const password = typeof body.password === 'string' ? body.password : '';
+        if (!EMAIL.test(email)) throw authError(400, 'invalid_credentials', 'Invalid login credentials');
+        await limit(`password:email:${hashKey(email)}`, 10, 900);
+        const account = await findByEmail(pool, email);
+        // Unknown accounts and over-long input still pay for one hash, so timing reveals nothing.
+        const usable = account?.passwordHash && [...password].length <= PASSWORD_MAX_LENGTH ? account.passwordHash : null;
+        const matches = await verifyPassword(password, usable);
+        if (!account || !matches) throw authError(400, 'invalid_credentials', 'Invalid login credentials');
+        const session = await transaction(pool, async (client) => {
+          // The password must still be the one just checked (an email proof may have cleared it).
+          const { rows } = await client.query<{ encrypted_password: string | null }>('select encrypted_password from auth.users where id = $1 for update', [
+            account.id,
+          ]);
+          if (rows[0]?.encrypted_password !== usable) return null;
+          await markPasswordSignIn(client, account.id, email);
+          return sessions.create(client, account.id, 'password');
+        });
+        if (!session) throw authError(400, 'invalid_credentials', 'Invalid login credentials');
+        return send(res, 200, session, AUTH_HEADERS);
       }
       if (grant === 'id_token') {
         await limit(`apple:ip:${ip}`, 60, 3600);
@@ -228,7 +339,13 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
       return send(
         res,
         200,
-        { external: { email: true, apple: config.appleAudiences.length > 0 }, disable_signup: false, mailer_autoconfirm: false, phone_autoconfirm: false },
+        {
+          external: { email: true, apple: config.appleAudiences.length > 0 },
+          disable_signup: false,
+          // Password sign-ups start a session at once; no confirmation email is sent.
+          mailer_autoconfirm: config.passwordSignIn,
+          phone_autoconfirm: false,
+        },
         AUTH_HEADERS,
       );
     }
@@ -269,6 +386,16 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
         route = '/health';
         await pool.query('select 1');
         return send(res, 200, { ok: true });
+      }
+      const legalMatch = /^\/legal\/(privacy|terms)$/.exec(path);
+      if (legalMatch && (req.method === 'GET' || req.method === 'HEAD')) {
+        const html = deps.legal?.[legalMatch[1] as LegalDoc];
+        if (!html) throw new HttpError(404, { message: 'Not found' });
+        res.setHeader('Cache-Control', 'public, max-age=300');
+        res.setHeader('Content-Security-Policy', LEGAL_CSP);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(req.method === 'HEAD' ? undefined : html);
+        return;
       }
       const apikey = (req.headers.apikey as string | undefined) ?? url.searchParams.get('apikey') ?? '';
       if (!safeEqual(apikey, config.publicApiKey)) throw new HttpError(401, { message: 'Invalid API key' });

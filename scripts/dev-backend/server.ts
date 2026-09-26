@@ -10,8 +10,9 @@ import { databaseUrl } from '../db/apply-migrations';
 
 /**
  * Local development backend: the production API (server/) in development mode, over a local
- * PostgreSQL migrated by the production migrator. Every address accepts the sign-in code 123456,
- * codes are printed instead of emailed, and league scoring is switched on.
+ * PostgreSQL migrated by the production migrator. Create accounts with a password in the app;
+ * seeded runners share one demo password. With EXPO_PUBLIC_EMAIL_SIGN_IN=code, every address
+ * accepts the sign-in code 123456 (codes are printed, never emailed). League scoring is on.
  *
  *   npm run db:local            # start the local Postgres (scripts/db/local-db.sh)
  *   npm run dev:backend         # the API on http://127.0.0.1:54400
@@ -59,9 +60,11 @@ async function main(): Promise<void> {
   }
 
   const seedEmail = option('--seed');
+  let seeded: { email: string; password: string } | null = null;
   if (seedEmail) {
-    const { seedDemo } = await import('./seed');
+    const { DEMO_PASSWORD, seedDemo } = await import('./seed');
     await seedDemo(pool, { viewerEmail: seedEmail.toLowerCase() });
+    seeded = { email: seedEmail.toLowerCase(), password: DEMO_PASSWORD };
   }
 
   const { server } = await createService({ config, pool, log });
@@ -71,7 +74,8 @@ async function main(): Promise<void> {
     console.log('Start the app against it with:\n');
     console.log(`  EXPO_PUBLIC_API_URL=http://127.0.0.1:${config.port}`);
     console.log(`  EXPO_PUBLIC_API_KEY=${config.publicApiKey}\n`);
-    console.log(`Sign-in code for any email: ${config.devFixedCode}\n`);
+    if (seeded) console.log(`Seeded runner: ${seeded.email} / password ${seeded.password}`);
+    console.log(`Or create an account in the app. With EXPO_PUBLIC_EMAIL_SIGN_IN=code, any email accepts code ${config.devFixedCode}.\n`);
   });
   const shutdown = () => {
     server.close();

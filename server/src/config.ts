@@ -28,6 +28,8 @@ export interface ServerConfig {
   email: { provider: EmailProvider; apiKey: string | null; from: string | null; replyTo: string | null };
   /** Sign in with Apple audiences (the iOS bundle identifiers). Empty disables Apple. */
   appleAudiences: string[];
+  /** Email + password accounts (sign-up, sign-in, change password). */
+  passwordSignIn: boolean;
   corsOrigins: string[] | '*';
   /** Behind Railway's proxy the client address is the last X-Forwarded-For hop. */
   trustProxy: boolean;
@@ -135,6 +137,7 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     reviewAccount: reviewEmail && reviewCode ? { email: reviewEmail, code: reviewCode } : null,
     email,
     appleAudiences: list(env.APPLE_AUDIENCES),
+    passwordSignIn: bool(env, 'PASSWORD_SIGN_IN', true),
     corsOrigins: cors === '*' ? '*' : list(cors),
     trustProxy: bool(env, 'TRUST_PROXY', env.RAILWAY_ENVIRONMENT_NAME !== undefined || env.RAILWAY_ENVIRONMENT !== undefined),
     runJobs: bool(env, 'RUN_JOBS', true),

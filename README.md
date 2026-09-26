@@ -26,8 +26,8 @@ npm run dev:backend -- --reset --seed alex@demo.paceleague.test
 ```
 
 The development backend is the production API service (`server/`) in development mode: it applies
-the migrations, accepts code `123456` for every address and prints the two values the app needs.
-Start the app with them:
+the migrations, seeds the demo crew and prints the two values the app needs. Start the app with
+them:
 
 ```bash
 EXPO_PUBLIC_API_URL=http://127.0.0.1:54400 \
@@ -35,16 +35,19 @@ EXPO_PUBLIC_API_KEY=pl_dev_public_key \
 npx expo start --web
 ```
 
-Sign in with `alex@demo.paceleague.test` and code `123456` to land in the packet's fictional
-"Friday Crew" (from Wednesday on: 820 XP, 2 of 3 active days — the seed skips runs that would lie
-in the future). Any other email creates a new runner and goes through
-onboarding. The web build is a development preview: it cannot record with the screen locked and
+Choose **Sign in** with `alex@demo.paceleague.test` and the password `run-with-the-crew` to land in
+the packet's fictional "Friday Crew" (from Wednesday on: 820 XP, 2 of 3 active days — the seed skips
+runs that would lie in the future). **Create account** with any other email makes a new runner who
+goes through onboarding. The web build is a development preview: it cannot record with the screen locked and
 has no encryption at rest (see [docs/IMPLEMENTATION_DECISIONS.md](docs/IMPLEMENTATION_DECISIONS.md)).
 
 ## iPhone development build
 
 Background location, SQLCipher, Sign in with Apple, notifications and the share sheet need a
-native build:
+native build. To put the app on your own iPhone, build the `pilot` profile — already pointed at
+staging — and install it through TestFlight; the steps are in
+[OPERATIONS.md](docs/OPERATIONS.md#iphone-builds-for-testers-testflight). For day-to-day
+development with a dev client:
 
 ```bash
 cp .env.example .env              # fill in EXPO_PUBLIC_API_URL / _API_KEY and bundle id
@@ -58,10 +61,13 @@ Profiles live in [`eas.json`](eas.json). Only the API's public key ever goes int
 ## Backend on Railway
 
 The API runs as one Railway service next to a Railway Postgres. Staging is live at
-`https://api-staging-753f.up.railway.app` (email codes currently go to the service logs; add an
-email provider key to send them). Pushes that touch `server/` or `db/` redeploy it, and each deploy
-runs the migrations first. [docs/OPERATIONS.md](docs/OPERATIONS.md) is the runbook: variables,
-email and Apple setup, database access, jobs, backups, creating production and incidents.
+`https://api-staging-753f.up.railway.app`, and the `pilot` build profile points at it. During the
+beta, runners sign in with email and a password (or Apple), so no email service is needed. The API
+also serves the draft Privacy Policy and Terms from [`legal/`](legal/) at `/legal/privacy` and
+`/legal/terms`. Pushes that touch `server/`, `db/` or `legal/` redeploy it, and each deploy runs
+the migrations first. [docs/OPERATIONS.md](docs/OPERATIONS.md) is the runbook: TestFlight builds,
+variables, password resets, legal pages, database access, jobs, backups, creating production and
+incidents.
 
 ## Scripts
 
@@ -69,10 +75,10 @@ email and Apple setup, database access, jobs, backups, creating production and i
 |---|---|
 | `npm run verify` | Typecheck, lint, secret guard and unit tests (what CI's app job runs) |
 | `npm test` | Unit tests: domain rules, recorder, sync, formatting, export, design tokens |
-| `npm run test:db` | Builds a real PostgreSQL database with the production migrator and runs the backend and API suites (RLS, grants, concurrency, parity, lifecycle, client ↔ server sync, sign-in codes, sessions, Apple, RPC). `DB_PLATFORM=permissive` adds Supabase-style default grants to prove RLS alone protects the data |
+| `npm run test:db` | Builds a real PostgreSQL database with the production migrator and runs the backend and API suites (RLS, grants, concurrency, parity, lifecycle, client ↔ server sync, passwords, sign-in codes, sessions, Apple, RPC, legal pages). `DB_PLATFORM=permissive` adds Supabase-style default grants to prove RLS alone protects the data |
 | `npm run test:all` | Both suites |
 | `npm run dev:backend` | The API service in development mode over the local database (`--reset`, `--seed <email>`) |
-| `npm run smoke:api -- send` / `verify <codes>` | End-to-end check of a deployed API over HTTPS with the app's own client (see OPERATIONS.md) |
+| `npm run smoke:api` | End-to-end check of a deployed API over HTTPS with the app's own client, using two throwaway accounts (see OPERATIONS.md) |
 | `npm run build --prefix server` | Bundles the API service into `server/dist`, as the Dockerfile does (after `npm ci --prefix server`) |
 | `npm run e2e:web` | Browser walkthrough of the real app against the dev backend and a running `expo start --web`: records the packet's 5.24 km run with a scripted GPS feed, syncs, visits every V1 screen, saves screenshots to `artifacts/screenshots/web` (first run `npx playwright-core install chromium`, or point `PLAYWRIGHT_BROWSERS_PATH` at an existing install) |
 | `npm run check:secrets` | Fails if app code references privileged keys, admin APIs or server-only modules |
@@ -87,9 +93,11 @@ src/db/             Account-scoped encrypted journal (sessions, points, saved ru
 src/features/       Recorder service, sync engine, account runtime, leagues, privacy, reminders
 src/api/            Typed RPC client with Zod-validated responses and stable error codes
 src/components/     Design-system components; src/design/ holds tokens and typography
-server/             The API service: sign-in codes, Apple, sessions, RPC, migrator, jobs, Dockerfile
+server/             The API service: passwords, sign-in codes, Apple, sessions, RPC, migrator, jobs,
+                    legal pages, operator commands, Dockerfile
 db/                 Platform layer (roles, auth schema), migrations (schema, RLS, RPCs, SQL
                     validator and scoring), sign-in email template, test-only grants
+legal/              Privacy Policy and Terms (drafts, Markdown), served by the API
 scripts/            Local DB harness, dev backend, smoke test, e2e walkthrough, secret guard, icons
 tests/              Backend and API suites (real Postgres) and unit tests
 docs/               Architecture, status/evidence, device protocol, operations, decisions
