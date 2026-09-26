@@ -8,12 +8,14 @@ import { createPaceApi, type PaceApi } from './pace-api';
 import { supabaseTransport } from './supabase-transport';
 
 /**
- * The only backend client in the app: public anon key + the user's session. All privileged
- * operations happen server-side behind RLS and SECURITY DEFINER functions.
+ * The only backend client in the app: the public API key + the user's session. The PaceLeague
+ * API (server/) implements the Supabase Auth and PostgREST RPC protocols, so supabase-js is used
+ * purely as a well-tested client for them. All privileged operations happen server-side behind
+ * row-level security and SECURITY DEFINER functions.
  */
 function build(): { supabase: SupabaseClient; api: PaceApi } | null {
   if (!isBackendConfigured) return null;
-  const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey, {
+  const supabase = createClient(env.apiUrl, env.apiKey, {
     auth: {
       storage: Platform.OS === 'web' ? undefined : chunkedSecureStorage,
       autoRefreshToken: true,

@@ -67,7 +67,7 @@ function RootNavigator() {
     return (
       <AppMessage
         title="Backend not configured"
-        body="Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY (see .env.example), then restart the app."
+        body="Set EXPO_PUBLIC_API_URL and EXPO_PUBLIC_API_KEY (see .env.example), then restart the app."
       />
     );
   }

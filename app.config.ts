@@ -4,9 +4,9 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  * Expo app configuration.
  *
  * Public runtime values come from EXPO_PUBLIC_* environment variables (see .env.example).
- * Only the Supabase *anon* key may appear here: it is designed to be public and every
- * table/function is protected by RLS and explicit identity checks. A service-role key
- * must never be referenced by app code — `npm run check:secrets` enforces this.
+ * Only the public API key may appear here: it identifies the app, and every RPC is
+ * protected by row-level security and server-side identity checks. No privileged key may
+ * ever be referenced by app code — `npm run check:secrets` enforces this.
  */
 const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV ?? 'development';
 const IS_PROD = APP_ENV === 'production';
