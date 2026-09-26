@@ -41,7 +41,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const [recordingAccount, setRecordingAccount] = useState<string | null | undefined>(undefined);
-  const [state, setState] = useState<AccountState>({ status: 'none' });
+  const [opened, setOpened] = useState<{ accountId: string; attempt: number; state: AccountState } | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -52,14 +52,21 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const accountId = signedInId ?? (auth.status === 'signed_out' ? (recordingAccount ?? null) : null);
   const sessionLapsed = auth.status === 'signed_out' && accountId !== null;
 
+  // Derived: the opened account only counts while it is still the one we want.
+  const state = useMemo<AccountState>(
+    () =>
+      !accountId
+        ? { status: 'none' }
+        : opened && opened.accountId === accountId && opened.attempt === attempt
+          ? opened.state
+          : { status: 'opening', accountId },
+    [accountId, opened, attempt],
+  );
+
   useEffect(() => {
-    if (!accountId) {
-      setState({ status: 'none' });
-      return;
-    }
+    if (!accountId) return;
     let cancelled = false;
     let engine: SyncEngine | null = null;
-    setState({ status: 'opening', accountId });
     openAccountRuntime(accountId).then(
       (runtime) => {
         if (cancelled) return;
@@ -73,9 +80,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
               onEvent: (name, props) => runtime.telemetry.track(name, props),
             })
           : null;
-        setState({ status: 'ready', accountId, runtime, engine, actions: engine ? createRunActions(runtime.journal, engine) : null });
+        setOpened({
+          accountId,
+          attempt,
+          state: { status: 'ready', accountId, runtime, engine, actions: engine ? createRunActions(runtime.journal, engine) : null },
+        });
       },
-      (error: Error) => !cancelled && setState({ status: 'error', accountId, error }),
+      (error: Error) => {
+        if (!cancelled) setOpened({ accountId, attempt, state: { status: 'error', accountId, error } });
+      },
     );
     return () => {
       cancelled = true;
