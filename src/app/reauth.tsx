@@ -48,8 +48,10 @@ export default function ReauthScreen() {
 
   const user = auth.status === 'signed_in' ? auth.session.user : null;
   const email = auth.status === 'signed_in' ? auth.email : null;
-  const providers = user?.app_metadata.providers ?? [user?.app_metadata.provider];
-  const offerApple = appleAvailable && providers.includes('apple');
+  // The Apple user identifier linked to this account (Supabase stores it as the identity's `sub`).
+  const appleIdentity = user?.identities?.find((i) => i.provider === 'apple');
+  const appleSub = typeof appleIdentity?.identity_data?.sub === 'string' ? appleIdentity.identity_data.sub : undefined;
+  const offerApple = appleAvailable && appleSub !== undefined;
   const purpose = PURPOSE[next ?? ''] ?? 'to continue';
 
   const finish = () => {
@@ -90,7 +92,7 @@ export default function ReauthScreen() {
   const apple = async () => {
     setError(null);
     try {
-      await signInWithApple();
+      await signInWithApple(appleSub);
       finish();
     } catch (e) {
       if (e instanceof AuthError && e.code === 'cancelled') return;

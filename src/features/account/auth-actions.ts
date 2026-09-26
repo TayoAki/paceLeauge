@@ -6,7 +6,16 @@ import { randomHex, sha256Hex } from '@/lib/crypto';
 
 export class AuthError extends Error {
   constructor(
-    readonly code: 'not_configured' | 'invalid_email' | 'invalid_code' | 'rate_limited' | 'network' | 'cancelled' | 'unavailable' | 'unknown',
+    readonly code:
+      | 'not_configured'
+      | 'invalid_email'
+      | 'invalid_code'
+      | 'rate_limited'
+      | 'network'
+      | 'cancelled'
+      | 'unavailable'
+      | 'wrong_account'
+      | 'unknown',
     message: string,
   ) {
     super(message);
@@ -55,8 +64,12 @@ export async function isAppleSignInAvailable(): Promise<boolean> {
 /**
  * Native Sign in with Apple. Apple receives the SHA-256 of a one-time nonce; Supabase
  * receives the raw nonce and verifies the pair. Only the email scope is requested.
+ *
+ * `expectedAppleUser` (re-authentication) is the Apple user identifier already linked to the
+ * signed-in account: a different Apple ID is refused *before* any token exchange, so confirming
+ * identity can never switch accounts.
  */
-export async function signInWithApple(): Promise<void> {
+export async function signInWithApple(expectedAppleUser?: string): Promise<void> {
   const rawNonce = randomHex(32);
   let credential: AppleAuthentication.AppleAuthenticationCredential;
   try {
@@ -69,6 +82,9 @@ export async function signInWithApple(): Promise<void> {
     throw new AuthError('unavailable', 'Sign in with Apple isn’t available right now.');
   }
   if (!credential.identityToken) throw new AuthError('unavailable', 'Apple didn’t return a sign-in token.');
+  if (expectedAppleUser !== undefined && credential.user !== expectedAppleUser) {
+    throw new AuthError('wrong_account', 'That Apple ID belongs to a different account. Use the Apple ID you signed up with, or confirm by email.');
+  }
   const { error } = await client().auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken, nonce: rawNonce });
   if (error) throw mapAuthError(error);
 }
