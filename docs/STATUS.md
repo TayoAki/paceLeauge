@@ -24,9 +24,10 @@ Those checks are specified in [DEVICE_TEST_PROTOCOL.md](DEVICE_TEST_PROTOCOL.md)
 
 The development backend is the production API service run in development mode over the same
 migrations. Staging runs on Railway (API + PostgreSQL 18). During the beta, runners sign in with
-email and a password, so no email service is needed. Still to do there: `APPLE_AUDIENCES` holds a
-placeholder bundle identifier, and the Privacy Policy and Terms it serves are drafts with
-placeholders for the operator's details (see [OPERATIONS.md](OPERATIONS.md)).
+email and a password, so no email service is needed. Still to do there: the Privacy Policy and
+Terms it serves are drafts with placeholders for the operator's details (see
+[OPERATIONS.md](OPERATIONS.md)). The iOS app is `com.tayoaki.paceleague` in the Expo project
+`@tayom/paceleague`; no build has run yet.
 
 ## Requirements
 
@@ -85,8 +86,8 @@ also show each runner's tier.
 
 1. **F01 on two physical iPhones** — the packet's first gate. Nothing about background GPS,
    distance accuracy or battery is claimed until it is run.
-2. **Finish staging** — set the real bundle identifier in `APPLE_AUDIENCES`, fill in and publish
-   the Privacy Policy and Terms (`legal/`), then the load checks (NFR-005, NFR-009).
+2. **Finish staging** — fill in and publish the Privacy Policy and Terms (`legal/`), then the load
+   checks (NFR-005, NFR-009).
 3. **Operations** — support/reviewer contacts, moderation rota, alerting on
    `private.health_report()` and the API's error logs, Railway backups (daily + weekly), the
    production environment, and legal pages (terms/privacy URLs).

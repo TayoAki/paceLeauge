@@ -54,7 +54,7 @@ migration; add a new one.
 | `EMAIL_API_KEY` | — | provider key | Secret: set it only in Railway, as a sealed variable |
 | `EMAIL_FROM` | — | e.g. `PaceLeague <codes@your-domain>` | Must be on a domain verified with the provider |
 | `EMAIL_REPLY_TO` | optional | support address | |
-| `APPLE_AUDIENCES` | `com.example.paceleague.dev` (placeholder) | production bundle id | Comma-separated iOS bundle identifiers; **replace the placeholder** with the real ones |
+| `APPLE_AUDIENCES` | `com.tayoaki.paceleague,com.tayoaki.paceleague.dev` | `com.tayoaki.paceleague` | Comma-separated iOS bundle identifiers that may use Sign in with Apple |
 | `CORS_ORIGINS` | `*` | unset | Only the web preview needs CORS; the iPhone app doesn't |
 | `BOOTSTRAP_ENABLE_COMPETITION` | `true` | unset | Applied once per database; refused in production |
 | `PORT` | `8080` | `8080` | The public domain targets this port |
@@ -172,25 +172,22 @@ For emailed codes: `npm run smoke:api -- send`, then `npm run smoke:api -- verif
 ## iPhone builds for testers (TestFlight)
 
 The `pilot` profile in `eas.json` already points at staging: the API URL, its public key and the
-legal pages. One-time setup:
-
-1. Join the Apple Developer Program and create an Expo account.
-2. Pick the app's bundle identifier (for example `com.yourname.paceleague`). Add it to the
-   `pilot` profile's `env` in `eas.json` as `IOS_BUNDLE_IDENTIFIER`, and to `APPLE_AUDIENCES` on
-   Railway so Sign in with Apple works.
-3. `npm i -g eas-cli && eas login`, then `eas init` in the repository. Add the project ID it
-   prints to the `pilot` profile's `env` as `EAS_PROJECT_ID` (the app config is dynamic, so EAS
-   can't write it for you).
-
-Each build:
+legal pages. `app.config.ts` holds the app's identity: bundle identifier `com.tayoaki.paceleague`
+(development builds use `com.tayoaki.paceleague.dev`, so they install alongside it) in the Expo
+project `@tayom/paceleague`; staging's `APPLE_AUDIENCES` lists both identifiers. You need an Apple
+Developer Program membership and the Expo account, then from the repository (a Codespace works —
+the build itself runs on Expo's servers):
 
 ```bash
-eas build --platform ios --profile pilot       # EAS creates and manages the signing credentials
-eas submit --platform ios --profile pilot --latest
+npm ci
+npm i -g eas-cli && eas login
+eas build --platform ios --profile pilot --auto-submit
 ```
 
-`eas submit` uploads the build to App Store Connect (creating the app there the first time). When
-it has processed, open App Store Connect → TestFlight, add yourself (and up to 100 people on your
+The first build asks you to sign in to your Apple Developer account and offers to create the
+signing certificate, provisioning profile and an App Store Connect API key — accept. After the
+build, EAS uploads it to App Store Connect, creating the app there the first time (to resubmit a
+finished build: `eas submit --platform ios --profile pilot --latest`). When it has processed, open App Store Connect → TestFlight, add yourself (and up to 100 people on your
 App Store Connect team) to an internal testing group, and install through the TestFlight app — no
 review needed. For testers outside your team, create an external group, fill in the Test
 Information (feedback email, description, and the published privacy page's URL) and submit the

@@ -11,14 +11,19 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV ?? 'development';
 const IS_PROD = APP_ENV === 'production';
 
-const LOCATION_ALWAYS_COPY =
-  'PaceLeague records your run’s route while your screen is locked. Location is only collected during a run you start.';
+/** The App Store app (TestFlight and release builds); development builds install alongside it. */
+const BUNDLE_ID = process.env.IOS_BUNDLE_IDENTIFIER ?? (APP_ENV === 'development' ? 'com.tayoaki.paceleague.dev' : 'com.tayoaki.paceleague');
+/** The Expo project @tayom/paceleague. Not a secret: it only tells EAS which project this is. */
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '605e184b-7dc5-4cf9-b0a6-878729602fa4';
+
+const LOCATION_ALWAYS_COPY = 'PaceLeague records your run’s route while your screen is locked. Location is only collected during a run you start.';
 const LOCATION_WHEN_IN_USE_COPY = 'PaceLeague uses your location to prepare and record your run.';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: IS_PROD ? 'PaceLeague' : `PaceLeague (${APP_ENV})`,
   slug: 'paceleague',
+  owner: 'tayom',
   scheme: 'paceleague',
   version: '0.1.0',
   orientation: 'portrait',
@@ -26,7 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: 'dark',
   backgroundColor: '#101315',
   ios: {
-    bundleIdentifier: process.env.IOS_BUNDLE_IDENTIFIER ?? 'com.example.paceleague.dev',
+    bundleIdentifier: BUNDLE_ID,
     supportsTablet: false,
     usesAppleSignIn: true,
     config: { usesNonExemptEncryption: false },
@@ -97,6 +102,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     appEnv: APP_ENV,
-    eas: process.env.EAS_PROJECT_ID ? { projectId: process.env.EAS_PROJECT_ID } : undefined,
+    eas: { projectId: EAS_PROJECT_ID },
   },
 });
