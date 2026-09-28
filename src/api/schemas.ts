@@ -321,6 +321,8 @@ export const statsSchema = z.object({
   buckets: z.array(z.object({ start: z.string(), runs: z.number(), days: z.number(), distance_m: z.number(), active_ms: z.number() })),
   total: statsTotalSchema,
   previous_year: statsTotalSchema,
+  // Walks, hikes, rides and other workouts (Phase 2.7): the range's totals for each type.
+  by_activity: z.array(z.object({ activity: activityTypeSchema, runs: z.number(), distance_m: z.number(), active_ms: z.number() })).optional(),
 });
 export type Stats = z.infer<typeof statsSchema>;
 

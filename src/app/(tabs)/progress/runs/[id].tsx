@@ -18,19 +18,19 @@ import { InlineStatus, TextField } from '@/components/ui/elements';
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { fromCompact } from '@/domain/route-codec';
 import { PROFILE_RULES } from '@/domain/config';
-import { describeDistance, describeDuration, describePace, formatDistance, formatDuration, formatPace } from '@/domain/format';
+import { describeDistance, describeDuration, describePace, formatDistance, formatDuration, formatPace, formatSpeed } from '@/domain/format';
 import { computeSplits } from '@/domain/splits';
 import type { TrackPoint } from '@/domain/types';
 import { validateRun } from '@/domain/validator';
 import { useAccountServices } from '@/features/account/account-provider';
 import { useLocalRun, useMe, useRunHistory, useRunRoute, useServerRun } from '@/features/data/hooks';
 import { useRunPoints } from '@/features/recording/use-run-points';
+import { ACTIVITY_LABEL } from '@/features/progress/activities';
 import { xpPanelState } from '@/features/recording/xp-state';
 import { serverRunOf } from '@/features/sync/sync-engine';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
-const ACTIVITY_LABEL = { run: 'Run', walk: 'Walk', hike: 'Hike', ride: 'Ride', other: 'Other' } as const;
 
 function when(t: number): string {
   return new Date(t).toLocaleString('en-US', {
@@ -117,6 +117,9 @@ export default function RunDetailScreen() {
   const activeMs = server?.active_ms ?? local?.activeMs ?? 0;
   const distance = formatDistance(distanceM, units);
   const pace = formatPace(activeMs, distanceM, units);
+  const activity = server?.activity_type ?? local?.origin?.activityType ?? 'run';
+  // Rides read as speed; everything on foot as pace.
+  const speed = activity === 'ride' ? formatSpeed(activeMs, distanceM, units) : null;
   const offline = network.isConnected === false;
   const xp = xpPanelState(local ?? null, server, offline);
 
@@ -159,7 +162,7 @@ export default function RunDetailScreen() {
   return (
     <Screen edges={['top', 'bottom']}>
       <NavHeader
-        title="Run"
+        title={ACTIVITY_LABEL[activity]}
         right={
           <IconButton
             icon={Share2}
@@ -221,12 +224,16 @@ export default function RunDetailScreen() {
             align="flex-start"
             accessibilityLabel={`Active time, ${describeDuration(activeMs)}`}
           />
-          <MetricBlock
-            value={pace.value}
-            label={`Avg ${pace.unit.replace('/', '/ ')}`}
-            align="flex-start"
-            accessibilityLabel={`Average pace, ${describePace(activeMs, distanceM, units)}`}
-          />
+          {speed ? (
+            <MetricBlock value={speed.value} label={`Avg ${speed.unit}`} align="flex-start" accessibilityLabel={`Average speed, ${speed.value} ${speed.unitLong}`} />
+          ) : (
+            <MetricBlock
+              value={pace.value}
+              label={`Avg ${pace.unit.replace('/', '/ ')}`}
+              align="flex-start"
+              accessibilityLabel={`Average pace, ${describePace(activeMs, distanceM, units)}`}
+            />
+          )}
         </View>
       </Card>
 

@@ -129,6 +129,8 @@ export type XpPanelState =
   | { kind: 'pending'; estimate: number | null }
   | { kind: 'offline'; estimate: number | null }
   | { kind: 'personal_only'; reason: string }
+  /** A walk, hike, ride or other workout: kept in the log, never scored. */
+  | { kind: 'not_a_run' }
   | { kind: 'review'; reason: string }
   | { kind: 'scoring_paused' }
   | { kind: 'needs_attention'; reason: string };
@@ -167,6 +169,11 @@ export function XpPanel({ state }: { state: XpPanelState }) {
       body: state.kind === 'offline' && state.estimate !== null ? `XP is pending (estimate +${state.estimate}).` : 'XP is pending.',
     },
     personal_only: { icon: Clock, title: 'Saved to your history. This run doesn’t qualify for league XP.', body: 'reason' in state ? state.reason : undefined },
+    not_a_run: {
+      icon: Clock,
+      title: 'Saved to your log.',
+      body: 'Only runs earn league XP and count for your weekly goal. Walks, hikes, rides and other workouts stay in your history and stats.',
+    },
     review: { icon: Hourglass, title: 'Saved. This run is held for review before it earns XP.', body: 'reason' in state ? state.reason : undefined },
     scoring_paused: { icon: Hourglass, title: 'Saved. League scoring is paused.', body: 'Your XP will be added when scoring resumes.' },
     needs_attention: { icon: CircleAlert, title: 'Saved on this phone, but it couldn’t sync.', body: 'reason' in state ? state.reason : undefined },

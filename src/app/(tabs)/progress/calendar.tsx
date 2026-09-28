@@ -3,29 +3,26 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
-import type { ActivityType, ServerRun } from '@/api/schemas';
+import type { ServerRun } from '@/api/schemas';
 import { RunRow } from '@/components/progress/progress-components';
 import { IconButton } from '@/components/ui/buttons';
-import { EmptyState, InlineStatus, SegmentedControl, TextField } from '@/components/ui/elements';
+import { ChoiceChips, EmptyState, InlineStatus, TextField } from '@/components/ui/elements';
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { addDays, competitionDate, isoDateFromParts, parseIsoDate, startOfDay } from '@/domain/calendar';
 import { describeDistance, formatDistance } from '@/domain/format';
 import type { IsoDate } from '@/domain/types';
 import { useMe, useRunsBetween } from '@/features/data/hooks';
+import { ACTIVITY_FILTERS, ACTIVITY_LABEL, activityCount, type ActivityFilter } from '@/features/progress/activities';
 import { addMonths, monthGrid, monthTitle } from '@/features/progress/stats-ranges';
 import { useNow } from '@/lib/use-now';
 import { Text } from '@/design/text';
 import { colors, layout, space } from '@/design/tokens';
 
-type Filter = 'all' | 'run' | 'walk';
+const FILTER_OPTIONS: { value: ActivityFilter; label: string }[] = [{ value: 'all', label: 'All' }, ...ACTIVITY_FILTERS];
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 /** The server returns at most 400 days per query; search looks back this far. */
 const SEARCH_DAYS = 399;
-
-function activityLabel(type: ActivityType | undefined): string {
-  return { run: 'Run', walk: 'Walk', hike: 'Hike', ride: 'Ride', other: 'Other' }[type ?? 'run'];
-}
 
 /** Run calendar with search and filter (docs/ROADMAP.md 1.10). Days follow the league calendar. */
 export default function CalendarScreen() {
@@ -36,7 +33,7 @@ export default function CalendarScreen() {
   const now = parseIsoDate(today);
   const [month, setMonth] = useState({ year: now.year, month: now.month });
   const [selected, setSelected] = useState<IsoDate | null>(null);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<ActivityFilter>('all');
   const [query, setQuery] = useState('');
   const searching = query.trim().length >= 2;
 
@@ -68,6 +65,17 @@ export default function CalendarScreen() {
   const shown = searching ? results : selected ? (byDay.get(selected) ?? []) : runs;
   const monthDistance = runs.reduce((sum, r) => sum + r.distance_m, 0);
   const md = formatDistance(monthDistance, units);
+  // With everything shown, running stays apart from the rest (docs/ROADMAP.md 2.7).
+  const monthRunning = runs.filter((r) => (r.activity_type ?? 'run') === 'run');
+  const runningDistance = formatDistance(
+    monthRunning.reduce((sum, r) => sum + r.distance_m, 0),
+    units,
+  );
+  const otherCount = runs.length - monthRunning.length;
+  const monthSummary =
+    filter === 'all'
+      ? `${activityCount('run', monthRunning.length)} · ${runningDistance.value} ${runningDistance.unit}${otherCount ? ` · ${otherCount} other` : ''}`
+      : `${activityCount(filter, runs.length)} · ${md.value} ${md.unit}`;
   const atCurrentMonth = month.year === now.year && month.month === now.month;
 
   const step = (delta: number) => {
@@ -92,27 +100,18 @@ export default function CalendarScreen() {
         returnKeyType="search"
         hint="Searches the last 13 months."
       />
-      <SegmentedControl<Filter>
-        label="Show"
-        value={filter}
-        onChange={setFilter}
-        options={[
-          { value: 'all', label: 'All' },
-          { value: 'run', label: 'Runs' },
-          { value: 'walk', label: 'Walks' },
-        ]}
-      />
+      <ChoiceChips<ActivityFilter> label="Show" value={filter} onChange={setFilter} options={FILTER_OPTIONS} />
 
       {!searching ? (
         <Card>
           <View style={styles.monthHeader}>
             <IconButton icon={ChevronLeft} label="Previous month" tone="plain" onPress={() => step(-1)} />
-            <View style={{ flex: 1 }} accessible accessibilityRole="header" accessibilityLabel={`${monthTitle(month.year, month.month)}. ${runs.length} activities, ${describeDistance(monthDistance, units)}.`}>
+            <View style={{ flex: 1 }} accessible accessibilityRole="header" accessibilityLabel={`${monthTitle(month.year, month.month)}. ${monthSummary.replaceAll(' · ', ', ')}.`}>
               <Text variant="section" align="center">
                 {monthTitle(month.year, month.month)}
               </Text>
               <Text variant="caption" tone="secondary" align="center">
-                {runs.length} {runs.length === 1 ? 'activity' : 'activities'} · {md.value} {md.unit}
+                {monthSummary}
               </Text>
             </View>
             <IconButton icon={ChevronRight} label="Next month" tone="plain" onPress={() => step(1)} disabled={atCurrentMonth} />
@@ -180,7 +179,7 @@ export default function CalendarScreen() {
               />
               {r.activity_type && r.activity_type !== 'run' ? (
                 <Text variant="caption" tone="secondary" style={styles.kind}>
-                  {activityLabel(r.activity_type)} · {new Date(r.started_at_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {ACTIVITY_LABEL[r.activity_type]} · {new Date(r.started_at_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </Text>
               ) : null}
             </View>

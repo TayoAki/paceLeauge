@@ -1,7 +1,7 @@
 import { steadyRun } from '@/domain/synthetic';
 
 import { expectCode, TestDb, type TestUser } from './helpers/db';
-import { uploadRun } from './helpers/runs';
+import { routelessRun, uploadRun } from './helpers/runs';
 
 let db: TestDb;
 
@@ -84,6 +84,40 @@ describe('stats', () => {
     expect(Number(stats.total.distance_m)).toBeGreaterThan(7_900);
     expect(Number(stats.total.longest_m)).toBeGreaterThan(4_900);
     expect(stats.previous_year.runs).toBe(1);
+  });
+
+  it('keeps running apart from walks, hikes, rides and other workouts', async () => {
+    const runner = await db.createRunner('Mixed Max');
+    await uploadRun(db, runner, steadyRun(Date.UTC(2026, 6, 6, 14), 5_000, 1_500));
+    await uploadRun(db, runner, steadyRun(Date.UTC(2026, 6, 7, 14), 6_000, 1_800));
+    const imported = (activity: string, id: string) => ({ p_source: 'health_import', p_activity_type: activity, p_external_id: id });
+    await uploadRun(db, runner, steadyRun(Date.UTC(2026, 6, 8, 14), 3_000, 2_400), { extra: imported('walk', 'HK-W1') });
+    await uploadRun(db, runner, steadyRun(Date.UTC(2026, 6, 9, 14), 9_000, 5_400), { extra: imported('hike', 'HK-H1') });
+    await uploadRun(db, runner, steadyRun(Date.UTC(2026, 6, 10, 14), 20_000, 3_000), { extra: imported('ride', 'HK-R1') });
+    await uploadRun(db, runner, routelessRun(Date.UTC(2026, 6, 11, 14), 0, 2_700), { extra: imported('other', 'HK-O1') });
+
+    const all = await db.rpc(runner, 'get_stats', { p_from: '2026-07-01', p_to: '2026-07-31', p_bucket: 'month', p_activity: 'all' });
+    expect(all.total.runs).toBe(6);
+    expect(all.by_activity.map((a: { activity: string; runs: number }) => [a.activity, a.runs])).toEqual([
+      ['run', 2],
+      ['walk', 1],
+      ['hike', 1],
+      ['ride', 1],
+      ['other', 1],
+    ]);
+    expect(Number(all.by_activity[0].distance_m)).toBeCloseTo(11_000, -2);
+    // Filtering by type narrows the totals, while the breakdown still covers everything.
+    const hikes = await db.rpc(runner, 'get_stats', { p_from: '2026-07-01', p_to: '2026-07-31', p_bucket: 'month', p_activity: 'hike' });
+    expect(hikes.total.runs).toBe(1);
+    expect(hikes.by_activity).toHaveLength(5);
+    const between = await db.rpc(runner, 'list_my_runs_between', {
+      p_from_ms: Date.UTC(2026, 6, 1),
+      p_to_ms: Date.UTC(2026, 7, 1),
+      p_activity: 'ride',
+    });
+    expect(between.map((r: { activity_type: string }) => r.activity_type)).toEqual(['ride']);
+    // Only runs earn XP.
+    expect((await db.rpc(runner, 'get_me')).lifetime_xp).toBe(75 + 85);
   });
 
   it('rejects oversized ranges and unknown buckets, and is private', async () => {

@@ -3,18 +3,19 @@ import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import type { Stats } from '@/api/schemas';
 import { BarChart, StatTiles } from '@/components/progress/progress-extras';
-import { ChoiceChips, InlineStatus, SegmentedControl, TextField } from '@/components/ui/elements';
+import { ChoiceChips, InlineStatus, TextField } from '@/components/ui/elements';
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { competitionDate } from '@/domain/calendar';
-import { describeDistance, describeDuration, formatDistance, formatDuration, formatPace } from '@/domain/format';
+import { describeDistance, describeDuration, formatDistance, formatDistanceShort, formatDuration, formatPace } from '@/domain/format';
 import type { Units } from '@/domain/types';
 import { useMe, useStats } from '@/features/data/hooks';
+import { ACTIVITY_FILTERS, activityCount, describeKinds, splitRunning, type ActivityFilter, type ActivityTotals } from '@/features/progress/activities';
 import { bucketLabel, bucketLabelLong, rangeFor, type RangeKey } from '@/features/progress/stats-ranges';
 import { useNow } from '@/lib/use-now';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
-type Activity = 'run' | 'walk' | 'all';
+const ACTIVITY_OPTIONS: { value: ActivityFilter; label: string }[] = [...ACTIVITY_FILTERS, { value: 'all', label: 'All' }];
 
 const RANGES: { value: RangeKey; label: string }[] = [
   { value: '12w', label: '12 weeks' },
@@ -36,7 +37,7 @@ export default function StatsScreen() {
   // Re-reads the date once a minute, so the screen follows midnight.
   const today = competitionDate(useNow(60_000));
   const [rangeKey, setRangeKey] = useState<RangeKey>('12w');
-  const [activity, setActivity] = useState<Activity>('run');
+  const [activity, setActivity] = useState<ActivityFilter>('run');
   const [custom, setCustom] = useState({ from: `${today.slice(0, 4)}-01-01`, to: today });
   const range = useMemo(() => rangeFor(rangeKey, today, custom) ?? rangeFor('12w', today)!, [rangeKey, today, custom]);
   const customValid = rangeKey !== 'custom' || rangeFor('custom', today, custom) !== null;
@@ -60,16 +61,7 @@ export default function StatsScreen() {
         </View>
       ) : null}
       {!customValid ? <InlineStatus tone="warning" title="Enter two dates as YYYY-MM-DD, up to ten years apart." body="Showing the last 12 weeks until then." /> : null}
-      <SegmentedControl<Activity>
-        label="Activity"
-        value={activity}
-        onChange={setActivity}
-        options={[
-          { value: 'run', label: 'Runs' },
-          { value: 'walk', label: 'Walks' },
-          { value: 'all', label: 'All' },
-        ]}
-      />
+      <ChoiceChips<ActivityFilter> label="Activity" value={activity} onChange={setActivity} options={ACTIVITY_OPTIONS} />
 
       {stats.data?.source === 'cache' ? <InlineStatus title="Offline — showing saved stats." /> : null}
       {stats.isError && !data ? <InlineStatus tone="danger" title="Couldn’t load your stats." body="Pull to try again." /> : null}
@@ -78,11 +70,36 @@ export default function StatsScreen() {
   );
 }
 
+function SplitRow({ label, detail, totals, units }: { label: string; detail: string; totals: ActivityTotals; units: Units }) {
+  const d = formatDistance(totals.distanceM, units);
+  return (
+    <View style={styles.splitRow} accessible accessibilityLabel={`${label}: ${detail}, ${describeDistance(totals.distanceM, units)}, ${describeDuration(totals.activeMs)}`}>
+      <View style={{ flex: 1 }}>
+        <Text variant="bodyStrong">{label}</Text>
+        <Text variant="caption" tone="secondary">
+          {detail}
+        </Text>
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text variant="bodyStrong" style={{ fontVariant: ['tabular-nums'] }}>
+          {d.value} {d.unit}
+        </Text>
+        <Text variant="caption" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
+          {formatDuration(totals.activeMs)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function StatsBody({ stats, units }: { stats: Stats; units: Units }) {
   const total = stats.total;
+  const split = stats.by_activity ? splitRunning(stats.by_activity) : null;
+  // A pace means something for runs, walks and hikes, not for a mix or a ride.
+  const showPace = stats.activity === 'run' || stats.activity === 'walk' || stats.activity === 'hike';
   const before = stats.previous_year;
-  const d = formatDistance(total.distance_m, units);
-  const longest = formatDistance(total.longest_m, units);
+  const d = formatDistanceShort(total.distance_m, units);
+  const longest = formatDistanceShort(total.longest_m, units);
   const pace = formatPace(total.active_ms, total.distance_m, units);
   const bars = stats.buckets.map((b) => {
     const bd = formatDistance(b.distance_m, units);
@@ -114,10 +131,22 @@ function StatsBody({ stats, units }: { stats: Stats; units: Units }) {
             description: `${total.runs} activities. ${change(total.runs, before.runs) ?? ''}`,
           },
           { label: 'Active days', value: String(total.days), description: `${total.days} active days` },
-          { label: 'Avg pace', value: `${pace.value} ${pace.unit}`, description: `Average pace ${pace.value} ${pace.unitLong}` },
+          ...(showPace ? [{ label: `Avg pace ${pace.unit.replace('/', '/ ')}`, value: pace.value, description: `Average pace ${pace.value} ${pace.unitLong}` }] : []),
           { label: 'Longest', value: `${longest.value} ${longest.unit}`, description: `Longest ${describeDistance(total.longest_m, units)}` },
         ]}
       />
+      {split && split.other.count > 0 ? (
+        <Card>
+          <Text variant="labelStrong" accessibilityRole="header">
+            Running and everything else
+          </Text>
+          <SplitRow label="Running" detail={activityCount('run', split.running.count)} totals={split.running} units={units} />
+          <SplitRow label="Everything else" detail={describeKinds(split.otherKinds)} totals={split.other} units={units} />
+          <Text variant="caption" tone="secondary">
+            Only runs earn league XP and count for your weekly goal.
+          </Text>
+        </Card>
+      ) : null}
       <Card>
         <BarChart title={`Distance by ${stats.bucket}`} bars={bars} />
         <Text variant="caption" tone="secondary">
@@ -125,7 +154,7 @@ function StatsBody({ stats, units }: { stats: Stats; units: Units }) {
           {before.runs === 1 ? 'activity' : 'activities'}.
         </Text>
       </Card>
-      {paced.length > 1 ? (
+      {showPace && paced.length > 1 ? (
         <Card>
           <Text variant="labelStrong" accessibilityRole="header">
             Pace trend
@@ -161,4 +190,5 @@ const styles = StyleSheet.create({
   custom: { flexDirection: 'row', gap: space.md },
   paceRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 36 },
   trend: { width: 70, textAlign: 'right' },
+  splitRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 44 },
 });

@@ -16,6 +16,22 @@ export function formatDistance(metres: number, units: Units): FormattedDistance 
   return units === 'imperial' ? { value, unit: 'mi', unitLong: 'miles' } : { value, unit: 'km', unitLong: 'kilometers' };
 }
 
+/** Like formatDistance, but whole units from 100 up, for tight spaces (103 km, not 103.04 km). */
+export function formatDistanceShort(metres: number, units: Units): FormattedDistance {
+  const full = formatDistance(metres, units);
+  const value = Number(full.value);
+  return value >= 100 ? { ...full, value: String(Math.floor(value)) } : full;
+}
+
+/** Average speed for rides: 20.6 km/h. */
+export function formatSpeed(activeMs: number, metres: number, units: Units): { value: string; unit: string; unitLong: string } {
+  const perUnit = units === 'imperial' ? METRES_PER_MILE : 1000;
+  const hours = activeMs / 3_600_000;
+  const unit = units === 'imperial' ? { unit: 'mph', unitLong: 'miles per hour' } : { unit: 'km/h', unitLong: 'kilometers per hour' };
+  if (hours <= 0 || metres <= 0) return { value: '--', ...unit };
+  return { value: (metres / perUnit / hours).toFixed(1), ...unit };
+}
+
 /** 31:28, or 1:04:05 from one hour. Seconds are floored (time you have actually run). */
 export function formatDuration(ms: number): string {
   const total = Math.floor(Math.max(0, ms) / 1000);

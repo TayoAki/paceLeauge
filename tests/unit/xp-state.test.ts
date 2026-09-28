@@ -54,6 +54,14 @@ function serverRun(overrides: Partial<ServerRun> = {}): ServerRun {
 }
 
 describe('XP panel (saved ≠ synced ≠ accepted)', () => {
+  it('never shows walks, hikes, rides or other workouts as waiting for XP', () => {
+    // A walk with a good route is accepted, but only runs are scored: it must not look pending.
+    expect(xpPanelState(localRun(), serverRun({ activity_type: 'walk', scoring_state: 'none', xp_award: null }), false)).toEqual({ kind: 'not_a_run' });
+    const hike = localRun({ origin: { source: 'health_import', activityType: 'hike' }, provisionalXp: null });
+    expect(xpPanelState(hike, null, false)).toEqual({ kind: 'not_a_run' });
+    expect(xpPanelState({ ...hike, syncState: 'needs_attention', syncError: 'invalid_input' }, null, false).kind).toBe('needs_attention');
+  });
+
   it('shows earned XP only from the server’s accepted, scored result', () => {
     expect(xpPanelState(localRun(), serverRun(), false)).toEqual({ kind: 'accepted', totalXp: 77, distanceXp: 52, activeDayBonus: 25 });
   });

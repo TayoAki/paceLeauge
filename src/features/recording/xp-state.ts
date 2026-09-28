@@ -11,6 +11,7 @@ import { duplicateCopy, reasonText, syncErrorCopy } from './reason-copy';
 export function xpPanelState(local: SavedRun | null, server: ServerRun | null, offline: boolean): XpPanelState {
   if (server && server.status !== 'uploading') {
     if (server.status === 'duplicate') return { kind: 'personal_only', reason: duplicateCopy };
+    if (server.activity_type && server.activity_type !== 'run') return { kind: 'not_a_run' };
     if (server.status === 'personal_only') return { kind: 'personal_only', reason: reasonText(server.reason_codes) };
     if (server.status === 'review') return { kind: 'review', reason: reasonText(server.reason_codes) };
     if (server.scoring_state === 'pending') return { kind: 'scoring_paused' };
@@ -25,6 +26,7 @@ export function xpPanelState(local: SavedRun | null, server: ServerRun | null, o
     return { kind: 'pending', estimate: null };
   }
   if (!local) return { kind: 'pending', estimate: null };
+  if (local.syncState !== 'needs_attention' && local.origin && (local.origin.activityType ?? 'run') !== 'run') return { kind: 'not_a_run' };
   if (local.syncState !== 'needs_attention' && local.origin) {
     // Imports are judged by the server under their source's rules; no local verdict or estimate.
     return offline ? { kind: 'offline', estimate: null } : { kind: 'pending', estimate: null };
