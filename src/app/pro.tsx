@@ -12,6 +12,7 @@ import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { formatDateShort } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
 import { buyPackage, MANAGE_SUBSCRIPTIONS_URL, proPackages, purchasesAvailable, restorePurchases } from '@/features/pro/purchases';
+import { STORE } from '@/features/pro/store-copy';
 import { markPurchased, useEntitlements, usePro } from '@/features/pro/use-pro';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
@@ -69,9 +70,9 @@ export default function ProScreen() {
       const restored = await restorePurchases();
       if (restored) markPurchased();
       refresh();
-      setMessage(restored ? { tone: 'success', text: 'Pro is back on.' } : { tone: 'info', text: 'No Pro purchase found for this Apple ID.' });
+      setMessage(restored ? { tone: 'success', text: 'Pro is back on.' } : { tone: 'info', text: `No Pro purchase found for this ${STORE.account}.` });
     } catch {
-      setMessage({ tone: 'danger', text: 'Couldn’t reach the App Store. Try again.' });
+      setMessage({ tone: 'danger', text: `Couldn’t reach ${STORE.name}. Try again.` });
     } finally {
       setBusy(null);
     }
@@ -117,7 +118,7 @@ export default function ProScreen() {
             </Text>
           ) : null}
           {entitlements?.billing_issue ? (
-            <InlineStatus tone="warning" title="There’s a problem with your payment." body="Update it in the App Store to keep Pro." />
+            <InlineStatus tone="warning" title="There’s a problem with your payment." body={`Update it in ${STORE.name} to keep Pro.`} />
           ) : null}
           {entitlements?.source === 'revenuecat' ? (
             <SecondaryButton label="Manage subscription" onPress={() => void WebBrowser.openBrowserAsync(MANAGE_SUBSCRIPTIONS_URL)} />
@@ -133,7 +134,7 @@ export default function ProScreen() {
           Loading prices…
         </Text>
       ) : !annual && !monthly ? (
-        <InlineStatus tone="warning" title="Couldn’t load Pro from the App Store." body="Check your connection and try again." />
+        <InlineStatus tone="warning" title={`Couldn’t load Pro from ${STORE.name}.`} body="Check your connection and try again." />
       ) : (
         <View style={styles.buttons}>
           {annual ? (
@@ -166,8 +167,7 @@ export default function ProScreen() {
       {available && !pro ? <TextButton label="Restore purchases" loading={busy === 'restore'} onPress={() => void restore()} /> : null}
 
       <Text variant="caption" tone="secondary">
-        Payment is charged to your App Store account. Subscriptions renew automatically unless cancelled at least 24 hours before the end
-        of the current period, in Settings → your name → Subscriptions. Deleting your PaceLeague account doesn’t cancel a subscription.
+        {STORE.billing} Deleting your PaceLeague account doesn’t cancel a subscription.
       </Text>
       <LegalLinks />
     </Screen>

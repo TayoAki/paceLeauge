@@ -35,7 +35,14 @@ export type SampleSink = (samples: RawSample[]) => void;
  * active recorder; the web driver is a foreground watcher for development previews only.
  */
 export interface LocationDriver {
+  /** Keeps recording with the screen locked or the app in the background. */
   readonly supportsBackground: boolean;
+  /**
+   * Whether that takes background location permission (the default when it records in the
+   * background). iOS needs "Always"; Android doesn't, because recording runs in a foreground
+   * service the runner starts, which may use location granted "while in use".
+   */
+  readonly needsBackgroundPermission?: boolean;
   start(sink: SampleSink): Promise<void>;
   stop(): Promise<void>;
   isRunning(): Promise<boolean>;

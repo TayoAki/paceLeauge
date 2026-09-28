@@ -11,8 +11,11 @@ export interface PreflightState {
   servicesEnabled: boolean;
   foreground: PermissionStatus;
   canAskForeground: boolean;
-  /** 'unsupported' on the web preview, which has no background recording. */
-  background: PermissionStatus | 'unsupported';
+  /**
+   * 'unsupported' on the web preview, which has no background recording; 'not_needed' on Android,
+   * whose foreground service records with the screen off on "while in use" access.
+   */
+  background: PermissionStatus | 'unsupported' | 'not_needed';
   canAskBackground: boolean;
   /** iOS precise-location authorization; null where the platform does not report it. */
   precise: boolean | null;
@@ -52,7 +55,13 @@ export function blocker(state: PreflightState, now: number): Blocker | null {
   return null;
 }
 
-export const blockerCopy: Record<Blocker, { title: string; body: string; action: 'request_foreground' | 'request_background' | 'settings' | 'wait' }> = {
+export interface BlockerCopy {
+  title: string;
+  body: string;
+  action: 'request_foreground' | 'request_background' | 'settings' | 'wait';
+}
+
+export const blockerCopy: Record<Blocker, BlockerCopy> = {
   services_off: { title: 'Location Services are off.', body: 'Turn on Location Services in Settings to record a run.', action: 'settings' },
   needs_foreground: {
     title: 'Use location to prepare and record your run, including while your screen is locked.',
@@ -74,3 +83,21 @@ export const blockerCopy: Record<Blocker, { title: string; body: string; action:
   no_fix: { title: 'Finding GPS…', body: 'This usually takes a few seconds outdoors.', action: 'wait' },
   weak_fix: { title: 'GPS is weak.', body: 'Move somewhere with open sky for a better signal.', action: 'wait' },
 };
+
+/** Android names its settings differently; everything else reads the same. */
+const ANDROID_COPY: Partial<Record<Blocker, Pick<BlockerCopy, 'title' | 'body'>>> = {
+  services_off: { title: 'Location is off.', body: 'Turn on Location in your phone’s quick settings to record a run.' },
+  foreground_denied: {
+    title: 'Location access is off.',
+    body: 'Allow location for PaceLeague in Settings to record runs. Your history and league stay available.',
+  },
+  precise_off: {
+    title: 'Precise location is off.',
+    body: 'Approximate location can’t measure a run. In Settings, turn on “Use precise location” for PaceLeague.',
+  },
+};
+
+export function copyFor(block: Blocker, platform: string): BlockerCopy {
+  const base = blockerCopy[block];
+  return platform === 'android' && ANDROID_COPY[block] ? { ...base, ...ANDROID_COPY[block] } : base;
+}

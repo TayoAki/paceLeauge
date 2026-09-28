@@ -1,4 +1,4 @@
-import { blocker, signalLevel, type PreflightState } from '@/features/recording/preflight';
+import { blocker, blockerCopy, copyFor, signalLevel, type PreflightState } from '@/features/recording/preflight';
 
 const NOW = 1_000_000;
 const ready: PreflightState = {
@@ -34,5 +34,15 @@ describe('preflight readiness', () => {
     expect(blocker({ ...ready, background: 'unsupported', precise: null }, NOW)).toBeNull();
     expect(signalLevel({ ...ready, fix: { ...ready.fix!, accuracyM: 35 } }, NOW)).toBe('fair');
     expect(signalLevel({ ...ready, foreground: 'denied' }, NOW)).toBe('off');
+  });
+
+  it('on Android, records with the screen off without "Always" location, and names Android’s settings', () => {
+    expect(blocker({ ...ready, background: 'not_needed' }, NOW)).toBeNull();
+    // Approximate location still can't measure a run.
+    expect(blocker({ ...ready, background: 'not_needed', precise: false }, NOW)).toBe('precise_off');
+    expect(copyFor('services_off', 'android').title).toBe('Location is off.');
+    expect(copyFor('services_off', 'ios')).toEqual(blockerCopy.services_off);
+    expect(copyFor('precise_off', 'android').action).toBe('settings');
+    expect(copyFor('no_fix', 'android')).toEqual(blockerCopy.no_fix);
   });
 });

@@ -16,6 +16,7 @@ import { RunInProgressError } from '@/features/account/runtime';
 import { useLocalRuns, useMe, useRecorder } from '@/features/data/hooks';
 import { clearExportFiles } from '@/features/privacy/export-data';
 import { MANAGE_SUBSCRIPTIONS_URL } from '@/features/pro/purchases';
+import { STORE } from '@/features/pro/store-copy';
 import { useEntitlements } from '@/features/pro/use-pro';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
@@ -202,7 +203,7 @@ export default function DeleteAccountScreen() {
         <InlineStatus
           tone="warning"
           title="Deleting your account doesn’t cancel Pro."
-          body="The App Store keeps billing until you cancel the subscription there. You can delete your account either way."
+          body={`${STORE.Name} keeps billing until you cancel the subscription there. You can delete your account either way.`}
           action={<TextButton label="Manage subscription" onPress={() => void WebBrowser.openBrowserAsync(MANAGE_SUBSCRIPTIONS_URL)} />}
         />
       ) : null}

@@ -6,6 +6,22 @@ import { Platform } from 'react-native';
  * with no rank-loss threats, pace pressure or sensitive lock-screen detail. No remote pushes.
  */
 const IDENTIFIER = 'pl-daily-reminder';
+/** Android shows notifications through channels the runner can tune in Settings. */
+const ANDROID_CHANNEL = 'reminders';
+
+/** Android 13+ asks for permission only once a channel exists, so it's made first. */
+async function ensureChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL, {
+    name: 'Run reminders',
+    description: 'The daily reminder you set in PaceLeague.',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    sound: null,
+    vibrationPattern: null,
+    enableVibrate: false,
+    showBadge: false,
+  });
+}
 
 export interface ReminderSettings {
   enabled: boolean;
@@ -62,6 +78,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   if (!current.canAskAgain) return false;
+  await ensureChannel();
   const result = await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowSound: false, allowBadge: false } });
   return result.granted;
 }
@@ -70,10 +87,11 @@ export async function requestNotificationPermission(): Promise<boolean> {
 export async function scheduleReminder(hour: number, minute: number): Promise<void> {
   if (Platform.OS === 'web') return;
   await cancelReminder();
+  await ensureChannel();
   await Notifications.scheduleNotificationAsync({
     identifier: IDENTIFIER,
     content: { title: 'PaceLeague', body: 'A good time for a run?', sound: false },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: ANDROID_CHANNEL },
   });
 }
 

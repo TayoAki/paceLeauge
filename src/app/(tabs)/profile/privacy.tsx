@@ -18,6 +18,7 @@ import {
   type ExportProgress,
   type SavedExportFile,
 } from '@/features/privacy/export-data';
+import { STORE } from '@/features/pro/store-copy';
 import { Text } from '@/design/text';
 import { colors, layout, radius, space } from '@/design/tokens';
 
@@ -38,7 +39,7 @@ const DATA_HANDLING = [
   'If you connect Strava, the runs you post there include their routes and follow your Strava settings.',
   'A training plan keeps your setup answers, its sessions, your changes and how each session felt, including whether something hurt. Only you can see it.',
   'Heart-rate zones and health trends from Apple Health are worked out on this phone and never sent to PaceLeague.',
-  'Pro purchases go through the App Store and RevenueCat; PaceLeague never sees your payment details.',
+  `Pro purchases go through ${STORE.name} and RevenueCat; PaceLeague never sees your payment details.`,
 ];
 
 function runDate(ms: number | null): string | undefined {

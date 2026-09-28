@@ -13,6 +13,9 @@ const IS_PROD = APP_ENV === 'production';
 
 /** The App Store app (TestFlight and release builds); development builds install alongside it. */
 const BUNDLE_ID = process.env.IOS_BUNDLE_IDENTIFIER ?? (APP_ENV === 'development' ? 'com.tayoaki.paceleague.dev' : 'com.tayoaki.paceleague');
+/** The Google Play app, named like the iOS app; development builds install alongside it (P.1). */
+const ANDROID_PACKAGE =
+  process.env.ANDROID_PACKAGE ?? (APP_ENV === 'development' ? 'com.tayoaki.paceleague.dev' : 'com.tayoaki.paceleague');
 /** The Expo project @tayom/paceleague. Not a secret: it only tells EAS which project this is. */
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '605e184b-7dc5-4cf9-b0a6-878729602fa4';
 
@@ -72,14 +75,36 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
-    // Android is a later increment (F11). The package id exists so development builds work,
-    // but background location on Android is intentionally not enabled yet.
-    package: process.env.ANDROID_PACKAGE ?? 'com.example.paceleague.dev',
+    // The Android app (docs/ROADMAP.md P.1). Runs record in a location foreground service the
+    // runner starts, so the app never asks for background ("all the time") location.
+    package: ANDROID_PACKAGE,
     adaptiveIcon: {
       backgroundColor: '#101315',
       foregroundImage: './assets/images/adaptive-icon.png',
     },
     predictiveBackGestureEnabled: false,
+    permissions: [
+      'android.permission.ACCESS_COARSE_LOCATION',
+      'android.permission.ACCESS_FINE_LOCATION',
+      'android.permission.FOREGROUND_SERVICE',
+      'android.permission.FOREGROUND_SERVICE_LOCATION',
+      // The recording notification and the optional reminder (Android 13+).
+      'android.permission.POST_NOTIFICATIONS',
+      'android.permission.VIBRATE',
+    ],
+    // Never requested, whatever a library adds. Recording doesn't need background location, which
+    // would need Google Play's background-location declaration; share images are only saved, which
+    // needs no media-read access on Android 13+ (and reading media falls under Play's photo and
+    // video policy); the system overlay is only for development tools.
+    blockedPermissions: [
+      'android.permission.ACCESS_BACKGROUND_LOCATION',
+      'android.permission.RECORD_AUDIO',
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.READ_MEDIA_VIDEO',
+      'android.permission.READ_MEDIA_AUDIO',
+      'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+      'android.permission.SYSTEM_ALERT_WINDOW',
+    ],
   },
   web: {
     output: 'single',
@@ -95,7 +120,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         locationWhenInUsePermission: LOCATION_WHEN_IN_USE_COPY,
         isIosBackgroundLocationEnabled: true,
         isAndroidBackgroundLocationEnabled: false,
-        isAndroidForegroundServiceEnabled: false,
+        // The run's foreground service (src/features/recording/location-driver.android.ts).
+        isAndroidForegroundServiceEnabled: true,
       },
     ],
     ['expo-sqlite', { useSQLCipher: true }],
@@ -114,6 +140,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         photosPermission: false,
         savePhotosPermission: 'Save your stats-only share image to your photo library.',
         isAccessMediaLocationEnabled: false,
+        // Saving only: no photo, video or audio reading on Android.
+        granularPermissions: [],
       },
     ],
     ...(TARGETS.length > 0 ? [['@bacons/apple-targets', { match: TARGETS.length === 1 ? TARGETS[0] : `@(${TARGETS.join('|')})` }] as [string, unknown]] : []),

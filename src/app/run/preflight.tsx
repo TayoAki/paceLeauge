@@ -18,17 +18,21 @@ import { formatMinutes } from '@/features/plans/plan-client';
 import { usePro } from '@/features/pro/use-pro';
 import { usePlanState } from '@/features/plans/use-plan';
 import { useHeat } from '@/features/training/use-heat';
-import { blocker, blockerCopy, signalLevel, type PermissionStatus, type PreflightState } from '@/features/recording/preflight';
+import { blocker, copyFor, signalLevel, type PermissionStatus, type PreflightState } from '@/features/recording/preflight';
 import { ActiveRunExistsError } from '@/features/recording/recorder-service';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 import { useNow } from '@/lib/use-now';
 
+/** iOS asks for "Always" location; Android's foreground service records on "while in use". */
+const NEEDS_BACKGROUND = locationDriver.needsBackgroundPermission ?? locationDriver.supportsBackground;
+const BATTERY_TIP_KEY = 'tip:android-battery';
+
 const INITIAL: PreflightState = {
   servicesEnabled: true,
   foreground: 'undetermined',
   canAskForeground: true,
-  background: locationDriver.supportsBackground ? 'undetermined' : 'unsupported',
+  background: !locationDriver.supportsBackground ? 'unsupported' : NEEDS_BACKGROUND ? 'undetermined' : 'not_needed',
   canAskBackground: true,
   precise: null,
   fix: null,
@@ -91,15 +95,24 @@ export default function PreflightScreen() {
   const refresh = useCallback(async () => {
     const services = await Location.hasServicesEnabledAsync().catch(() => true);
     const fg = await Location.getForegroundPermissionsAsync();
-    const bg = locationDriver.supportsBackground ? await Location.getBackgroundPermissionsAsync().catch(() => null) : null;
+    const bg = NEEDS_BACKGROUND ? await Location.getBackgroundPermissionsAsync().catch(() => null) : null;
     setPf((prev) => ({
       ...prev,
       servicesEnabled: services,
       foreground: fg.status as PermissionStatus,
       canAskForeground: fg.canAskAgain,
-      background: locationDriver.supportsBackground ? ((bg?.status as PermissionStatus | undefined) ?? 'undetermined') : 'unsupported',
+      background: !locationDriver.supportsBackground
+        ? 'unsupported'
+        : NEEDS_BACKGROUND
+          ? ((bg?.status as PermissionStatus | undefined) ?? 'undetermined')
+          : 'not_needed',
       canAskBackground: bg?.canAskAgain ?? false,
-      precise: Platform.OS === 'ios' && fg.ios?.accuracy ? fg.ios.accuracy === 'full' : null,
+      precise:
+        Platform.OS === 'ios' && fg.ios?.accuracy
+          ? fg.ios.accuracy === 'full'
+          : Platform.OS === 'android' && fg.android?.accuracy
+            ? fg.android.accuracy === 'fine'
+            : null,
     }));
   }, []);
 
@@ -207,8 +220,8 @@ export default function PreflightScreen() {
 
   const copy = block
     ? block === 'needs_foreground' && !locationDriver.supportsBackground
-      ? { ...blockerCopy[block], title: 'Use location to prepare and record your run.' }
-      : blockerCopy[block]
+      ? { ...copyFor(block, Platform.OS), title: 'Use location to prepare and record your run.' }
+      : copyFor(block, Platform.OS)
     : null;
   const primary = (() => {
     if (!copy)
@@ -250,7 +263,7 @@ export default function PreflightScreen() {
   })();
 
   const lockedValue =
-    pf.background === 'granted'
+    pf.background === 'granted' || pf.background === 'not_needed'
       ? 'Ready'
       : pf.background === 'unsupported'
         ? 'Not in web preview'
@@ -299,6 +312,7 @@ export default function PreflightScreen() {
         <Row icon={Lock} label="Screen-locked tracking" value={lockedValue} valueTone={lockedValue === 'Ready' ? 'accent' : 'secondary'} last />
       </RowGroup>
       {error ? <InlineStatus tone="danger" title={error} /> : null}
+      {Platform.OS === 'android' && !copy ? <BatteryTip /> : null}
       {copy ? (
         <InlineStatus tone={copy.action === 'wait' ? 'info' : 'warning'} title={copy.title} body={copy.body} />
       ) : (
@@ -313,7 +327,46 @@ export default function PreflightScreen() {
   );
 }
 
+/**
+ * Android: some phones stop apps in a pocket to save battery, whatever the foreground service
+ * asks. Shown before runs until the runner says they've got it.
+ */
+function BatteryTip() {
+  const { runtime } = useAccountServices();
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    runtime.journal
+      .getKv<boolean>(BATTERY_TIP_KEY)
+      .then((seen) => alive && setShown(!seen?.value))
+      .catch(() => alive && setShown(true));
+    return () => {
+      alive = false;
+    };
+  }, [runtime]);
+  if (!shown) return null;
+  return (
+    <InlineStatus
+      title="Keep recording in your pocket"
+      body="Some Android phones stop apps to save battery. If a run ever stops recording, set PaceLeague’s battery use to Unrestricted in Settings."
+      action={
+        <View style={styles.tipActions}>
+          <TextButton label="Open Settings" onPress={() => void Linking.openSettings()} />
+          <TextButton
+            label="Got it"
+            onPress={() => {
+              setShown(false);
+              void runtime.journal.setKv(BATTERY_TIP_KEY, true).catch(() => undefined);
+            }}
+          />
+        </View>
+      }
+    />
+  );
+}
+
 const styles = StyleSheet.create({
+  tipActions: { flexDirection: 'row', gap: space.md },
   countdown: {
     flex: 1,
     backgroundColor: colors.background,

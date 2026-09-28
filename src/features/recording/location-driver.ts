@@ -10,6 +10,7 @@ import type { LocationDriver } from './types';
  */
 export const locationDriver: LocationDriver = {
   supportsBackground: true,
+  needsBackgroundPermission: true,
   async start() {
     if (await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK)) return;
     await Location.startLocationUpdatesAsync(LOCATION_TASK, {

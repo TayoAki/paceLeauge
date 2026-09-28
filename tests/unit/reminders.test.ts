@@ -51,7 +51,8 @@ describe('scheduling', () => {
     expect(mocked.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
     const last = mocked.scheduleNotificationAsync.mock.calls[1]![0];
     expect(last.identifier).toBe('pl-daily-reminder');
-    expect(last.trigger).toEqual({ type: 'daily', hour: 18, minute: 0 });
+    // The channel matters only on Android, which shows notifications through it.
+    expect(last.trigger).toEqual({ type: 'daily', hour: 18, minute: 0, channelId: 'reminders' });
     expect(last.content.body).toBe('A good time for a run?');
   });
 

@@ -10,6 +10,7 @@ let subscription: Location.LocationSubscription | null = null;
 
 export const locationDriver: LocationDriver = {
   supportsBackground: false,
+  needsBackgroundPermission: false,
   async start(sink: SampleSink) {
     if (subscription) return;
     subscription = await Location.watchPositionAsync(
