@@ -25,6 +25,8 @@ export interface RecorderSnapshot {
   lastSaved: SavedRun | null;
   /** The run is paused because the runner stopped (it resumes when they move). */
   autoPaused: boolean;
+  /** The latest fix of the run in progress (for live location, docs/ROADMAP.md 4.8). */
+  lastPosition?: { lat: number; lon: number; accuracyM: number | null; at: EpochMs } | null;
 }
 
 export type SampleSink = (samples: RawSample[]) => void;

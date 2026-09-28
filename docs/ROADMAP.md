@@ -92,8 +92,8 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 (the Android app and the web app) are built and tested in code, and Phase 4 is under way: privacy
 zones and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and
 moderation (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5),
-challenges (4.6) and opt-in leaderboards (4.7) are built. The server is tested by 317 database
-and API tests, the app by 317 unit tests and browser
+challenges (4.6), opt-in leaderboards (4.7) and live location (4.8) are built. The server is
+tested by 320 database and API tests, the app by 322 unit tests and browser
 walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
 matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
 Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
@@ -820,6 +820,18 @@ is where other people start seeing more than a name and a number.
   open the web app (P.2). Battery use is measured.
 - Done when: the link stops working the moment the run ends, and a one-hour run's battery use is
   documented.
+- Built: a live button on the run screen makes a link for this run (it stops after 1, 2, 3 or 6
+  hours at most) and opens the share sheet, so the runner picks who gets it. While it's open the
+  phone posts its latest fix about every 30 seconds, from the background too; finishing,
+  discarding or starting another run stops it at once, and a stop that couldn't reach the server
+  goes again with the next fix. The link opens the web app's `/live/[code]` page with no account:
+  the runner's name, when they were last seen, the position with links to Apple Maps and Google
+  Maps, and the distance and time so far, refreshed every 15 seconds. The server keeps only a hash
+  of the code and only the latest position, wiped the moment the link stops; after that the page
+  and the API show nothing but "ended". `tests/backend/live-location.test.ts` shows the link
+  stopping at the end of the run, on "Stop", when a new link replaces it and when its time runs
+  out. The battery measurement is a device case (P4-LIVE-BATTERY in DEVICE_TEST_PROTOCOL.md),
+  not yet run.
 
 **4.9 Push notifications and moderation at scale** · M
 - What: remote notifications for cheers, kudos, comments, follows and results. All are optional,

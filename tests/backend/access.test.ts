@@ -19,7 +19,7 @@ afterAll(async () => {
   await db.close();
 });
 
-const ANON_ALLOWED = ['get_app_config', 'get_invite_preview'];
+const ANON_ALLOWED = ['get_app_config', 'get_invite_preview', 'get_live_location'];
 
 describe('function privileges', () => {
   it('lets anonymous callers execute only the allowlisted public functions', async () => {

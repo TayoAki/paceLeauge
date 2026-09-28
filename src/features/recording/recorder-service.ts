@@ -79,7 +79,7 @@ export class RecorderService {
   private mono: { segmentIndex: number; monoAt: number } | null = null;
   private verifiedRunId: string | null = null;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
-  private lastFix: { at: EpochMs; accuracy: number | null } | null = null;
+  private lastFix: { at: EpochMs; accuracy: number | null; lat: number; lon: number } | null = null;
   private limitReached = false;
 
   constructor(private readonly deps: RecorderDeps) {
@@ -275,7 +275,7 @@ export class RecorderService {
       await this.rebuild();
     }
     const latest = samples.reduce((a, b) => (b.timestamp > a.timestamp ? b : a));
-    this.lastFix = { at: latest.timestamp, accuracy: latest.accuracy ?? null };
+    this.lastFix = { at: latest.timestamp, accuracy: latest.accuracy ?? null, lat: latest.latitude, lon: latest.longitude };
     const result = await this.deps.journal.appendPoints(samples, this.clock.now(), this.deps.maxPoints ?? RECORDER_V1.maxPointsPerRun);
     this.limitReached = result.limitReached;
     for (const point of result.accepted) this.openTrack?.push(point);
@@ -397,7 +397,14 @@ export class RecorderService {
           ...this.lapProgress(session.runId, distanceM, activeMs),
         }
       : EMPTY_METRICS;
-    this.snapshot = { ...this.snapshot, session, metrics, autoPaused: session?.status === 'paused' && this.autoPaused };
+    const fix = session ? this.lastFix : null;
+    this.snapshot = {
+      ...this.snapshot,
+      session,
+      metrics,
+      autoPaused: session?.status === 'paused' && this.autoPaused,
+      lastPosition: fix ? { lat: fix.lat, lon: fix.lon, accuracyM: fix.accuracy, at: fix.at } : null,
+    };
     this.emitter.emit();
   }
 }

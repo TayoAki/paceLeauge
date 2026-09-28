@@ -301,7 +301,11 @@ Location stays as declared: shared maps come from the runner's own routes, cut o
 Nothing reads the address book. Apple's guideline 1.2 for user-generated content is met by the
 comment filter, reporting on runners, runs, comments, clubs, group runs, challenges and
 leaderboard results, blocking, the 24-hour response target and the published contact (Staff roles
-and moderation). The leaderboards' country is typed in by the runner, not location data.
+and moderation). The leaderboards' country is typed in by the runner, not location data. Live
+location (4.8) sends the runner's precise location to our server during a run they choose to
+share, and shows it to whoever has the link: declare "Precise Location" as linked to the runner,
+for app functionality (it already is, for recording), and say in the review notes that sharing is
+off until the runner taps it on the run screen, and stops when the run ends.
 
 ## Android builds for testers (Google Play, P.1)
 
@@ -518,7 +522,7 @@ there are (`RUN_JOBS=false` opts an instance out).
 
 | Job | Schedule | Does |
 |---|---|---|
-| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push (several leagues' results arrive as one), settles the season that just ended (its champions, once, a day after its last week), queues group-run reminders an hour before the start, and works out the leaderboards (this week's and last week's results for everyone who joined, the checks on the top ten of every board, and last week made final 48 hours after it closed, Wednesday 00:00 Chicago). Logs `frequent jobs` when it did something |
+| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push (several leagues' results arrive as one), settles the season that just ended (its champions, once, a day after its last week), queues group-run reminders an hour before the start, and works out the leaderboards (this week's and last week's results for everyone who joined, the checks on the top ten of every board, and last week made final 48 hours after it closed, Wednesday 00:00 Chicago), and stops live-location links whose time ran out, wiping their last position (stopped links go after 7 days). Logs `frequent jobs` when it did something |
 | Strava uploads and revocations | every minute, when Strava is configured | Queues accepted runs of connected runners, uploads them, follows processing, refreshes tokens, confirms webhook deauthorizations, revokes ended grants. Logs `strava jobs` |
 | Garmin events | every minute, when Terra is configured | Uploads queued Garmin activities as their runners, deauthorizes ended links, keeps processed events a week. Logs `garmin jobs` |
 | Pro billing | hourly | Sends trial reminders (production), and removes store events older than 60 days. Logs `billing jobs` |
@@ -608,6 +612,15 @@ database on every test run.
 
 Before launch (REQ-011): publish a real reviewer/support contact (`EXPO_PUBLIC_SUPPORT_EMAIL`,
 shown after every report) and name a moderation rota that covers the 24-hour target.
+
+## Live location (4.8)
+
+Links point at the web app, so set `EXPO_PUBLIC_WEB_URL` (the `web` service's address) in the EAS
+build profile; without it the app sends `paceleague://live/…` links that only open on phones
+with the app. The page needs no account: `public.get_live_location` is the third function
+anonymous callers may use (with `get_app_config` and `get_invite_preview`), limited to 600 looks
+an hour per link. Nothing about a link is kept once it stops except its row (the hash of its
+code, its times and why it stopped) for 7 days; positions are never logged.
 
 ## Push notifications (4.9)
 

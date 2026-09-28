@@ -129,6 +129,7 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Screen name="invite/[code]" />
       <Stack.Screen name="follow/[code]" />
+      <Stack.Screen name="live/[token]" />
       <Stack.Screen name="legal" />
       <Stack.Screen name="strava" />
       <Stack.Screen name="garmin" />

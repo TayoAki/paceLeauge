@@ -1,16 +1,17 @@
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { ChevronDown, Flag, Play, RotateCcw, Save, Volume2, VolumeX } from 'lucide-react-native';
+import { ChevronDown, Flag, Play, Radio, RotateCcw, Save, Volume2, VolumeX } from 'lucide-react-native';
 import { Fragment, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
 
+import { LiveShareSheet } from '@/components/run/live-share-sheet';
 import { GpsStatus, MetricBlock, RecordingControls, TouchLockOverlay, useAnnounce } from '@/components/run/run-components';
 import { routeLines } from '@/components/run/route-lines';
 import { RouteMap } from '@/components/run/route-map';
 import { WorkoutPanel } from '@/components/run/workout-panel';
 import { IconButton, PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
-import { InlineStatus } from '@/components/ui/elements';
+import { InlineStatus, Pill } from '@/components/ui/elements';
 import { Screen } from '@/components/ui/layout';
 import { describeDistance, describeDuration, describePace, formatDistance, formatDuration, formatPace } from '@/domain/format';
 import { useAccountServices } from '@/features/account/account-provider';
@@ -40,6 +41,10 @@ export default function ActiveRunScreen() {
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  // Live location for this run (docs/ROADMAP.md 4.8).
+  const liveShare = runtime.liveShare;
+  const live = useSyncExternalStore(liveShare.subscribe, liveShare.getSnapshot);
+  const [liveOpen, setLiveOpen] = useState(false);
   const points = useRunPoints(session?.runId ?? null, session?.status === 'recording');
   const lines = useMemo(() => routeLines(points), [points]);
   const last = points[points.length - 1];
@@ -209,6 +214,16 @@ export default function ActiveRunScreen() {
             {title}
           </Text>
           {recording ? <GpsStatus quality={metrics.quality} /> : null}
+          {live ? <Pill label="Live" /> : null}
+          {session.status !== 'interrupted' ? (
+            <IconButton
+              icon={Radio}
+              label={live ? 'Sharing your live location' : 'Share your live location'}
+              tone="plain"
+              onPress={() => setLiveOpen(true)}
+              testID="live-share"
+            />
+          ) : null}
           <IconButton
             icon={cuesOn ? Volume2 : VolumeX}
             label={cuesOn ? 'Mute voice cues' : 'Turn on voice cues'}
@@ -256,6 +271,7 @@ export default function ActiveRunScreen() {
         </View>
       </Screen>
       {locked && recording ? <TouchLockOverlay onUnlock={() => setLocked(false)} /> : null}
+      <LiveShareSheet controller={liveShare} visible={liveOpen} onClose={() => setLiveOpen(false)} />
       <ConfirmSheet
         visible={confirmDiscard}
         title="Discard this run?"

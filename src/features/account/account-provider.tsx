@@ -150,6 +150,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     };
   }, [runtime, engine, queryClient]);
 
+  // Live location (docs/ROADMAP.md 4.8): the link posts through the API while signed in.
+  useEffect(() => {
+    if (!runtime) return;
+    runtime.liveShare.setTransport(api && accessToken ? api : null);
+    return () => runtime.liveShare.setTransport(null);
+  }, [runtime, accessToken]);
+
   // Push notifications (docs/ROADMAP.md 4.9): keep this phone registered while they're allowed.
   useEffect(() => {
     if (!runtime || !api || !accessToken) return;

@@ -16,6 +16,7 @@ import { AppleHealthSync, deviceHealthKit, healthRunFrom } from '@/features/heal
 import { prepareHealthConnect } from '@/features/health/health-connect';
 import { deviceHealthReader, HealthImporter } from '@/features/health/health-import';
 import { IndoorRunService } from '@/features/indoor/indoor-run';
+import { LiveShareController } from '@/features/live-share/live-share';
 import { devicePedometer } from '@/features/indoor/pedometer';
 import { deviceWatchLink } from '@/features/watch/watch-link';
 import { WatchRunInbox } from '@/features/watch/watch-runs';
@@ -50,6 +51,8 @@ export interface AccountRuntime {
   indoor: IndoorRunService;
   /** Runs from the PaceLeague Apple Watch app. */
   watchRuns: WatchRunInbox;
+  /** The live-location link for the run in progress (docs/ROADMAP.md 4.8). */
+  liveShare: LiveShareController;
 }
 
 let current: AccountRuntime | null = null;
@@ -130,6 +133,10 @@ async function create(accountId: string): Promise<AccountRuntime> {
   liveActivity.start();
   await recorder.init();
   setActiveRecorder(recorder);
+  // After the recorder has its session back, so a link for the run in progress carries on.
+  const liveShare = new LiveShareController({ kv: journal, recorder });
+  await liveShare.restore();
+  liveShare.start();
   const healthImport = new HealthImporter({
     journal,
     port: deviceHealthReader(),
@@ -138,7 +145,7 @@ async function create(accountId: string): Promise<AccountRuntime> {
   });
   await indoor.restore();
   const watchRuns = new WatchRunInbox({ journal, link: deviceWatchLink() });
-  return { accountId, journal, recorder, telemetry, runSettings, cues, workout, health, liveActivity, healthImport, indoor, watchRuns };
+  return { accountId, journal, recorder, telemetry, runSettings, cues, workout, health, liveActivity, healthImport, indoor, watchRuns, liveShare };
 }
 
 export async function openAccountRuntime(accountId: string): Promise<AccountRuntime> {
@@ -175,6 +182,7 @@ export async function closeAccountRuntime(): Promise<void> {
   if (await runtime.journal.getSession()) throw new RunInProgressError();
   runtime.cues.stop();
   runtime.liveActivity.stop();
+  runtime.liveShare.dispose();
   runtime.recorder.dispose();
   setActiveRecorder(null);
   current = null;
