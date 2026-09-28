@@ -8,6 +8,8 @@ import { validateRun } from '@/domain/validator';
 import { defaultRunTitle } from '@/features/recording/run-draft';
 import { Emitter } from '@/lib/emitter';
 
+import { healthConnectReader } from './health-connect';
+
 /**
  * Apple Health import (docs/ROADMAP.md 2.1 and Part A). Runs from the Apple Watch Workout app, or any
  * app that saves workouts to Health, come into PaceLeague. Each workout becomes a saved run on this
@@ -292,6 +294,8 @@ async function workoutSteps(lib: HealthKitLibrary, w: WorkoutProxy): Promise<num
 let readerPort: HealthReaderPort | null | undefined;
 
 export function deviceHealthReader(): HealthReaderPort | null {
+  // Android: Health Connect, once prepareHealthConnect() has found it.
+  if (Platform.OS === 'android') return healthConnectReader();
   if (readerPort !== undefined) return readerPort;
   readerPort = null;
   if (Platform.OS !== 'ios') return readerPort;

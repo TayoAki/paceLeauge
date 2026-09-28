@@ -21,6 +21,7 @@ import {
   stravaOutcome,
 } from '@/features/connections/connections';
 import { useGarminStatus, useStravaStatus } from '@/features/data/hooks';
+import { HEALTH } from '@/features/health/health-names';
 import { Text } from '@/design/text';
 import { colors, radius, space } from '@/design/tokens';
 
@@ -209,7 +210,7 @@ function GarminCard() {
           Garmin
         </Text>
         <Text variant="body" tone="secondary">
-          Garmin runs come in through Apple Health, without their routes, so they count for your weekly goal and streak but not league XP. Direct Garmin sync with routes isn’t switched on yet.
+          Garmin runs come in through {HEALTH.name}, without their routes, so they count for your weekly goal and streak but not league XP. Direct Garmin sync with routes isn’t switched on yet.
         </Text>
       </Card>
     );
@@ -229,7 +230,7 @@ function GarminCard() {
               Bring in the runs you record on your Garmin watch, with their routes, so they can earn league XP like runs recorded here.
             </Text>
             <Text variant="body" tone="secondary">
-              Garmin shares them through Terra, a service that connects fitness devices. If Apple Health has the same run, it counts once.
+              Garmin shares them through Terra, a service that connects fitness devices. If {HEALTH.name} has the same run, it counts once.
             </Text>
             <SecondaryButton label="Connect Garmin" icon={Link2} loading={busy} onPress={() => void connect()} testID="connect-garmin" />
           </>
@@ -254,7 +255,7 @@ function GarminCard() {
       <ConfirmSheet
         visible={confirmDisconnect}
         title="Disconnect Garmin?"
-        body="Runs already brought in stay in your history. New Garmin runs stop arriving, except through Apple Health."
+        body={`Runs already brought in stay in your history. New Garmin runs stop arriving, except through ${HEALTH.name}.`}
         confirmLabel="Disconnect"
         destructive
         busy={busy}

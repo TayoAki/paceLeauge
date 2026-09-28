@@ -9,6 +9,7 @@ import { cueText, type CueField, type CueSettings } from '@/domain/cues';
 import { useAccountServices } from '@/features/account/account-provider';
 import { useMe } from '@/features/data/hooks';
 import { deviceHealthData } from '@/features/health/health-data';
+import { HEALTH } from '@/features/health/health-names';
 import { useMaxHr } from '@/features/training/use-training';
 import {
   CUE_VOLUME,
@@ -108,10 +109,10 @@ export default function RunSettingsScreen() {
       setImportNote(
         added > 0
           ? `Added ${added} ${added === 1 ? 'workout' : 'workouts'} from the last 30 days. They sync now.`
-          : 'Nothing new from the last 30 days. If you expected runs, check that PaceLeague can read Workouts and Workout Routes in the Health app.',
+          : `Nothing new from the last 30 days. If you expected runs, check that PaceLeague can read ${HEALTH.readTypes} in ${HEALTH.settings}.`,
       );
     } catch {
-      setImportNote('Couldn’t read from Apple Health. Try again.');
+      setImportNote(`Couldn’t read from ${HEALTH.name}. Try again.`);
     } finally {
       setImporting(false);
     }
@@ -314,7 +315,7 @@ export default function RunSettingsScreen() {
             <SwitchRow
               icon={Activity}
               label="Heart-rate zones"
-              hint="Time in each zone for runs with heart rate from an Apple Watch or another device that saves to Apple Health. Worked out on this phone."
+              hint={`Time in each zone for runs with heart rate from a watch or another device that saves to ${HEALTH.name}. Worked out on this phone.`}
               value={settings.heartRateZones}
               onChange={(on) => void toggleZones(on)}
               last
@@ -348,7 +349,7 @@ export default function RunSettingsScreen() {
         <RowGroup>
           <SwitchRow
             icon={HeartPulse}
-            label="Save runs to Apple Health"
+            label={`Save runs to ${HEALTH.name}`}
             hint="Runs you finish appear in Health and Fitness with their route. Deleting or fixing a run here updates it there."
             value={settings.appleHealth}
             onChange={(on) => void toggleHealth(on)}
@@ -361,7 +362,7 @@ export default function RunSettingsScreen() {
         <RowGroup>
           <SwitchRow
             icon={Download}
-            label="Import runs from Apple Health"
+            label={`Import runs from ${HEALTH.name}`}
             hint="Runs from your Apple Watch and other apps that save to Health come in on their own. Workouts without a route count for your goals, not league XP."
             value={settings.healthImport}
             disabled={importing}
@@ -376,7 +377,7 @@ export default function RunSettingsScreen() {
         <InlineStatus
           tone="warning"
           title="PaceLeague can’t save to Health yet."
-          body="Allow it in the Health app: your profile › Apps › PaceLeague › turn on Workouts and Workout Routes."
+          body={`Allow it in ${HEALTH.settings}, and turn on ${HEALTH.writeTypes}.`}
         />
       ) : null}
 

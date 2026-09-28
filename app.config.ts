@@ -91,6 +91,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       // The recording notification and the optional reminder (Android 13+).
       'android.permission.POST_NOTIFICATIONS',
       'android.permission.VIBRATE',
+      // Health Connect (P.1), each asked for only when the runner turns on what needs it:
+      // importing workouts, heart-rate zones, health trends, and saving runs.
+      'android.permission.health.READ_EXERCISE',
+      'android.permission.health.READ_EXERCISE_ROUTES',
+      'android.permission.health.READ_DISTANCE',
+      'android.permission.health.READ_STEPS',
+      'android.permission.health.READ_HEART_RATE',
+      'android.permission.health.READ_RESTING_HEART_RATE',
+      'android.permission.health.READ_HEART_RATE_VARIABILITY',
+      'android.permission.health.READ_VO2_MAX',
+      'android.permission.health.READ_SLEEP',
+      'android.permission.health.READ_HEALTH_DATA_HISTORY',
+      'android.permission.health.WRITE_EXERCISE',
+      'android.permission.health.WRITE_EXERCISE_ROUTE',
+      'android.permission.health.WRITE_DISTANCE',
     ],
     // Never requested, whatever a library adds. Recording doesn't need background location, which
     // would need Google Play's background-location declaration; share images are only saved, which
@@ -159,6 +174,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           ] as [string, unknown],
         ]
       : []),
+    // Health Connect's permission screens link to the Privacy Policy (P.1); it needs Android 8+.
+    'react-native-health-connect',
+    ['expo-build-properties', { android: { minSdkVersion: 26 } }],
     [
       'expo-splash-screen',
       {

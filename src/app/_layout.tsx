@@ -1,17 +1,19 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as WebBrowser from 'expo-web-browser';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppMessage, LaunchSplash } from '@/components/ui/app-states';
-import { isBackendConfigured } from '@/config/env';
+import { env, isBackendConfigured } from '@/config/env';
 import { AccountProvider, useAccount } from '@/features/account/account-provider';
 import { AgeNeededScreen, AgeRestrictedScreen, useExistingAgeCheck } from '@/features/account/age-gate';
 import { AuthProvider, useAuth } from '@/features/account/auth-provider';
 import { useMe } from '@/features/data/hooks';
+import { watchPermissionRationale } from '@/features/health/permission-rationale';
 import { colors } from '@/design/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -64,6 +66,16 @@ function RootNavigator() {
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync().catch(() => undefined);
   }, [loading]);
+
+  // Android: Health Connect's permission screen links here for the Privacy Policy.
+  const router = useRouter();
+  useEffect(() => {
+    if (loading) return;
+    return watchPermissionRationale(() => {
+      if (env.privacyUrl) void WebBrowser.openBrowserAsync(env.privacyUrl);
+      else router.push({ pathname: '/legal', params: { section: 'privacy' } });
+    });
+  }, [loading, router]);
 
   if (!isBackendConfigured) {
     return (

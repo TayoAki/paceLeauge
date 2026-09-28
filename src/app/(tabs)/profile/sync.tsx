@@ -17,12 +17,13 @@ import { fileImportCopy, importActivityFile } from '@/features/files/file-import
 import type { ImportState } from '@/features/health/health-import';
 import { syncErrorCopy } from '@/features/recording/reason-copy';
 import { diagnosticsReport } from '@/features/sync/diagnostics';
+import { HEALTH } from '@/features/health/health-names';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
 
 const SOURCE_LABEL: Record<string, string> = {
   phone_gps: 'This phone',
-  health_import: 'Apple Health',
+  health_import: HEALTH.name,
   file_import: 'File',
   indoor: 'Indoor',
   watch: 'Apple Watch',
@@ -109,7 +110,7 @@ export default function SyncScreen() {
   const checkHealth = async () => {
     setBusy('health');
     const added = await runtime.healthImport.importNew().catch(() => 0);
-    setNote({ tone: 'info', text: added > 0 ? `Added ${added} from Apple Health.` : 'Nothing new in Apple Health.' });
+    setNote({ tone: 'info', text: added > 0 ? `Added ${added} from ${HEALTH.name}.` : `Nothing new in ${HEALTH.name}.` });
     setBusy(null);
   };
 
@@ -191,9 +192,9 @@ export default function SyncScreen() {
         {runtime.healthImport.available ? (
           <>
             <Text variant="caption" tone="secondary">
-              Apple Health: {healthOn ? `on · checked ${ago(importState?.lastRunAtMs ?? null)}` : 'off (turn it on in Run settings)'}
+              {HEALTH.name}: {healthOn ? `on · checked ${ago(importState?.lastRunAtMs ?? null)}` : 'off (turn it on in Run settings)'}
             </Text>
-            {healthOn ? <TextButton label="Check Apple Health now" onPress={() => void checkHealth()} disabled={busy === 'health'} /> : null}
+            {healthOn ? <TextButton label={`Check ${HEALTH.name} now`} onPress={() => void checkHealth()} disabled={busy === 'health'} /> : null}
           </>
         ) : null}
       </Card>

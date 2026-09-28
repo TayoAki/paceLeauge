@@ -13,6 +13,7 @@ import type { Units } from '@/domain/types';
 import { useAccountServices } from '@/features/account/account-provider';
 import { useMe } from '@/features/data/hooks';
 import { deviceHealthData } from '@/features/health/health-data';
+import { HEALTH } from '@/features/health/health-names';
 import { formatRaceTime } from '@/features/plans/plan-client';
 import { effortLabel, shortDate } from '@/features/progress/records';
 import { bucketLabel, bucketLabelLong } from '@/features/progress/stats-ranges';
@@ -53,8 +54,8 @@ export default function TrainingScreen() {
             </Text>
           </View>
           <Text variant="body" tone="secondary">
-            See your training load, fitness and fatigue, race predictions, aerobic efficiency and, from Apple Health, trends in resting heart
-            rate, heart rate variability, VO2 max and sleep.
+            See your training load, fitness and fatigue, race predictions, aerobic efficiency and, from {HEALTH.name}, trends in resting
+            heart rate, heart rate variability, VO2 max and sleep.
           </Text>
           <PrimaryButton label="See Pro" onPress={() => router.push('/pro')} disabled={loading} testID="training-see-pro" />
         </Card>
@@ -234,7 +235,7 @@ function Efficiency({ summary, units }: { summary: TrainingSummary; units: Units
         </>
       ) : (
         <Text variant="body" tone="secondary">
-          Needs at least two easy runs with heart rate, from a watch or Apple Health.
+          Needs at least two easy runs with heart rate, from a watch or {HEALTH.name}.
         </Text>
       )}
       <Text variant="caption" tone="secondary">
@@ -280,7 +281,7 @@ function HealthTrendsSection() {
     <View style={{ gap: space.sm }}>
       <RowGroup>
         <SwitchRow
-          label="Health trends from Apple Health"
+          label={`Health trends from ${HEALTH.name}`}
           hint="Resting heart rate, heart rate variability, VO2 max and sleep. Read on this phone only; PaceLeague never sends them to its servers."
           value={settings.healthTrends}
           disabled={busy}
@@ -290,7 +291,7 @@ function HealthTrendsSection() {
         />
       </RowGroup>
       {settings.healthTrends && trends.data ? <TrendCards trends={trends.data} /> : null}
-      {settings.healthTrends && trends.isError ? <InlineStatus tone="danger" title="Couldn’t read from Apple Health." body="Try again later." /> : null}
+      {settings.healthTrends && trends.isError ? <InlineStatus tone="danger" title={`Couldn’t read from ${HEALTH.name}.`} body="Try again later." /> : null}
     </View>
   );
 }
@@ -300,8 +301,8 @@ function TrendCards({ trends }: { trends: HealthTrends }) {
   if (!anything) {
     return (
       <InlineStatus
-        title="Nothing to show from Apple Health yet."
-        body="If you expected readings, check that PaceLeague can read them in the Health app: your profile › Apps › PaceLeague."
+        title={`Nothing to show from ${HEALTH.name} yet.`}
+        body={`If you expected readings, check that PaceLeague can read them in ${HEALTH.settings}.`}
       />
     );
   }
@@ -361,8 +362,8 @@ function Definitions() {
         </View>
       ))}
       <Text variant="caption" tone="secondary">
-        Worked out on this phone from your runs, walks, rides and other workouts, and from Apple Health if you turn trends on. They’re for
-        training, not medical advice.
+        Worked out on this phone from your runs, walks, rides and other workouts, and from {HEALTH.name} if you turn trends on. They’re
+        for training, not medical advice.
       </Text>
     </Card>
   );

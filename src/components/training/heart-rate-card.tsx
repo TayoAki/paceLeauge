@@ -11,6 +11,7 @@ import { DEFINITIONS } from '@/domain/training';
 import type { ActiveSegment } from '@/domain/types';
 import { useAccountServices } from '@/features/account/account-provider';
 import { deviceHealthData } from '@/features/health/health-data';
+import { HEALTH } from '@/features/health/health-names';
 import type { MaxHrSource } from '@/features/training/training-data';
 import { useRunHeartRate, useRunSettings } from '@/features/training/use-training';
 import { Text } from '@/design/text';
@@ -117,7 +118,7 @@ export function RunHeartRateCard({ runKey, segments, avgHr, maxHr: runMax }: { r
       ) : heart.enabled && heart.hasSamples && !heart.maxHr ? (
         <TextButton label="Set your maximum heart rate to see zones" onPress={() => router.push('/profile/run-settings')} />
       ) : canAsk ? (
-        <TextButton label="Show heart-rate zones from Apple Health" loading={asking} onPress={() => void turnOn()} testID="hr-zones-on" />
+        <TextButton label={`Show heart-rate zones from ${HEALTH.name}`} loading={asking} onPress={() => void turnOn()} testID="hr-zones-on" />
       ) : null}
     </Card>
   );

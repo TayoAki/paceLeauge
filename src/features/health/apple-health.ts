@@ -4,6 +4,8 @@ import type { ActivityType, ServerRun } from '@/api/schemas';
 import type { ActiveSegment, TrackPoint } from '@/domain/types';
 import { isUsableSample, validateRun } from '@/domain/validator';
 
+import { healthConnectWriter } from './health-connect';
+
 /**
  * Save runs to Apple Health (docs/ROADMAP.md 1.6). When the runner switches it on, each run saved
  * on this phone is written to Health as a workout with its distance and route, exactly once; it is
@@ -179,6 +181,8 @@ function loadLibrary(): HealthKitLibrary | null {
 let devicePort: HealthKitPort | null | undefined;
 
 export function deviceHealthKit(): HealthKitPort | null {
+  // Android: Health Connect, once prepareHealthConnect() has found it.
+  if (Platform.OS === 'android') return healthConnectWriter();
   if (devicePort !== undefined) return devicePort;
   const lib = loadLibrary();
   devicePort = lib

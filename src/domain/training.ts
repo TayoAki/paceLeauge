@@ -17,10 +17,10 @@ export const DEFINITIONS = {
   prediction: 'Race predictions use Riegel’s formula on your best recent effort of a mile or more. They assume training for the distance.',
   efficiency: 'Aerobic efficiency is how far you run per heartbeat on easy runs. It rises as your aerobic fitness improves.',
   zones: 'Heart-rate zones split a run by the share of your maximum heart rate: 1 very easy, 2 easy, 3 steady, 4 hard, 5 very hard.',
-  restingHr: 'Resting heart rate is Apple Health’s daily estimate of your heart rate at rest. It often drifts down as fitness builds.',
-  hrv: 'Heart rate variability is how much the time between heartbeats varies, as Apple Health measures it. Compare it with your own usual range, not other people’s.',
-  vo2max: 'VO2 max is Apple’s estimate of your aerobic capacity, from outdoor walks and runs with an Apple Watch.',
-  sleep: 'Sleep is the time Apple Health recorded you asleep each night, averaged over the week.',
+  restingHr: 'Resting heart rate is your watch’s daily estimate of your heart rate at rest. It often drifts down as fitness builds.',
+  hrv: 'Heart rate variability is how much the time between heartbeats varies, as your watch measures it. Compare it with your own usual range, not other people’s.',
+  vo2max: 'VO2 max is your watch’s estimate of your aerobic capacity, usually from outdoor walks and runs.',
+  sleep: 'Sleep is the time your watch or phone recorded you asleep each night, averaged over the week.',
 } as const;
 
 export type ActivityKind = 'run' | 'walk' | 'hike' | 'ride' | 'other';

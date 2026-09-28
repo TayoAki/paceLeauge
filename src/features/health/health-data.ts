@@ -2,6 +2,8 @@ import { Platform } from 'react-native';
 
 import type { HrSample, SleepSample, TrendSample } from '@/domain/training';
 
+import { healthConnectData } from './health-connect';
+
 /**
  * Heart rate and health trends from Apple Health (docs/ROADMAP.md 3.5). Read on this phone with
  * the runner's consent, only while the matching setting is on, and never sent to PaceLeague's
@@ -37,6 +39,8 @@ const range = (fromMs: number, toMs: number) => ({ date: { startDate: new Date(f
 let port: HealthDataPort | null | undefined;
 
 export function deviceHealthData(): HealthDataPort | null {
+  // Android: Health Connect, once prepareHealthConnect() has found it.
+  if (Platform.OS === 'android') return healthConnectData();
   if (port !== undefined) return port;
   port = null;
   if (__DEV__ && Platform.OS === 'web') {

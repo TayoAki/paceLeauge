@@ -89,7 +89,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
             accountId,
             runtime,
             engine,
-            // A deleted run also leaves Apple Health (docs/ROADMAP.md 1.6).
+            // A deleted run also leaves Apple Health or Health Connect (docs/ROADMAP.md 1.6).
             actions: engine ? createRunActions(runtime.journal, engine, { onRemoved: (runId) => void runtime.health.remove(runId).catch(() => undefined) }) : null,
           },
         });
@@ -113,8 +113,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (engine && accessToken) void engine.resumeAfterAuth();
   }, [engine, accessToken]);
 
-  // Apple Health import (docs/ROADMAP.md 2.1): on open, on returning to the app and when Health
-  // wakes us for a new workout. Imported runs then sync like recorded ones.
+  // Health import (docs/ROADMAP.md 2.1; Health Connect on Android, P.1): on open, on returning to
+  // the app and, on iPhone, when Health wakes us for a new workout. Imported runs then sync like
+  // recorded ones.
   const runtime = state.status === 'ready' ? state.runtime : null;
   useEffect(() => {
     if (!runtime || !engine) return;

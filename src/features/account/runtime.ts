@@ -13,6 +13,7 @@ import { setActiveRecorder } from '@/features/recording/registry';
 import type { CreditedDays } from '@/features/recording/run-draft';
 import { countBucket, createTelemetry, durationBucket, type Telemetry } from '@/features/telemetry/telemetry';
 import { AppleHealthSync, deviceHealthKit, healthRunFrom } from '@/features/health/apple-health';
+import { prepareHealthConnect } from '@/features/health/health-connect';
 import { deviceHealthReader, HealthImporter } from '@/features/health/health-import';
 import { IndoorRunService } from '@/features/indoor/indoor-run';
 import { devicePedometer } from '@/features/indoor/pedometer';
@@ -71,6 +72,8 @@ async function create(accountId: string): Promise<AccountRuntime> {
   const telemetry = createTelemetry(journal);
   const runSettings = new RunSettingsStore(journal);
   await runSettings.load();
+  // Android: find Health Connect before the Health ports are made (a no-op elsewhere).
+  await prepareHealthConnect();
   const health = new AppleHealthSync({ kv: journal, port: deviceHealthKit(), enabled: () => runSettings.get().appleHealth });
   const saveToHealth = (runId: string) =>
     void health
