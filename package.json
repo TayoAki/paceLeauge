@@ -30,6 +30,7 @@
     "@expo/metro-runtime": "~57.0.16",
     "@garmin/fitsdk": "^21.217.0",
     "@kingstinct/react-native-healthkit": "^16.0.0",
+    "@rnmapbox/maps": "10.3.5",
     "@supabase/supabase-js": "^2.117.2",
     "@tanstack/react-query": "^5.103.3",
     "expo": "~57.0.25",

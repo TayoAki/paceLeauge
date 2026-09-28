@@ -345,6 +345,7 @@ function PreflightScreen() {
         height={230}
         current={pf.fix ? { latitude: pf.fix.latitude, longitude: pf.fix.longitude } : null}
         follow={!route || !followRoute}
+        offline={!!route && followRoute}
         accessibilityLabel={
           route && followRoute
             ? `Map of ${route.name}${pf.fix ? ', with your current position' : ''}`

@@ -94,8 +94,8 @@ and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and
 (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5), challenges (4.6),
 opt-in leaderboards (4.7), live location (4.8) and teen accounts in family leagues (4.10,
 switched off until counsel's review). Phase 5 (maps) is under way: route planning (5.1) and
-following a route with spoken turns (5.2's navigation) are built. The server is tested by 343
-database and API tests, the app by 349 unit tests and browser walkthroughs of the new screens.
+offline maps and navigation (5.2) are built. The server is tested by 343
+database and API tests, the app by 355 unit tests and browser walkthroughs of the new screens.
 What remains is on devices and with people: the Part C audio matrix and the Part A failure
 tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new Swift and Kotlin code (the
 watch app is off until then), the recorded voice and guided runs, the coach's review of plans
@@ -923,7 +923,7 @@ is where other people start seeing more than a name and a number.
 - How: Apple's MapKit offers apps no way to download map areas, so this uses Mapbox offline
   packs (`@rnmapbox/maps`) for these screens.
 - Done when: a route can be followed in airplane mode with turn and off-route cues.
-- Built so far, the navigation: a navigator on the phone matches each GPS fix to the route near
+- Built, in two parts. The navigation: a navigator on the phone matches each GPS fix to the route near
   where the runner was (so out-and-backs, spurs and a loop's shared start and finish are followed
   in order, the runner's direction deciding), says each turn once about 60 m before it ("In 60
   meters, turn left onto Elm Street", two close turns together), says when the runner is more
@@ -933,6 +933,15 @@ is where other people start seeing more than a name and a number.
   the runner is along it is saved as they go, so a relaunch carries on without repeating turns.
   On 14 real GraphHopper loops (698 turns) walked with 12 m of GPS noise, every turn was said or
   folded into the one a few metres before it, with no false off-route or wrong-way alert.
+  And the maps: a route's page offers "Download map", a Mapbox offline pack of the route's area
+  (its bounds and 400 m, zoom 10 to 16, less close-up detail for very long routes); the route
+  page, the preflight and the run screen of a run that follows a route are then drawn by Mapbox,
+  which shows the kept area without a signal. Profile › Offline maps lists the areas with their
+  size and removes them; each is marked with its account and signing out removes them. Mapbox's
+  own telemetry is off. The Mapbox SDK is in a build only with `PL_MAPBOX=1` and a public token
+  (`react-native.config.js` keeps it out otherwise; checked with Expo's autolinking and prebuild),
+  so until the Mapbox account exists, runs without a signal follow the route by voice on the
+  usual maps.
 
 **5.3 Segments** · XL
 - What: stretches of path with leaderboards.

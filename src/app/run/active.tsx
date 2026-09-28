@@ -271,6 +271,7 @@ export default function ActiveRunScreen() {
           <RouteMap
             lines={lines}
             guide={guide}
+            offline={guide !== null}
             height={recording ? 260 : 200}
             current={recording && last ? { latitude: last.lat, longitude: last.lon } : null}
             follow={recording}

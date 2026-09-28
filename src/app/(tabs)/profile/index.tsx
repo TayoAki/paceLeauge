@@ -2,7 +2,7 @@ import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Ban, Bell, CloudUpload, CreditCard, Footprints, Gavel, LifeBuoy, Link2, LogIn, LogOut, MapPinOff, ShieldCheck, Sparkles, Tag, UserPen, Users } from 'lucide-react-native';
+import { Ban, Bell, CloudOff, CloudUpload, CreditCard, Footprints, Gavel, LifeBuoy, Link2, LogIn, LogOut, MapPinOff, ShieldCheck, Sparkles, Tag, UserPen, Users } from 'lucide-react-native';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -11,6 +11,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { Avatar, InlineStatus, Row, RowGroup } from '@/components/ui/elements';
 import { Card, LargeHeader, Screen } from '@/components/ui/layout';
+import { offlineMaps } from '@/features/offline-maps/offline-maps';
 import { RULE_VERSION, VALIDATOR_VERSION } from '@/domain/config';
 import { formatDateShort, formatXp } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
@@ -172,6 +173,7 @@ export default function ProfileScreen() {
           testID="profile-run-settings"
         />
         <Row icon={Tag} label="Shoes" onPress={() => router.push('/profile/shoes')} testID="profile-shoes" />
+        {offlineMaps().available ? <Row icon={CloudOff} label="Offline maps" onPress={() => router.push('/profile/offline-maps')} testID="profile-offline-maps" /> : null}
         <Row
           icon={CloudUpload}
           label="Imports and sync"

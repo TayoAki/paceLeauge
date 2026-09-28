@@ -3,6 +3,7 @@ import { FileDown, Pencil, Play, Trash2, Watch } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
+import { OfflineMapCard } from '@/components/routes/offline-map-card';
 import { RouteMap } from '@/components/run/route-map';
 import { PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
@@ -100,7 +101,7 @@ export default function RouteScreen() {
       {query.data?.source === 'cache' ? <InlineStatus title="Saved on this phone." body="You’re offline; you can still follow this route." /> : null}
       {route ? (
         <>
-          <RouteMap lines={[]} guide={guide} height={300} interactive accessibilityLabel={`Map of ${route.name}, ${routeDistance(route.distance_m, units)}. Visible only to you.`} />
+          <RouteMap lines={[]} guide={guide} height={300} interactive offline accessibilityLabel={`Map of ${route.name}, ${routeDistance(route.distance_m, units)}. Visible only to you.`} />
           <Text variant="body" tone="secondary">
             {routeSummary(route, units)}
           </Text>
@@ -127,6 +128,8 @@ export default function RouteScreen() {
           </Text>
           {note ? <InlineStatus tone={note.tone} title={note.text} /> : null}
           {actions.error && !renaming ? <InlineStatus tone="danger" title={actions.error} /> : null}
+
+          <OfflineMapCard routeId={route.id} name={route.name} points={route.points} />
 
           {route.cues.length > 0 ? (
             <Card style={styles.card}>

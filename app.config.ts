@@ -45,6 +45,14 @@ const APP_GROUP = `group.${BUNDLE_ID}`;
  */
 const ANDROID_MAPS_KEY = process.env.GOOGLE_MAPS_ANDROID_KEY?.trim() || null;
 
+/**
+ * Offline map areas (docs/ROADMAP.md 5.2) with Mapbox (@rnmapbox/maps). Off unless PL_MAPBOX=1 and
+ * a public token (EXPO_PUBLIC_MAPBOX_TOKEN, pk.…) are set: without PL_MAPBOX, react-native.config.js
+ * keeps the Mapbox SDK out of the native build, and the app never loads it.
+ */
+const LINK_MAPBOX = process.env.PL_MAPBOX === '1';
+const WITH_MAPBOX = LINK_MAPBOX && !!process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+
 const LOCATION_ALWAYS_COPY = 'PaceLeague records your run’s route while your screen is locked. Location is only collected during a run you start.';
 const LOCATION_WHEN_IN_USE_COPY = 'PaceLeague uses your location to prepare and record your run.';
 
@@ -187,6 +195,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       : []),
     // Health Connect's permission screens link to the Privacy Policy (P.1); it needs Android 8+.
     'react-native-health-connect',
+    ...(LINK_MAPBOX ? ['@rnmapbox/maps'] : []),
     ['expo-build-properties', { android: { minSdkVersion: 26 } }],
     [
       'expo-splash-screen',
@@ -205,6 +214,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     appEnv: APP_ENV,
     appGroup: WITH_WIDGETS ? APP_GROUP : null,
     androidMaps: ANDROID_MAPS_KEY !== null,
+    mapbox: WITH_MAPBOX,
     eas: { projectId: EAS_PROJECT_ID },
   },
 });

@@ -692,6 +692,26 @@ routes on a grid with no map, and drawing a route by tapping the map is off ther
 once the route has been opened on the phone (5.2). **Apple Watch:** *Send to Apple Watch* on a
 route page queues it to the watch app, which shows it on a map during the next run there.
 
+### Offline maps (5.2)
+
+Map areas kept on the phone come from Mapbox (`@rnmapbox/maps`), because Apple's MapKit can't
+download areas. They're off, and the Mapbox SDK isn't even in the build, until both are set in
+the EAS build's environment:
+
+| Variable | Value |
+|---|---|
+| `PL_MAPBOX` | `1` links the Mapbox SDK into the iOS and Android builds (`react-native.config.js`) and adds its config plugin |
+| `EXPO_PUBLIC_MAPBOX_TOKEN` | A **public** Mapbox access token (`pk.…`) from the Mapbox account, with the default public scopes. It ships in the app, like the API key. No secret download token is needed for Mapbox's current SDKs |
+
+With both, a route's page offers *Download map*: the route's bounds plus 400 m, zoom 10 to 16
+(fewer close-up levels for very long routes, at most 3,000 tiles an area), in Mapbox's Outdoors
+style. The maps of runs that follow a route, the preflight and the route page are then drawn by
+Mapbox, which shows the kept areas without a signal; other maps stay Apple Maps (Google Maps on
+Android). Profile › Offline maps lists what's kept and removes it; signing out removes the
+account's areas. The app turns Mapbox's own telemetry off. Before switching it on: check Mapbox's
+current pricing for mobile map loads and offline downloads against the expected runners, and its
+terms for offline use (the SDK enforces a tile limit per phone). Test with P5-OFFLINE-MAP.
+
 ## Push notifications (4.9)
 
 Kudos, comments and replies, follows (requests, new followers, accepted requests), league cheers,

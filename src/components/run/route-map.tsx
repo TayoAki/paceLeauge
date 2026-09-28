@@ -3,7 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
 import { LocationDot } from '@/components/art/art';
+import { MapboxRouteMap } from '@/components/routes/mapbox-route-map';
 import { colors, radius } from '@/design/tokens';
+import { MAPBOX_ENABLED } from '@/features/offline-maps/mapbox';
 import { NATIVE_MAPS } from '@/features/routes/maps-support';
 
 import type { LatLng } from './route-lines';
@@ -18,6 +20,11 @@ export interface RouteMapProps {
   follow?: boolean;
   /** A planned route to follow (docs/ROADMAP.md 5.1), drawn beneath the run. */
   guide?: LatLng[] | null;
+  /**
+   * Where a route is followed (5.2): drawn by Mapbox in builds that have it, so the map areas kept
+   * on the phone show without a signal.
+   */
+  offline?: boolean;
 }
 
 /**
@@ -26,6 +33,7 @@ export interface RouteMapProps {
  * Google Maps key draw the route on a grid instead.
  */
 export function RouteMap(props: RouteMapProps) {
+  if (props.offline && MAPBOX_ENABLED) return <MapboxRouteMap {...props} />;
   if (!NATIVE_MAPS) {
     return <RouteSketch lines={props.lines} guide={props.guide} current={props.current} height={props.height} accessibilityLabel={props.accessibilityLabel} />;
   }

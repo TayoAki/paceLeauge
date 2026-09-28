@@ -10,6 +10,7 @@ import { deleteAccountDatabase } from '@/db/open';
 import { syncPushRegistration, unregisterPush } from '@/features/notifications/push';
 import { cancelReminder, restoreReminder } from '@/features/reminders/reminders';
 import { createRunActions, type RunActions } from '@/features/sync/run-actions';
+import { offlineMaps } from '@/features/offline-maps/offline-maps';
 import { writeWidgetWeek } from '@/features/widgets/widget-data';
 import { SyncEngine } from '@/features/sync/sync-engine';
 import { sha256Hex } from '@/lib/crypto';
@@ -115,6 +116,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (engine && accessToken) void engine.resumeAfterAuth();
   }, [engine, accessToken]);
 
+  // Map areas kept on the phone are the signed-in account's own (docs/ROADMAP.md 5.2).
+  const readyAccount = state.status === 'ready' ? state.accountId : null;
+  useEffect(() => {
+    if (readyAccount) offlineMaps().setAccount(readyAccount);
+  }, [readyAccount]);
+
   // Health import (docs/ROADMAP.md 2.1; Health Connect on Android, P.1): on open, on returning to
   // the app and, on iPhone, when Health wakes us for a new workout. Imported runs then sync like
   // recorded ones.
@@ -211,6 +218,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     // This phone stops getting the account's pushes.
     if (state.status === 'ready' && api) await unregisterPush(api, state.runtime.journal).catch(() => undefined);
     writeWidgetWeek(null);
+    // Map areas downloaded for this account's routes (docs/ROADMAP.md 5.2).
+    await offlineMaps().removeAll().catch(() => undefined);
+    offlineMaps().setAccount(null);
     if (state.status === 'ready') state.engine?.stop();
     await closeAccountRuntime();
     if (wipe) await deleteAccountDatabase(wipe).catch(() => undefined);

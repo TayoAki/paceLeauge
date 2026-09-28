@@ -63,6 +63,7 @@ Only if you plan a route in the Train tab:
 - The routes you save: their names, the points of each route and its turns, its distance and, when known, its climb. A saved route often starts at your home, so your routes are visible only to you: nobody else can see, open or follow them.
 - When you plan a loop or a route along paths, the points you choose, or your location if you plan from where you are, are sent to our routing provider, [Routing provider], which works out the path and sends it back. We don't send your name, email address or account with them, and we don't keep the points you tried unless you save the route.
 - Following a route on a run happens on your phone: where you are along it is worked out there, from the run's location, and isn't sent to us beyond the run itself. Routes you've opened are kept on your phone so you can follow them without a connection. If you send a route to your Apple Watch, it goes from your phone straight to the watch. If you share a route as a GPX file, you choose where it goes.
+- Where your version of the app offers offline maps: the map areas you download for your routes are requested from Mapbox, which also draws the maps of runs that follow a route, the same way Apple Maps draws the others. Mapbox receives the areas requested, not your account. We turn off Mapbox's own collection of usage and location data. Downloaded areas stay on your phone until you remove them or sign out.
 
 ### Leagues and safety
 

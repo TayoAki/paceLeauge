@@ -24,6 +24,8 @@ export const env = {
   /** RevenueCat's public SDK keys for Pro (appl_…, goog_…). Public by design; empty hides purchases. */
   revenuecatIosKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '',
   revenuecatAndroidKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '',
+  /** Mapbox's public access token (pk.…) for offline map areas (5.2). Public by design; empty keeps them off. */
+  mapboxToken: process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '',
 } as const;
 
 export const isBackendConfigured = env.apiUrl.length > 0 && env.apiKey.length > 0;
