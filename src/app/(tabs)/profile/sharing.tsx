@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { LocateFixed, MapPin, Route, Trash2 } from 'lucide-react-native';
+import { Flame, LocateFixed, MapPin, Route, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -11,11 +11,37 @@ import { fromCompact } from '@/domain/route-codec';
 import { useAccount } from '@/features/account/account-provider';
 import { useMe } from '@/features/data/hooks';
 import { useTeen, visibilityChoices } from '@/features/account/teen';
+import { useHeatmap, useHeatmapActions } from '@/features/heatmap/use-heatmap';
 import { useSocialActions, useSocialSettings, VISIBILITY_HINTS, VISIBILITY_NAMES } from '@/features/social/use-social';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
 
 const RADII = [100, 200, 400, 800];
+
+/** The heatmap (docs/ROADMAP.md 5.4): off until the runner adds their runs. */
+function HeatmapSwitch() {
+  const heat = useHeatmap();
+  const actions = useHeatmapActions();
+  const data = heat.data?.data;
+  if (!data) return null;
+  return (
+    <>
+      <RowGroup>
+        <SwitchRow
+          icon={Flame}
+          label="Add my runs to the heatmap"
+          hint={`Runs you share with everyone, map included, help show popular paths. A path shows only once ${data.min_runners} different runners have run it; your privacy zones and where runs start and end are never used.`}
+          value={data.contributing}
+          onChange={(on) => void actions.setContribution(on)}
+          disabled={actions.busy}
+          last
+          testID="heatmap-switch"
+        />
+      </RowGroup>
+      {actions.error ? <InlineStatus tone="danger" title={actions.error} /> : null}
+    </>
+  );
+}
 
 function radiusLabel(m: number, imperial: boolean): string {
   return imperial ? `${Math.round((m * 3.28084) / 50) * 50} ft` : `${m} m`;
@@ -147,6 +173,8 @@ export default function SharingScreen() {
               </>
             ) : null}
           </RowGroup>
+
+          {!isTeen ? <HeatmapSwitch /> : null}
 
           <View style={styles.group}>
             <Text variant="labelStrong" accessibilityRole="header">

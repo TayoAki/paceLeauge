@@ -26,6 +26,7 @@ import type { Mailer } from './mailer';
 import { callRpc, type Claims as RpcClaims } from './rpc';
 import { handleTerraEvent, IngestError, startGarminConnect, verifyTerraSignature, type TerraApi } from './garmin';
 import { handleRevenueCatEvent, webhookAuthorized, type RevenueCatApi } from './revenuecat';
+import { heatmapLinks, heatmapTile, MAX_ZOOM, MIN_ZOOM, verifyTileToken } from './heatmap';
 import { PlanInputError, planRoute, RoutingError, type RoutingApi } from './routing';
 import { stravaCallback, stravaWebhookChallenge, stravaWebhookEvent, type StravaApi, type StravaHttpResult } from './strava';
 
@@ -403,6 +404,18 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
         return fail('server_error', 502);
       }
     }
+    if (fn === 'get_heatmap_tiles') {
+      // Signed links to the heatmap's tiles (docs/ROADMAP.md 5.4), for map views that can't send headers.
+      const fail = (message: string, status = 400) => send(res, status, { code: 'P0001', details: null, hint: null, message });
+      if (claims.role !== 'authenticated') return fail('not_authenticated', 401);
+      try {
+        return send(res, 200, await heatmapLinks(pool, deps.secret, claims.sub as string));
+      } catch (error) {
+        const message = (error as { message?: string }).message ?? '';
+        if (/^[a-z_]{3,40}$/.test(message)) return fail(message);
+        throw error;
+      }
+    }
     if (fn === 'plan_route') {
       const fail = (message: string, status = 400) => send(res, status, { code: 'P0001', details: null, hint: null, message });
       if (claims.role !== 'authenticated') return fail('not_authenticated', 401);
@@ -505,6 +518,26 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
         }
         await handleRevenueCatEvent({ pool, log, config: deps.revenuecat.config, api: deps.revenuecat.api }, await readJson(req, AUTH_BODY_LIMIT * 4));
         return send(res, 200, { ok: true });
+      }
+      // Heatmap tiles (docs/ROADMAP.md 5.4): map views load them without headers, so the link's
+      // signature stands in for the API key and the session.
+      const tileMatch = /^\/heatmap\/(\d{1,12})\/(\d{1,2})\/(\d{1,7})\/(\d{1,7})\.png$/.exec(path);
+      if (tileMatch) {
+        route = `${req.method} /heatmap/tile`;
+        if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, { message: 'Method not allowed' });
+        const [build, z, x, y] = tileMatch.slice(1).map(Number) as [number, number, number, number];
+        if (z < MIN_ZOOM || z > MAX_ZOOM || x >= 2 ** z || y >= 2 ** z) throw new HttpError(404, { message: 'Not found' });
+        if (!verifyTileToken(deps.secret, build, url.searchParams.get('t'), Math.floor(Date.now() / 1000))) {
+          throw new HttpError(403, { message: 'This map link has expired' });
+        }
+        await limit(`heatmap:tile:ip:${hashKey(clientIp(req))}`, 6_000, 3600);
+        const png = await heatmapTile(pool, build, z, x, y);
+        if (!png) throw new HttpError(404, { message: 'This map has been updated' });
+        // The build is in the address, so a tile never changes; the link itself expires.
+        res.setHeader('Cache-Control', 'private, max-age=86400');
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': String(png.length) });
+        res.end(req.method === 'HEAD' ? undefined : png);
+        return;
       }
       const apikey = (req.headers.apikey as string | undefined) ?? url.searchParams.get('apikey') ?? '';
       if (!safeEqual(apikey, config.publicApiKey)) throw new HttpError(401, { message: 'Invalid API key' });

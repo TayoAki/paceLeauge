@@ -275,6 +275,7 @@ describe('maintenance', () => {
       leaderboard_changes: expect.any(Number),
       live_shares_expired: expect.any(Number),
       segment_matches: expect.any(Number),
+      heatmap_runs: expect.any(Number),
     });
   });
 });

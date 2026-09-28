@@ -5,7 +5,7 @@ import { competitionWeekAt } from '../../src/domain/calendar';
 import { destinationPoint } from '../../src/domain/geo';
 import { chunk, encodeChunk } from '../../src/domain/route-codec';
 import { deriveCues, toRoutePoint, type RoutePoint } from '../../src/domain/routes';
-import { buildSyntheticRun, CHICAGO_LAKEFRONT, steadyRun, type SyntheticRun } from '../../src/domain/synthetic';
+import { buildSyntheticRun, CHICAGO_LAKEFRONT, routeRun, steadyRun, type SyntheticRun } from '../../src/domain/synthetic';
 
 import { hashPassword } from '../../server/src/auth/passwords';
 import { callRpc, type Claims } from '../../server/src/rpc';
@@ -400,6 +400,7 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
   });
 
   await seedSegments(pool, weekStart);
+  await seedHeatmap(pool, weekStart);
 
   console.log(
     `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends and a family league, with a club and challenges; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,
@@ -470,4 +471,37 @@ async function seedSegments(pool: pg.Pool, weekStart: number): Promise<void> {
   };
   await share(zed, await uploadRun(pool, zed, run, 800, 'Evening run'));
   await pool.query('select private.process_segment_matches(1000)');
+}
+
+/**
+ * The heatmap (docs/ROADMAP.md 5.4): twelve runners in each of two places add their runs, shared
+ * with everyone with their maps. All of them run 2 km out along one street and back (level 2,
+ * 10–19 runners); six also run a 2 km square (level 1). One place is the demo runs' start in
+ * Chicago; the other is central Cambridge, UK, where a local GraphHopper with OpenStreetMap data
+ * for Cambridge (docs/OPERATIONS.md) can plan the suggested loops. Then the map is built.
+ */
+const HEAT_AREAS = [
+  { origin: CHICAGO_LAKEFRONT, tag: 'chicago', names: ['Ava', 'Ben', 'Cleo', 'Dan', 'Eli', 'Fay', 'Gus', 'Hana', 'Ivo', 'Jade', 'Kit', 'Lou'] },
+  { origin: { lat: 52.2053, lon: 0.1218 }, tag: 'cambridge', names: ['Moss', 'Nia', 'Oli', 'Pip', 'Quinn', 'Ros', 'Sid', 'Tam', 'Uma', 'Vic', 'Wren', 'Xan'] },
+];
+
+async function seedHeatmap(pool: pg.Pool, weekStart: number): Promise<void> {
+  for (const area of HEAT_AREAS) {
+    const east = destinationPoint(area.origin, 90, 2000);
+    const north = destinationPoint(area.origin, 0, 2000);
+    const corner = destinationPoint(north, 90, 2000);
+    for (const [k, name] of area.names.entries()) {
+      const claims = await ensureRunner(pool, { alias: name, email: `${name.toLowerCase()}.${area.tag}@demo.paceleague.test` });
+      await rpc(pool, claims, 'set_heatmap_contribution', { p_on: true });
+      const routes = [[area.origin, east, area.origin], ...(k < 6 ? [[area.origin, north, corner, east, area.origin]] : [])];
+      for (const [r, waypoints] of routes.entries()) {
+        const startAt = weekStart - (10 + k + 3 * r) * DAY_MS + 7 * 3_600_000;
+        const run = routeRun(startAt, waypoints, 3.2);
+        const runId = await uploadRun(pool, claims, run, Math.round((run.endedAt - run.startedAt) / 1000), 'Morning run');
+        if (runId) await rpc(pool, claims, 'set_run_sharing', { p_run_id: runId, p_visibility: 'everyone', p_map_shared: true });
+      }
+    }
+  }
+  await pool.query('select private.process_heatmap_queue(1000)');
+  await pool.query('select private.build_heatmap()');
 }

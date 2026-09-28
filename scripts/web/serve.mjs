@@ -5,7 +5,8 @@
  *
  *   WEB_DIR=dist-web PORT=8080 API_ORIGIN=https://api.example.com node scripts/web/serve.mjs
  *
- * API_ORIGIN is the only other origin the app may talk to (Content-Security-Policy connect-src).
+ * API_ORIGIN is the only other origin the app may talk to (Content-Security-Policy connect-src),
+ * and load images from (the heatmap's tiles, docs/ROADMAP.md 5.4).
  */
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
@@ -47,7 +48,7 @@ export const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  `img-src 'self' data: blob:${API_ORIGIN ? ` ${API_ORIGIN}` : ''}`,
   "font-src 'self' data:",
   `connect-src 'self'${API_ORIGIN ? ` ${API_ORIGIN}` : ''}`,
   "worker-src 'self' blob:",

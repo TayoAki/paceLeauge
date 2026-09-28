@@ -16,6 +16,7 @@ const STRAVA_LOCK = 7_340_103;
 const GARMIN_LOCK = 7_340_104;
 const BILLING_LOCK = 7_340_105;
 const PUSH_LOCK = 7_340_106;
+const HEATMAP_LOCK = 7_340_107;
 
 const AUTH_CLEANUP = `
   delete from auth.one_time_codes where expires_at < now() - interval '1 hour';
@@ -55,6 +56,14 @@ export async function runHourlyJobs(pool: Pool, log: Logger): Promise<void> {
     const [diagnostics] = (await run('select private.purge_diagnostics() as n')) as { n: number }[];
     await run(AUTH_CLEANUP);
     log.info('hourly retention', { ...(row?.result ?? {}), diagnostic_reports: diagnostics?.n ?? 0 });
+  });
+}
+
+/** The heatmap's weekly build (docs/ROADMAP.md 5.4): checked hourly, built once a week. */
+export async function runHeatmapJobs(pool: Pool, log: Logger): Promise<void> {
+  await withLock(pool, HEATMAP_LOCK, async (run) => {
+    const [row] = (await run('select private.build_heatmap_if_due() as result')) as { result: Record<string, number> | null }[];
+    if (row?.result) log.info('heatmap built', row.result);
   });
 }
 
@@ -125,6 +134,7 @@ export function startJobs(
   const cancels = [
     schedule('frequent', intervals.frequentMs, () => runFrequentJobs(pool, log)),
     schedule('hourly', intervals.hourlyMs, () => runHourlyJobs(pool, log)),
+    schedule('heatmap', intervals.hourlyMs, () => runHeatmapJobs(pool, log)),
     ...(strava ? [schedule('strava', intervals.frequentMs, () => runStravaJobs(pool, log, strava))] : []),
     ...(garmin ? [schedule('garmin', intervals.frequentMs, () => runGarminJobs(pool, log, garmin))] : []),
     ...(billing ? [schedule('billing', intervals.hourlyMs, () => runBillingJobs(pool, log, billing))] : []),

@@ -1,4 +1,4 @@
-import { destinationPoint, type LatLon } from './geo';
+import { destinationPoint, haversineM, type LatLon } from './geo';
 import { normalizeAccuracy, normalizeCoordinate } from './route-codec';
 import type { ActiveSegment, EpochMs, TrackPoint } from './types';
 
@@ -95,4 +95,25 @@ export function steadyRun(startAt: EpochMs, distanceM: number, durationS: number
     startAt,
     legs: [{ kind: 'run', durationS, speedMps: distanceM / durationS, ...overrides }],
   });
+}
+
+/** A run through `waypoints` at a steady speed, one fix a second, in one stretch. */
+export function routeRun(startAt: EpochMs, waypoints: readonly LatLon[], speedMps: number): SyntheticRun {
+  const points: TrackPoint[] = [];
+  let t = startAt;
+  let truthDistanceM = 0;
+  const push = (p: LatLon) =>
+    points.push({ seq: points.length, segmentIndex: 0, t, lat: normalizeCoordinate(p.lat), lon: normalizeCoordinate(p.lon), accuracyM: normalizeAccuracy(5) });
+  if (waypoints[0]) push(waypoints[0]);
+  for (let k = 1; k < waypoints.length; k++) {
+    const [a, b] = [waypoints[k - 1]!, waypoints[k]!];
+    const length = haversineM(a, b);
+    const steps = Math.max(1, Math.round(length / speedMps));
+    for (let s = 1; s <= steps; s++) {
+      t += 1000;
+      push({ lat: a.lat + ((b.lat - a.lat) * s) / steps, lon: a.lon + ((b.lon - a.lon) * s) / steps });
+    }
+    truthDistanceM += length;
+  }
+  return { startedAt: startAt, endedAt: t, segments: [{ index: 0, startAt, endAt: t }], points, truthDistanceM };
 }

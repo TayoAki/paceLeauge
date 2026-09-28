@@ -551,7 +551,8 @@ there are (`RUN_JOBS=false` opts an instance out).
 
 | Job | Schedule | Does |
 |---|---|---|
-| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push (several leagues' results arrive as one), settles the season that just ended (its champions, once, a day after its last week), queues group-run reminders an hour before the start, and works out the leaderboards (this week's and last week's results for everyone who joined, the checks on the top ten of every board, and last week made final 48 hours after it closed, Wednesday 00:00 Chicago), and stops live-location links whose time ran out, wiping their last position (stopped links go after 7 days), and matches up to 200 queued runs to the segments (new, edited, shared or unshared runs, and runs of runners who joined or changed a privacy zone). Logs `frequent jobs` when it did something |
+| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push (several leagues' results arrive as one), settles the season that just ended (its champions, once, a day after its last week), queues group-run reminders an hour before the start, and works out the leaderboards (this week's and last week's results for everyone who joined, the checks on the top ten of every board, and last week made final 48 hours after it closed, Wednesday 00:00 Chicago), and stops live-location links whose time ran out, wiping their last position (stopped links go after 7 days), matches up to 200 queued runs to the segments (new, edited, shared or unshared runs, and runs of runners who joined or changed a privacy zone), and works out the heatmap cells of up to 200 queued runs of runners who add theirs. Logs `frequent jobs` when it did something |
+| `private.build_heatmap_if_due()` | hourly, and 5 s after each start | Rebuilds the heatmap once the last build is a week old: every cell at least 5 different contributors ran through, from their eligible runs of the last year; drops the previous build's kept tiles. Logs `heatmap built` with the cells, runners and runs |
 | Strava uploads and revocations | every minute, when Strava is configured | Queues accepted runs of connected runners, uploads them, follows processing, refreshes tokens, confirms webhook deauthorizations, revokes ended grants. Logs `strava jobs` |
 | Garmin events | every minute, when Terra is configured | Uploads queued Garmin activities as their runners, deauthorizes ended links, keeps processed events a week. Logs `garmin jobs` |
 | Pro billing | hourly | Sends trial reminders (production), and removes store events older than 60 days. Logs `billing jobs` |
@@ -746,6 +747,39 @@ the most different days in the last 90. Teens can't join. Leaving takes every ti
 To see what the job is doing: `select count(*) from private.segment_match_queue;` (should drain
 within a minute or two), and to match one run again by hand,
 `insert into private.segment_match_queue (run_id) values ('<run uuid>') on conflict do nothing;`.
+
+## Heatmap and suggested loops (5.4)
+
+Train › Routes › Popular paths shows the heatmap around the runner and plans loops through the
+busiest places nearby (with route planning switched on, 5.1). Nothing needs configuring: the
+tiles come from the API service itself.
+
+- **Who's on it.** Only runners who add their runs (Popular paths, or Profile › Sharing; teens
+  can't), and only their accepted runs shared with everyone with the map, from the last 365 days,
+  on what a shared map shows (not the first or last 200 m, nothing in a privacy zone). Each run's
+  cells are worked out once by the minute job (`private.heatmap_run_cells`); stopping deletes
+  the runner's cells at once.
+- **The rule.** Cells are the web map grid's tiles at zoom 21 (about 19 m across at the equator,
+  14 m in mid-latitudes). A cell is published only when at least 5 different contributors ran
+  through it, however many times any one did, and its brightness is one of four levels (5–9,
+  10–19, 20–49, 50 or more runners), never a count. The weekly build (`private.build_heatmap()`,
+  also safe to run by hand) replaces `private.heatmap_cells` in one transaction.
+- **Tiles.** `GET /heatmap/{build}/{z}/{x}/{y}.png?t=…` (zooms 10–18) is drawn from the cells,
+  kept in `private.heatmap_tiles` until the next build (empty tiles aren't kept), and sent with
+  `Cache-Control: private, max-age=86400`. Map views can't send headers, so the app asks for
+  signed links (`get_heatmap_tiles`, 60 an hour per runner) that work for a day and name no
+  runner: an HMAC of the build and the expiry, with a key derived from the signing secret
+  (rotating the secret ends every link). Tiles are limited to 6,000 an hour per address. A link
+  for an older build answers 404, and the app asks again.
+- **Nearby places** (`get_heatmap_hotspots`) come only from published cells: up to 12, at least
+  400 m apart, within 5 km, with their level. The app picks loops through two of them and plans
+  each stretch with `plan_route`.
+
+What no threshold prevents: someone who compares two builds a week apart could see where a
+path just reached 5 runners, and so that one more runner ran there that week (never who). A
+year-long window and weekly builds blur this; if it matters, raise the threshold or add noise
+before the counts are compared. Scale: the build reads every contributed run's cells from the
+last year; beyond a few hundred thousand runs, move it to a separate job or service.
 
 ## Push notifications (4.9)
 

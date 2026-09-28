@@ -88,23 +88,26 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 | 4 | Friends, family and everyone | Leagues 2.0 with group runs, privacy zones, follow, feed, clubs, challenges, opt-in leaderboards, live location, push, teen family accounts | 23–36 weeks |
 | 5 | Maps | Route planning, offline maps and navigation, segments, heatmaps | 18–28 weeks |
 
-**Progress (28 September 2026).** Phase 0's age check, Phases 1 to 4 and the platform track
+**Progress (28 September 2026).** Phase 0's age check, all five phases and the platform track
 (the Android app and the web app) are built and tested in code. Phase 4 brought privacy zones
 and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and moderation
 (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5), challenges (4.6),
 opt-in leaderboards (4.7), live location (4.8) and teen accounts in family leagues (4.10,
-switched off until counsel's review). Phase 5 (maps) is under way: route planning (5.1),
-offline maps and navigation (5.2) and segments (5.3) are built. The server is tested by 354
-database and API tests, the app by 358 unit tests and browser walkthroughs of the new screens.
-What remains is on devices and with people: the Part C audio matrix and the Part A failure
-tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new Swift and Kotlin code (the
-watch app is off until then), the recorded voice and guided runs, the coach's review of plans
-and notes, the 30-runner pilot, counsel's review of health data, and the Strava, Terra, App
-Store and RevenueCat accounts. Phase 4 adds the APNs and FCM push credentials (push stays off
-until `PUSH_ENABLED` is set), its device cases (P4-LEAGUES to P4-TEEN, including the one-hour
-live-location battery test), counsel's review of teen accounts
+switched off until counsel's review). Phase 5 brought route planning (5.1), offline maps and
+navigation (5.2), segments (5.3) and the heatmap with suggested loops (5.4). The server is
+tested by 364 database and API tests, the app by 365 unit tests and browser walkthroughs of the
+new screens. What remains is on devices and with people: the Part C audio matrix and the Part A
+failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new Swift and Kotlin
+code (the watch app is off until then), the recorded voice and guided runs, the coach's review
+of plans and notes, the 30-runner pilot, counsel's review of health data, and the Strava, Terra,
+App Store and RevenueCat accounts. Phase 4 adds the APNs and FCM push credentials (push stays
+off until `PUSH_ENABLED` is set), its device cases (P4-LEAGUES to P4-TEEN, including the
+one-hour live-location battery test), counsel's review of teen accounts
 (`docs/legal-drafts/teen-accounts.md`), a named moderation rota, and real crews, clubs and
-boards in the pilot. Each item below says what was built.
+boards in the pilot. Phase 5 adds a routing service (`ROUTING_URL`), the Android maps key, a
+Mapbox account and token for offline maps, its device cases (P5-PLAN to P5-HEATMAP), segments
+chosen for the pilot's places, and enough runners adding their runs for the heatmap to show
+anything. Each item below says what was built.
 
 Sizes are rough engineer-weeks for one engineer working with Claude, before testing on devices.
 Sizes per epic: **S** is up to a week, **M** 1–3 weeks, **L** 3–6 weeks, **XL** more than 6.
@@ -982,6 +985,25 @@ is where other people start seeing more than a name and a number.
   - Tiles are rebuilt weekly and cached in storage.
 - Done when: a single runner's route can't be reconstructed from the heatmap, tested with
   synthetic data.
+- Built: Train › Routes › Popular paths shows the heatmap around the runner, four brightness
+  levels from quieter to busier (never a count), and "Loops through busy paths": for 3 to 10 km
+  (or miles), up to three loops from the runner through two of the busiest places nearby, in
+  different directions, planned along paths by 5.1's planner and saved as routes. Runners choose
+  to add their runs (on that screen or in Profile › Sharing; never teens), and then only accepted
+  runs shared with everyone, map included, from the last year count, on what a shared map shows
+  (not the first or last 200 m, nothing in a privacy zone). Each run's cells (the web map grid at
+  zoom 21, about 14 m across in mid-latitudes, so no PostGIS) are worked out once by the minute
+  job; the map is rebuilt weekly and a cell shows only when 5 different runners went through it,
+  however often one of them did. The API service draws the tiles (PNG, zooms 10 to 18), keeps each
+  until the next build, and serves them through links it signs for a day, which name no runner:
+  the phones' maps overlay them, and the web app lays them out on a grid. The synthetic-data test
+  (`tests/backend/heatmap.test.ts`): a route one runner runs twelve times never shows, four
+  runners don't make a path and a fifth does, five runners from the same front door never show
+  its first or last 200 m, a privacy zone halfway takes the path out there, runs not shared with
+  everyone or without the map don't count, and in a town of 40 runners on a street grid the map
+  is exactly the cells five or more share, so none of anyone's own streets show. A weakness any
+  threshold has remains, and is written down (OPERATIONS.md): comparing builds a week apart could
+  show where a path just reached five runners.
 
 ## Free and Pro
 

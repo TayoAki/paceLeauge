@@ -37,6 +37,8 @@ allowed.
 
 Segments are timed stretches of path. A time on a board is never worth a risk: on shared paths,
 give way to others, keep to the speed that's safe there, and stop for crossings and traffic.
+Popular paths and the loops suggested through them show where other runners have run, not that
+a place is safe, open or right for you at the time you go.
 
 ## Fair play
 

@@ -1,13 +1,14 @@
 import { useRouter } from 'expo-router';
-import { MapPinned, Route as RouteIcon } from 'lucide-react-native';
+import { Flame, MapPinned, Route as RouteIcon } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { RouteSummary } from '@/api/routes-api';
 import { RouteSketch } from '@/components/run/route-sketch';
-import { PrimaryButton } from '@/components/ui/buttons';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { EmptyState, InlineStatus } from '@/components/ui/elements';
 import { Card } from '@/components/ui/layout';
 import { toLatLon } from '@/domain/routes';
+import { useTeen } from '@/features/account/teen';
 import { useMe } from '@/features/data/hooks';
 import { routeSummary } from '@/features/routes/route-text';
 import { useRoutes } from '@/features/routes/use-routes';
@@ -20,12 +21,17 @@ export function RouteList() {
   const query = useRoutes();
   const data = query.data?.data;
   const units = useMe().data?.data.profile?.units ?? 'metric';
+  // The heatmap (docs/ROADMAP.md 5.4) isn't for teen accounts.
+  const { isTeen } = useTeen();
 
   return (
     <View style={styles.section}>
       {query.data?.source === 'cache' ? <InlineStatus title="Showing your routes from earlier." body="You’re offline. Routes you’ve opened before can still be followed." /> : null}
       {query.isError && !data ? <InlineStatus tone="danger" title="Couldn’t load your routes." body="Pull to try again." /> : null}
       <PrimaryButton label="Plan a route" icon={MapPinned} onPress={() => router.push('/train/routes/plan')} testID="plan-route" />
+      {!isTeen ? (
+        <SecondaryButton label="Popular paths" icon={Flame} onPress={() => router.push('/train/routes/popular')} testID="popular-paths" />
+      ) : null}
       {data && !data.planning_available ? (
         <Text variant="caption" tone="secondary">
           Routes are drawn point to point for now; loops of a set distance and routes along paths come when route planning is switched on.
