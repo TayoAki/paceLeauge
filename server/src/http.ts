@@ -17,13 +17,14 @@ import {
   signInWithEmail,
   userJson,
 } from './auth/users';
-import type { ServerConfig } from './config';
+import type { ServerConfig, StravaConfig } from './config';
 import { transaction, type Pool } from './db';
 import { verifyJwt, type Claims } from './jwt';
 import type { LegalDoc } from './legal';
 import type { Logger } from './log';
 import type { Mailer } from './mailer';
 import { callRpc, type Claims as RpcClaims } from './rpc';
+import { stravaCallback, stravaWebhookChallenge, stravaWebhookEvent, type StravaApi, type StravaHttpResult } from './strava';
 
 /**
  * The PaceLeague API. It speaks the two protocols the app's client library (supabase-js)
@@ -41,6 +42,8 @@ export interface ApiDeps {
   log: Logger;
   /** Rendered /legal pages (server/src/legal.ts). */
   legal?: Partial<Record<LegalDoc, string>>;
+  /** Strava export (server/src/strava.ts), when configured. */
+  strava?: { api: StravaApi; config: StravaConfig } | null;
 }
 
 class HttpError extends Error {
@@ -395,6 +398,28 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
         res.setHeader('Content-Security-Policy', LEGAL_CSP);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(req.method === 'HEAD' ? undefined : html);
+        return;
+      }
+      // Strava calls these itself (the runner's browser after connecting, and Strava's webhook), so
+      // they carry no API key; each checks what it receives instead.
+      const stravaMatch = /^\/integrations\/strava\/(callback|webhook)$/.exec(path);
+      if (stravaMatch) {
+        route = `${req.method} /integrations/strava/${stravaMatch[1]}`;
+        if (!deps.strava) throw new HttpError(404, { message: 'Not found' });
+        await limit(`strava:${stravaMatch[1]}:ip:${hashKey(clientIp(req))}`, 120, 3600);
+        let result: StravaHttpResult;
+        if (stravaMatch[1] === 'callback' && req.method === 'GET') {
+          result = await stravaCallback({ pool, api: deps.strava.api, config: deps.strava.config, log }, url);
+        } else if (stravaMatch[1] === 'webhook' && req.method === 'GET') {
+          result = stravaWebhookChallenge(deps.strava.config, url);
+        } else if (stravaMatch[1] === 'webhook' && req.method === 'POST') {
+          result = await stravaWebhookEvent(pool, await readJson(req, AUTH_BODY_LIMIT));
+        } else {
+          throw new HttpError(405, { message: 'Method not allowed' });
+        }
+        for (const [k, v] of Object.entries(result.headers ?? {})) res.setHeader(k, v);
+        res.writeHead(result.status);
+        res.end(result.body);
         return;
       }
       const apikey = (req.headers.apikey as string | undefined) ?? url.searchParams.get('apikey') ?? '';

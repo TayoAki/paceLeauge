@@ -10,8 +10,8 @@ const log = createLogger((process.env.LOG_LEVEL as 'debug' | 'info' | undefined)
 async function main(): Promise<void> {
   const config = loadConfig();
   const pool = createPool(config);
-  const { server } = await createService({ config, pool, log });
-  const jobs = config.runJobs ? startJobs(pool, log) : null;
+  const { server, strava } = await createService({ config, pool, log });
+  const jobs = config.runJobs ? startJobs(pool, log, { strava }) : null;
 
   await new Promise<void>((resolve) => server.listen(config.port, config.host, resolve));
   log.info('api listening', {
@@ -21,6 +21,7 @@ async function main(): Promise<void> {
     apple: config.appleAudiences.length > 0,
     reviewAccount: config.reviewAccount !== null,
     jobs: config.runJobs,
+    strava: config.strava !== null,
   });
 
   let closing = false;

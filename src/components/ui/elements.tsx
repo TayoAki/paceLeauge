@@ -121,7 +121,7 @@ export function SwitchRow({
 // ---------------------------------------------------------------------------------------
 // Status and empty states
 // ---------------------------------------------------------------------------------------
-type StatusTone = 'info' | 'success' | 'warning' | 'danger';
+export type StatusTone = 'info' | 'success' | 'warning' | 'danger';
 
 const statusIcon: Record<StatusTone, LucideIcon> = {
   info: Info,

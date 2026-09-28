@@ -336,3 +336,27 @@ export const runEditResultSchema = z.object({
 export type RunEditResult = z.infer<typeof runEditResultSchema>;
 
 export const diagnosticsResultSchema = z.object({ report_id: z.number() });
+
+// Strava export (Phase 2.3).
+export const stravaStatusSchema = z.object({
+  available: z.boolean(),
+  connected: z.boolean(),
+  athlete_name: z.string().nullable(),
+  auto_upload: z.boolean(),
+  connected_at_ms: z.number().nullable(),
+  posted: z.number(),
+  pending: z.number(),
+  failed: z.number(),
+  last_error: z.string().nullable(),
+});
+export type StravaStatus = z.infer<typeof stravaStatusSchema>;
+export const stravaUploadSchema = z
+  .object({
+    state: z.enum(['queued', 'processing', 'done', 'failed', 'cancelled']),
+    activity_id: z.string().nullable(),
+    error: z.string().nullable(),
+    updated_at_ms: z.number(),
+  })
+  .nullable();
+export type StravaUpload = z.infer<typeof stravaUploadSchema>;
+export const stravaConnectSchema = z.object({ url: z.string().url() });

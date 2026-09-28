@@ -1,5 +1,6 @@
 import type { Pool } from './db';
 import type { Logger } from './log';
+import type { StravaWorker } from './strava';
 
 /**
  * Scheduled work. Railway's Postgres has no pg_cron, so the service runs the jobs that
@@ -8,6 +9,7 @@ import type { Logger } from './log';
  */
 const FREQUENT_LOCK = 7_340_101;
 const HOURLY_LOCK = 7_340_102;
+const STRAVA_LOCK = 7_340_103;
 
 const AUTH_CLEANUP = `
   delete from auth.one_time_codes where expires_at < now() - interval '1 hour';
@@ -48,7 +50,21 @@ export async function runHourlyJobs(pool: Pool, log: Logger): Promise<void> {
   });
 }
 
-export function startJobs(pool: Pool, log: Logger, intervals = { frequentMs: 60_000, hourlyMs: 3_600_000 }): { stop: () => Promise<void> } {
+/** Strava uploads and revocations (docs/ROADMAP.md 2.3), one instance at a time. */
+export async function runStravaJobs(pool: Pool, log: Logger, worker: StravaWorker): Promise<void> {
+  await withLock(pool, STRAVA_LOCK, async () => {
+    const result = await worker.runOnce();
+    if (Object.values(result).some((n) => n > 0)) log.info('strava jobs', result);
+  });
+}
+
+export function startJobs(
+  pool: Pool,
+  log: Logger,
+  options: { intervals?: { frequentMs: number; hourlyMs: number }; strava?: StravaWorker | null } = {},
+): { stop: () => Promise<void> } {
+  const intervals = options.intervals ?? { frequentMs: 60_000, hourlyMs: 3_600_000 };
+  const strava = options.strava ?? null;
   let stopped = false;
   const running = new Set<Promise<void>>();
   const schedule = (name: string, everyMs: number, job: () => Promise<void>) => {
@@ -68,6 +84,7 @@ export function startJobs(pool: Pool, log: Logger, intervals = { frequentMs: 60_
   const cancels = [
     schedule('frequent', intervals.frequentMs, () => runFrequentJobs(pool, log)),
     schedule('hourly', intervals.hourlyMs, () => runHourlyJobs(pool, log)),
+    ...(strava ? [schedule('strava', intervals.frequentMs, () => runStravaJobs(pool, log, strava))] : []),
   ];
   return {
     async stop() {

@@ -32,6 +32,9 @@ import {
   badgesSchema,
   cheersSchema,
   diagnosticsResultSchema,
+  stravaConnectSchema,
+  stravaStatusSchema,
+  stravaUploadSchema,
   deletedSchema,
   personalRecordsSchema,
   recordHistorySchema,
@@ -52,6 +55,8 @@ import {
   type RunEfforts,
   type Shoe,
   type Stats,
+  type StravaStatus,
+  type StravaUpload,
   type Streak,
   type AppConfig,
   type BlockEntry,
@@ -204,6 +209,14 @@ export interface PaceApi {
   undoRunEdits(runId: string, expectedVersion: number): Promise<RunEditResult>;
   listRunDuplicates(runId: string): Promise<ServerRun[]>;
   submitDiagnostics(report: Record<string, unknown>): Promise<{ reportId: number }>;
+  // Strava export (Phase 2.3)
+  getStravaStatus(): Promise<StravaStatus>;
+  /** Strava's authorization URL; the service sends the runner back to `returnTo`. */
+  startStravaConnect(returnTo: string): Promise<string>;
+  setStravaAutoUpload(enabled: boolean): Promise<StravaStatus>;
+  disconnectStrava(): Promise<StravaStatus>;
+  getStravaUpload(runId: string): Promise<StravaUpload>;
+  postRunToStrava(runId: string): Promise<StravaUpload>;
 }
 
 const UPLOAD_TIMEOUT_MS = 30_000;
@@ -388,5 +401,11 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
       const r = await call('submit_diagnostics', { p_report: report }, diagnosticsResultSchema);
       return { reportId: r.report_id };
     },
+    getStravaStatus: () => call('get_strava_status', {}, stravaStatusSchema),
+    startStravaConnect: async (returnTo) => (await call('start_strava_connect', { p_return_to: returnTo }, stravaConnectSchema)).url,
+    setStravaAutoUpload: (enabled) => call('set_strava_auto_upload', { p_enabled: enabled }, stravaStatusSchema),
+    disconnectStrava: () => call('disconnect_strava', {}, stravaStatusSchema),
+    getStravaUpload: (runId) => call('get_strava_upload', { p_run_id: runId }, stravaUploadSchema),
+    postRunToStrava: (runId) => call('post_run_to_strava', { p_run_id: runId }, stravaUploadSchema),
   };
 }

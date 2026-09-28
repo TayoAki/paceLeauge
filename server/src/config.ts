@@ -36,6 +36,21 @@ export interface ServerConfig {
   runJobs: boolean;
   /** Staging/development convenience applied once: turn league scoring on. */
   bootstrapEnableCompetition: boolean;
+  /** Strava export (docs/ROADMAP.md 2.3); null when not configured. */
+  strava: StravaConfig | null;
+}
+
+export interface StravaConfig {
+  clientId: string;
+  clientSecret: string;
+  /** AES-256-GCM key for the tokens stored in the database (32 bytes). */
+  tokenKey: Buffer;
+  /** Where Strava sends the runner back: `${PUBLIC_URL}/integrations/strava/callback`. */
+  redirectUri: string;
+  /** Where the service may then send the runner: the app's URL scheme and the web app. */
+  returnPrefixes: string[];
+  /** Shared with Strava when subscribing to its webhook (athlete deauthorizations). */
+  webhookVerifyToken: string | null;
 }
 
 export class ConfigError extends Error {
@@ -116,6 +131,8 @@ export function loadConfig(env: Env = process.env): ServerConfig {
   }
 
   const cors = env.CORS_ORIGINS?.trim();
+  const corsOrigins = cors === '*' ? '*' : list(cors);
+  const strava = stravaConfig(env, deployed, corsOrigins);
   return {
     appEnv,
     host: env.HOST ?? '::',
@@ -138,9 +155,39 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     email,
     appleAudiences: list(env.APPLE_AUDIENCES),
     passwordSignIn: bool(env, 'PASSWORD_SIGN_IN', true),
-    corsOrigins: cors === '*' ? '*' : list(cors),
+    corsOrigins,
     trustProxy: bool(env, 'TRUST_PROXY', env.RAILWAY_ENVIRONMENT_NAME !== undefined || env.RAILWAY_ENVIRONMENT !== undefined),
     runJobs: bool(env, 'RUN_JOBS', true),
     bootstrapEnableCompetition,
+    strava,
+  };
+}
+
+const STRAVA_KEYS = ['STRAVA_CLIENT_ID', 'STRAVA_CLIENT_SECRET', 'STRAVA_TOKEN_KEY', 'PUBLIC_URL'] as const;
+
+function stravaConfig(env: Env, deployed: boolean, corsOrigins: string[] | '*'): StravaConfig | null {
+  const set = STRAVA_KEYS.filter((k) => env[k]?.trim());
+  if (set.length === 0 || (set.length === 1 && set[0] === 'PUBLIC_URL')) return null;
+  if (set.length !== STRAVA_KEYS.length) throw new ConfigError(`Strava needs ${STRAVA_KEYS.join(', ')} together`);
+  const clientId = env.STRAVA_CLIENT_ID!.trim();
+  if (!/^\d{1,12}$/.test(clientId)) throw new ConfigError('STRAVA_CLIENT_ID must be the numeric client id');
+  const tokenKey = Buffer.from(env.STRAVA_TOKEN_KEY!.trim(), 'base64');
+  if (tokenKey.length !== 32) throw new ConfigError('STRAVA_TOKEN_KEY must be 32 bytes, base64-encoded (openssl rand -base64 32)');
+  let publicUrl: URL;
+  try {
+    publicUrl = new URL(env.PUBLIC_URL!.trim());
+  } catch {
+    throw new ConfigError('PUBLIC_URL must be the API’s public URL');
+  }
+  if (deployed && publicUrl.protocol !== 'https:') throw new ConfigError('PUBLIC_URL must use https when deployed');
+  // The app's scheme, plus the web app's origins (never a wildcard: the return is a redirect).
+  const returnPrefixes = [...list(env.APP_RETURN_URLS ?? 'paceleague://'), ...(corsOrigins === '*' ? [] : corsOrigins.map((o) => `${o}/`))];
+  return {
+    clientId,
+    clientSecret: env.STRAVA_CLIENT_SECRET!.trim(),
+    tokenKey,
+    redirectUri: new URL('/integrations/strava/callback', publicUrl).toString(),
+    returnPrefixes,
+    webhookVerifyToken: env.STRAVA_WEBHOOK_VERIFY_TOKEN?.trim() || null,
   };
 }

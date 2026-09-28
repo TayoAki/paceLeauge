@@ -9,6 +9,7 @@ import { createPool } from '../../server/src/db';
 import { silentLogger } from '../../server/src/log';
 import { createMemoryMailer, type MemoryMailer } from '../../server/src/mailer';
 import { createService } from '../../server/src/service';
+import type { StravaApi, StravaWorker } from '../../server/src/strava';
 import { TestDb } from '../backend/helpers/db';
 
 /**
@@ -30,10 +31,12 @@ export interface TestApi {
   lastCode(email: string): string;
   appleToken(claims: Record<string, unknown>, options?: { kid?: string; key?: KeyObject }): string;
   appleKeyFetches: () => number;
+  /** The Strava worker, when the environment configures Strava. */
+  strava: StravaWorker | null;
   close(): Promise<void>;
 }
 
-export async function startTestApi(env: Record<string, string> = {}): Promise<TestApi> {
+export async function startTestApi(env: Record<string, string> = {}, options: { stravaApi?: StravaApi } = {}): Promise<TestApi> {
   const db = await TestDb.create();
   const config = loadConfig({
     APP_ENV: 'test',
@@ -57,7 +60,14 @@ export async function startTestApi(env: Record<string, string> = {}): Promise<Te
     return new Response(JSON.stringify({ keys: [jwk] }), { status: 200, headers: { 'content-type': 'application/json' } });
   }) as typeof fetch;
 
-  const { server } = await createService({ config, pool, log: silentLogger, mailer, apple: createAppleVerifier(config.appleAudiences, fakeFetch) });
+  const { server, strava } = await createService({
+    config,
+    pool,
+    log: silentLogger,
+    mailer,
+    apple: createAppleVerifier(config.appleAudiences, fakeFetch),
+    stravaApi: options.stravaApi,
+  });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
@@ -87,6 +97,7 @@ export async function startTestApi(env: Record<string, string> = {}): Promise<Te
       return `${header}.${body}.${signature}`;
     },
     appleKeyFetches: () => fetches,
+    strava,
     async close() {
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));

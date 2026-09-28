@@ -67,8 +67,8 @@ async function main(): Promise<void> {
     seeded = { email: seedEmail.toLowerCase(), password: DEMO_PASSWORD };
   }
 
-  const { server } = await createService({ config, pool, log });
-  const jobs = startJobs(pool, log);
+  const { server, strava } = await createService({ config, pool, log });
+  const jobs = startJobs(pool, log, { strava });
   server.listen(config.port, config.host, () => {
     console.log(`\nPaceLeague API (development) on http://127.0.0.1:${config.port} — database ${DATABASE}`);
     console.log('Start the app against it with:\n');

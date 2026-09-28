@@ -23,6 +23,7 @@ export const PERMANENT_CODES = new Set([
   'edit_increases_distance',
   'cannot_undo_merge',
   'not_in_league',
+  'not_available',
   'permission_denied',
   'invalid_response',
 ]);

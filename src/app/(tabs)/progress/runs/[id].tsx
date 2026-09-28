@@ -9,6 +9,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { toApiError } from '@/api/errors';
 import { RunDetailsCard, RunEffortsCard } from '@/components/progress/run-extras';
+import { StravaRunCard, usePostedToStrava } from '@/components/progress/strava-run';
 import { MetricBlock, XpPanel } from '@/components/run/run-components';
 import { routeLines } from '@/components/run/route-lines';
 import { RouteMap } from '@/components/run/route-map';
@@ -84,6 +85,7 @@ export default function RunDetailScreen() {
     [local, localPoints.length, remoteRoute.data],
   );
   const lines = useMemo(() => routeLines(points), [points]);
+  const onStrava = usePostedToStrava(server && server.status !== 'uploading' ? server.id : null);
   const splits = useMemo(() => {
     if (points.length < 2 || segments.length === 0) return [];
     const start = segments[0]?.startAt ?? 0;
@@ -243,7 +245,7 @@ export default function RunDetailScreen() {
           <View style={styles.private}>
             <ShieldCheck size={16} color={colors.textSecondary} />
             <Text variant="caption" tone="secondary">
-              Only you can see this route.
+              {onStrava ? 'Only you can see this route here. You posted it to Strava.' : 'Only you can see this route.'}
             </Text>
           </View>
         </View>
@@ -287,6 +289,7 @@ export default function RunDetailScreen() {
 
       {server && server.status !== 'uploading' ? <RunEffortsCard serverRunId={server.id} /> : null}
       {server && server.status !== 'uploading' ? <RunDetailsCard run={server} onSaved={setSaved} /> : null}
+      {server && server.status !== 'uploading' && server.status !== 'duplicate' ? <StravaRunCard serverRunId={server.id} hasRoute={lines.length > 0} /> : null}
 
       {error && renaming === null ? <InlineStatus tone="danger" title={error} /> : null}
       {server && server.status !== 'uploading' ? (

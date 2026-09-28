@@ -8,6 +8,7 @@ import { legalDir, loadLegalPages } from './legal';
 import type { Logger } from './log';
 import { createMailer, loadCodeTemplate, type Mailer } from './mailer';
 import { findDbDir } from './migrate';
+import { createStravaApi, createStravaWorker, publishStravaSettings, type StravaApi, type StravaWorker } from './strava';
 
 /**
  * The signing secret: JWT_SECRET when set, otherwise one generated on first boot and kept in
@@ -26,7 +27,16 @@ export async function resolveSigningSecret(pool: Pool, config: Pick<ServerConfig
   return rows[0]!.value;
 }
 
-export async function createService(options: { config: ServerConfig; pool: Pool; log: Logger; mailer?: Mailer; apple?: AppleVerifier; fetchImpl?: typeof fetch }) {
+export async function createService(options: {
+  config: ServerConfig;
+  pool: Pool;
+  log: Logger;
+  mailer?: Mailer;
+  apple?: AppleVerifier;
+  fetchImpl?: typeof fetch;
+  /** Replaces Strava's API (tests). */
+  stravaApi?: StravaApi;
+}): Promise<ReturnType<typeof createApi> & { strava: StravaWorker | null }> {
   const { config, pool, log } = options;
   const secret = await resolveSigningSecret(pool, config);
   let template: string | null = null;
@@ -40,5 +50,10 @@ export async function createService(options: { config: ServerConfig; pool: Pool;
   }
   const mailer = options.mailer ?? createMailer(config, log, template, options.fetchImpl);
   const apple = options.apple ?? createAppleVerifier(config.appleAudiences, options.fetchImpl);
-  return createApi({ config, pool, secret, mailer, apple, log, legal });
+  // Strava export (docs/ROADMAP.md 2.3) runs only when its credentials are configured.
+  await publishStravaSettings(pool, config.strava);
+  const stravaApi = config.strava ? (options.stravaApi ?? createStravaApi(config.strava, options.fetchImpl)) : null;
+  const strava = config.strava && stravaApi ? { api: stravaApi, config: config.strava } : null;
+  const api = createApi({ config, pool, secret, mailer, apple, log, legal, strava });
+  return { ...api, strava: strava ? createStravaWorker({ pool, api: strava.api, config: strava.config, log }) : null };
 }

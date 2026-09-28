@@ -39,7 +39,7 @@ describe('export format 2', () => {
 
     const job = await db.rpc(me, 'request_export');
     const data = await db.rpc(me, 'get_export', { p_export_id: job.export_id });
-    expect(data.format_version).toBe(2);
+    expect(data.format_version).toBe(3);
     expect(data.account).toMatchObject({ age_signal: 'adult', age_signal_source: 'apple_declared_range', age_checked_at_ms: expect.any(Number) });
     expect(data.shoes).toEqual([expect.objectContaining({ id: shoe.id, name: 'Daily trainer', limit_km: 700, is_default: true, runs: 1 })]);
     expect(data.runs).toEqual([

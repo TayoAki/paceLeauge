@@ -70,6 +70,11 @@ export const useServerRun = (serverRunId: string | null) =>
 export const useRunRoute = (serverRunId: string | null) =>
   useCachedQuery('route', [serverRunId ?? ''], (api) => api.getMyRunRoute(serverRunId ?? ''), { enabled: !!serverRunId, staleTime: Infinity });
 
+// Strava export (docs/ROADMAP.md 2.3)
+export const useStravaStatus = () => useCachedQuery('strava', [], (api) => api.getStravaStatus(), { staleTime: 10_000 });
+export const useStravaUpload = (serverRunId: string | null, enabled: boolean) =>
+  useCachedQuery('strava-upload', [serverRunId ?? ''], (api) => api.getStravaUpload(serverRunId ?? ''), { enabled: enabled && !!serverRunId });
+
 // Phase 1 (docs/ROADMAP.md 1.4–1.10)
 export const useStreak = () => useCachedQuery('streak', [], (api) => api.getStreak());
 export const useBadges = () => useCachedQuery('badges', [], (api) => api.getBadges());

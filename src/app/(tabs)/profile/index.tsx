@@ -1,7 +1,7 @@
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Ban, Bell, CloudUpload, Footprints, LifeBuoy, LogIn, LogOut, ShieldCheck, Tag, UserPen } from 'lucide-react-native';
+import { Ban, Bell, CloudUpload, Footprints, LifeBuoy, Link2, LogIn, LogOut, ShieldCheck, Tag, UserPen } from 'lucide-react-native';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -15,7 +15,7 @@ import { formatXp } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
 import { useAuth } from '@/features/account/auth-provider';
 import { RunInProgressError } from '@/features/account/runtime';
-import { useLocalRuns, useMe, useRecorder } from '@/features/data/hooks';
+import { useLocalRuns, useMe, useRecorder, useStravaStatus } from '@/features/data/hooks';
 import { clearExportFiles } from '@/features/privacy/export-data';
 import { notificationsAllowed, parseReminderSettings, REMINDER_KEY } from '@/features/reminders/reminders';
 import type { RunSettings } from '@/features/voice/run-settings';
@@ -50,6 +50,7 @@ export default function ProfileScreen() {
   const auth = useAuth();
   const { state, signOut, sessionLapsed } = useAccount();
   const me = useMe();
+  const strava = useStravaStatus().data?.data;
   const { session } = useRecorder();
   const local = useLocalRuns();
   const journal = state.status === 'ready' ? state.runtime.journal : null;
@@ -165,6 +166,13 @@ export default function ProfileScreen() {
           valueTone={unsynced > 0 ? 'accent' : 'secondary'}
           onPress={() => router.push('/profile/sync')}
           testID="profile-sync"
+        />
+        <Row
+          icon={Link2}
+          label="Connections"
+          value={strava?.connected ? 'Strava' : undefined}
+          onPress={() => router.push('/profile/connections')}
+          testID="profile-connections"
         />
         <Row
           icon={Bell}
