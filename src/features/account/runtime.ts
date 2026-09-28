@@ -1,4 +1,5 @@
 import { Journal } from '@/db/journal';
+import { METRES_PER_MILE } from '@/domain/format';
 import { openAccountDatabase } from '@/db/open';
 import type { IsoDate } from '@/domain/types';
 import { newId } from '@/lib/crypto';
@@ -69,6 +70,7 @@ async function create(accountId: string): Promise<AccountRuntime> {
     newRunId: newId,
     heartbeatMs: 5_000,
     autoPause: () => runSettings.get().autoPause,
+    lapUnitM: () => (runSettings.units === 'imperial' ? METRES_PER_MILE : 1000),
     creditedDays: () => creditedDaysFrom(journal),
     onRecordingChange: async (active) => {
       if (active) await deviceStore.set(RECORDING_ACCOUNT_KEY, accountId);

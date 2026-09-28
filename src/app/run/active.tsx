@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { ChevronDown, Flag, Play, RotateCcw, Save, Volume2, VolumeX } from 'lucide-react-native';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { Fragment, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
 
 import { GpsStatus, MetricBlock, RecordingControls, TouchLockOverlay, useAnnounce } from '@/components/run/run-components';
@@ -15,6 +15,7 @@ import { describeDistance, describeDuration, describePace, formatDistance, forma
 import { useAccountServices } from '@/features/account/account-provider';
 import { useMe, useRecorder } from '@/features/data/hooks';
 import { useRunPoints } from '@/features/recording/use-run-points';
+import type { RunScreenField } from '@/features/voice/run-settings';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
@@ -32,6 +33,7 @@ export default function ActiveRunScreen() {
   const { session, metrics, lastSaved, autoPaused } = useRecorder();
   const runSettings = runtime.runSettings;
   const cuesOn = useSyncExternalStore(runSettings.subscribe, () => runSettings.getSnapshot().cues.enabled);
+  const screenFields = useSyncExternalStore(runSettings.subscribe, () => runSettings.getSnapshot().screenFields);
   const units = useMe().data?.data.profile?.units ?? runSettings.units;
   const [locked, setLocked] = useState(false);
   const [busy, setBusy] = useState<Busy>(null);
@@ -124,6 +126,28 @@ export default function ActiveRunScreen() {
   const pace = formatPace(metrics.activeMs, metrics.distanceM, units);
   const current = metrics.currentPaceSPerKm;
   const currentPace = current === null ? null : formatPace(current * 1000, 1000, units);
+  const unitLabel = pace.unit.replace('/', '/ ');
+  /** The numbers the runner chose for the row under the distance (Run settings). */
+  const fieldMetric = (field: RunScreenField): { value: string; label: string; a11y: string } => {
+    switch (field) {
+      case 'time':
+        return { value: formatDuration(metrics.activeMs), label: 'Time', a11y: `Active time, ${describeDuration(metrics.activeMs)}` };
+      case 'currentPace':
+        return {
+          value: recording && currentPace ? currentPace.value : '--:--',
+          label: `Now ${unitLabel}`,
+          a11y: recording && current !== null ? `Current pace, ${describePace(current * 1000, 1000, units)}` : 'Current pace not available',
+        };
+      case 'averagePace':
+        return { value: pace.value, label: `Avg ${unitLabel}`, a11y: `Average pace, ${describePace(metrics.activeMs, metrics.distanceM, units)}` };
+      case 'lapPace': {
+        const lap = formatPace(metrics.lapActiveMs, metrics.lapDistanceM, units);
+        return { value: lap.value, label: `Lap ${unitLabel}`, a11y: `Lap pace, ${describePace(metrics.lapActiveMs, metrics.lapDistanceM, units)}` };
+      }
+      case 'lapTime':
+        return { value: formatDuration(metrics.lapActiveMs), label: 'Lap time', a11y: `Lap time, ${describeDuration(metrics.lapActiveMs)}` };
+    }
+  };
   const recording = session.status === 'recording';
   const title = recording ? 'Running' : session.status === 'paused' ? (autoPaused ? 'Auto-paused' : 'Paused') : 'Recording stopped';
 
@@ -141,19 +165,15 @@ export default function ActiveRunScreen() {
         </Text>
       </View>
       <View style={styles.row}>
-        <MetricBlock value={formatDuration(metrics.activeMs)} label="Time" accessibilityLabel={`Active time, ${describeDuration(metrics.activeMs)}`} />
-        <View style={styles.divider} />
-        <MetricBlock
-          value={recording && currentPace ? currentPace.value : '--:--'}
-          label={`Now ${pace.unit.replace('/', '/ ')}`}
-          accessibilityLabel={
-            recording && current !== null
-              ? `Current pace, ${describePace(current * 1000, 1000, units)}`
-              : 'Current pace not available'
-          }
-        />
-        <View style={styles.divider} />
-        <MetricBlock value={pace.value} label={`Avg ${pace.unit.replace('/', '/ ')}`} accessibilityLabel={`Average pace, ${describePace(metrics.activeMs, metrics.distanceM, units)}`} />
+        {screenFields.map((field, i) => {
+          const m = fieldMetric(field);
+          return (
+            <Fragment key={field}>
+              {i > 0 ? <View style={styles.divider} /> : null}
+              <MetricBlock value={m.value} label={m.label} accessibilityLabel={m.a11y} />
+            </Fragment>
+          );
+        })}
       </View>
     </View>
   );

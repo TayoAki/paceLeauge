@@ -9,6 +9,11 @@ import { Emitter } from '@/lib/emitter';
  */
 export type CueVolume = 'quiet' | 'normal' | 'loud';
 
+/** Numbers the run screen can show under the distance (docs/ROADMAP.md 1.2). */
+export type RunScreenField = 'time' | 'currentPace' | 'averagePace' | 'lapPace' | 'lapTime';
+export const RUN_SCREEN_FIELDS: RunScreenField[] = ['time', 'currentPace', 'averagePace', 'lapPace', 'lapTime'];
+export const MAX_SCREEN_FIELDS = 3;
+
 export interface RunSettings {
   autoPause: boolean;
   cues: CueSettings;
@@ -17,6 +22,8 @@ export interface RunSettings {
   speakerFallback: boolean;
   /** Write finished runs to Apple Health (iOS; asks permission when switched on). */
   appleHealth: boolean;
+  /** One to three numbers under the distance on the run screen, in this order. */
+  screenFields: RunScreenField[];
 }
 
 export const DEFAULT_RUN_SETTINGS: RunSettings = {
@@ -25,6 +32,7 @@ export const DEFAULT_RUN_SETTINGS: RunSettings = {
   cueVolume: 'normal',
   speakerFallback: false,
   appleHealth: false,
+  screenFields: ['time', 'currentPace', 'averagePace'],
 };
 
 /** The account journal key holding this account's run settings. */
@@ -39,6 +47,12 @@ function parseTrigger(value: unknown): CueSettings['trigger'] {
   if (v?.kind === 'distance' && (v.every === 0.5 || v.every === 1)) return { kind: 'distance', every: v.every };
   if (v?.kind === 'time' && (v.everyMinutes === 1 || v.everyMinutes === 5 || v.everyMinutes === 10)) return { kind: 'time', everyMinutes: v.everyMinutes };
   return DEFAULT_CUE_SETTINGS.trigger;
+}
+
+function parseScreenFields(value: unknown): RunScreenField[] {
+  if (!Array.isArray(value)) return DEFAULT_RUN_SETTINGS.screenFields;
+  const fields = [...new Set(value.filter((f): f is RunScreenField => RUN_SCREEN_FIELDS.includes(f as RunScreenField)))].slice(0, MAX_SCREEN_FIELDS);
+  return fields.length > 0 ? fields : DEFAULT_RUN_SETTINGS.screenFields;
 }
 
 /** Reads a stored value field by field, so one bad field never resets the rest. */
@@ -59,6 +73,7 @@ export function parseRunSettings(value: unknown): RunSettings {
     cueVolume: v.cueVolume === 'quiet' || v.cueVolume === 'normal' || v.cueVolume === 'loud' ? v.cueVolume : DEFAULT_RUN_SETTINGS.cueVolume,
     speakerFallback: typeof v.speakerFallback === 'boolean' ? v.speakerFallback : DEFAULT_RUN_SETTINGS.speakerFallback,
     appleHealth: typeof v.appleHealth === 'boolean' ? v.appleHealth : DEFAULT_RUN_SETTINGS.appleHealth,
+    screenFields: parseScreenFields(v.screenFields),
   };
 }
 

@@ -13,6 +13,9 @@ export interface LiveMetrics {
   pointLimitReached: boolean;
   /** Pace of the last ~20 s of credited running (seconds per km); null when stopped or unknown. */
   currentPaceSPerKm: number | null;
+  /** Distance and active time into the current lap (each full kilometre or mile). */
+  lapDistanceM: number;
+  lapActiveMs: number;
 }
 
 export interface RecorderSnapshot {
@@ -47,4 +50,6 @@ export const EMPTY_METRICS: LiveMetrics = {
   quality: 'searching',
   pointLimitReached: false,
   currentPaceSPerKm: null,
+  lapDistanceM: 0,
+  lapActiveMs: 0,
 };

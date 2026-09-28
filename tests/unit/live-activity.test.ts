@@ -99,7 +99,7 @@ describe('run Live Activity', () => {
     const state = activityState(
       {
         session: { status: 'paused' } as never,
-        metrics: { distanceM: 1609.344, activeMs: 480_000, currentPaceSPerKm: 250, pointCount: 0, lastFixAt: null, lastAccuracyM: null, quality: 'good', pointLimitReached: false },
+        metrics: { distanceM: 1609.344, activeMs: 480_000, currentPaceSPerKm: 250, pointCount: 0, lastFixAt: null, lastAccuracyM: null, quality: 'good', pointLimitReached: false, lapDistanceM: 0, lapActiveMs: 0 },
         lastSaved: null,
         autoPaused: true,
       },

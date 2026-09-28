@@ -48,6 +48,8 @@ export interface RecorderDeps {
   maxPoints?: number;
   /** Whether auto-pause is on (read at each sample, so the setting applies mid-run). */
   autoPause?: () => boolean;
+  /** Lap length in metres (a kilometre or a mile, following the runner's units). */
+  lapUnitM?: () => number;
 }
 
 function gpsQuality(now: EpochMs, lastFixAt: EpochMs | null, accuracy: number | null, recordingSince: EpochMs | null): GpsQuality {
@@ -70,6 +72,8 @@ export class RecorderService {
   private readonly autoPauser = new AutoPauseDetector();
   private autoPaused = false;
   private closedDistanceM = 0;
+  /** Where the current lap began: the last full kilometre or mile. */
+  private lap: { runId: string; unitM: number; index: number; startDistanceM: number; startActiveMs: number } | null = null;
   private openTrack: SegmentTrack | null = null;
   /** Monotonic reference for the open segment, when it was opened in this process. */
   private mono: { segmentIndex: number; monoAt: number } | null = null;
@@ -357,18 +361,40 @@ export class RecorderService {
     this.publish(session);
   }
 
+  /** Lap progress: the lap restarts at each full unit, at the interpolated moment it was crossed. */
+  private lapProgress(runId: string, distanceM: number, activeMs: number): { lapDistanceM: number; lapActiveMs: number } {
+    const unitM = this.deps.lapUnitM?.() ?? 1000;
+    const index = Math.floor(distanceM / unitM);
+    const lap = this.lap;
+    if (!lap || lap.runId !== runId || lap.unitM !== unitM || index < lap.index) {
+      // A new run, a relaunch mid-run or a units change: start from the last full unit, timed pro rata.
+      const startDistanceM = index * unitM;
+      this.lap = { runId, unitM, index, startDistanceM, startActiveMs: distanceM > 0 ? Math.round(activeMs * (startDistanceM / distanceM)) : 0 };
+    } else if (index > lap.index) {
+      const previous = this.snapshot.metrics;
+      const boundary = index * unitM;
+      const span = distanceM - previous.distanceM;
+      const fraction = span > 0 ? Math.min(1, Math.max(0, (boundary - previous.distanceM) / span)) : 1;
+      this.lap = { runId, unitM, index, startDistanceM: boundary, startActiveMs: Math.round(previous.activeMs + fraction * (activeMs - previous.activeMs)) };
+    }
+    return { lapDistanceM: distanceM - this.lap!.startDistanceM, lapActiveMs: Math.max(0, activeMs - this.lap!.startActiveMs) };
+  }
+
   private publish(session: StoredSession | null): void {
     const now = this.clock.now();
+    const distanceM = session ? this.closedDistanceM + (this.openTrack?.distanceM ?? 0) : 0;
+    const activeMs = session ? activeElapsedMs(session, this.openSegmentNow(session)) : 0;
     const metrics: LiveMetrics = session
       ? {
-          distanceM: this.closedDistanceM + (this.openTrack?.distanceM ?? 0),
-          activeMs: activeElapsedMs(session, this.openSegmentNow(session)),
+          distanceM,
+          activeMs,
           pointCount: session.pointCount,
           lastFixAt: this.lastFix?.at ?? null,
           lastAccuracyM: this.lastFix?.accuracy ?? null,
           quality: gpsQuality(now, this.lastFix?.at ?? null, this.lastFix?.accuracy ?? null, session.openSegment?.startAt ?? null),
           pointLimitReached: this.limitReached,
           currentPaceSPerKm: session.openSegment && this.openTrack ? currentPaceSPerKm(this.openTrack.credited, now) : null,
+          ...this.lapProgress(session.runId, distanceM, activeMs),
         }
       : EMPTY_METRICS;
     this.snapshot = { ...this.snapshot, session, metrics, autoPaused: session?.status === 'paused' && this.autoPaused };

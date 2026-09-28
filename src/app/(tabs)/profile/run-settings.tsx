@@ -8,7 +8,7 @@ import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { cueText, type CueField, type CueSettings } from '@/domain/cues';
 import { useAccountServices } from '@/features/account/account-provider';
 import { useMe } from '@/features/data/hooks';
-import { CUE_VOLUME, type CueVolume, type RunSettings } from '@/features/voice/run-settings';
+import { CUE_VOLUME, MAX_SCREEN_FIELDS, RUN_SCREEN_FIELDS, type CueVolume, type RunScreenField, type RunSettings } from '@/features/voice/run-settings';
 import { deviceVoiceOutput } from '@/features/voice/voice-output';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
@@ -47,7 +47,15 @@ const FIELD_ROWS: { field: CueField; label: string }[] = [
   { field: 'currentPace', label: 'Current pace' },
 ];
 
-/** Voice cues and auto-pause (docs/ROADMAP.md 1.1 and 1.3). Saved on this phone. */
+const SCREEN_FIELD_LABELS: Record<RunScreenField, string> = {
+  time: 'Time',
+  currentPace: 'Current pace',
+  averagePace: 'Average pace',
+  lapPace: 'Lap pace',
+  lapTime: 'Lap time',
+};
+
+/** Voice cues, auto-pause and the run screen (docs/ROADMAP.md 1.1–1.3). Saved on this phone. */
 export default function RunSettingsScreen() {
   const { runtime } = useAccountServices();
   const store = runtime.runSettings;
@@ -186,6 +194,39 @@ export default function RunSettingsScreen() {
           </RowGroup>
         </>
       ) : null}
+
+      <View style={styles.group}>
+        <Text variant="labelStrong" accessibilityRole="header">
+          Run screen
+        </Text>
+        <Text variant="caption" tone="secondary">
+          Up to {MAX_SCREEN_FIELDS} numbers under your distance. A lap is each full {unitLong}.
+        </Text>
+        <RowGroup>
+          {RUN_SCREEN_FIELDS.map((field, i) => {
+            const on = settings.screenFields.includes(field);
+            const full = settings.screenFields.length >= MAX_SCREEN_FIELDS;
+            const last = on && settings.screenFields.length === 1;
+            return (
+              <SwitchRow
+                key={field}
+                label={SCREEN_FIELD_LABELS[field]}
+                value={on}
+                disabled={(!on && full) || last}
+                onChange={(next) =>
+                  save({
+                    ...settings,
+                    screenFields: next
+                      ? RUN_SCREEN_FIELDS.filter((f) => f === field || settings.screenFields.includes(f))
+                      : settings.screenFields.filter((f) => f !== field),
+                  })
+                }
+                last={i === RUN_SCREEN_FIELDS.length - 1}
+              />
+            );
+          })}
+        </RowGroup>
+      </View>
 
       <RowGroup>
         <SwitchRow
