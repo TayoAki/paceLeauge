@@ -27,6 +27,9 @@ PaceLeague is in a beta. Features may change, pause or be removed, and you may f
 - Pay attention to your surroundings, follow traffic laws, and don't let the app distract you while you run.
 - Distance, pace and XP come from your phone's GPS. They are estimates, not certified measurements.
 
+Group runs are planned by members, not by PaceLeague. Meet in public places, run within your
+limits, and tell someone where you're going.
+
 ## Fair play
 
 - XP, tiers and standings follow the scoring rules shown in the app under How scoring works. To keep leagues fair, we may check, hold for review, adjust or remove runs and scores — for example, runs at impossible speeds or runs that weren't made on foot.

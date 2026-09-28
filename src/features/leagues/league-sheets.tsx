@@ -1,4 +1,5 @@
-import { Ban, Crown, Flag, RefreshCw, Share2, UserMinus } from 'lucide-react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { Ban, Crown, Flag, RefreshCw, Share2, Swords, UserMinus } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, Share, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,8 +43,10 @@ export function formatCode(code: string): string {
 const INVITE_CACHE = 'league:invite';
 
 /** Owner's invite: a random 7-day code shared through the system share sheet (no contacts). */
-export function InviteSheet({ visible, onClose, leagueName }: { visible: boolean; onClose: () => void; leagueName: string }) {
+export function InviteSheet({ visible, onClose, leagueName, leagueId }: { visible: boolean; onClose: () => void; leagueName: string; leagueId: string }) {
   const { api, runtime } = useAccountServices();
+  // Each league has its own code (docs/ROADMAP.md 4.1).
+  const cacheKey = `${INVITE_CACHE}:${leagueId}`;
   const [invite, setInvite] = useState<Invite | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,14 +55,14 @@ export function InviteSheet({ visible, onClose, leagueName }: { visible: boolean
     if (!visible || !api) return;
     let alive = true;
     void (async () => {
-      const cached = await runtime.journal.getKv<Invite>(INVITE_CACHE);
+      const cached = await runtime.journal.getKv<Invite>(cacheKey);
       if (cached && cached.value.expires_at_ms - Date.now() > 24 * 3600_000) {
         if (alive) setInvite(cached.value);
         return;
       }
       try {
-        const fresh = await api.createLeagueInvite();
-        await runtime.journal.setKv(INVITE_CACHE, fresh);
+        const fresh = await api.createLeagueInvite(leagueId);
+        await runtime.journal.setKv(cacheKey, fresh);
         if (alive) setInvite(fresh);
       } catch (e) {
         if (alive) setError(toApiError(e).code === 'invites_paused' ? 'Invites are paused right now.' : 'Couldn’t create an invite. Check your connection.');
@@ -68,15 +71,15 @@ export function InviteSheet({ visible, onClose, leagueName }: { visible: boolean
     return () => {
       alive = false;
     };
-  }, [visible, api, runtime]);
+  }, [visible, api, runtime, cacheKey, leagueId]);
 
   const rotate = async () => {
     if (!api) return;
     setBusy(true);
     setError(null);
     try {
-      const fresh = await api.rotateLeagueInvites();
-      await runtime.journal.setKv(INVITE_CACHE, fresh);
+      const fresh = await api.rotateLeagueInvites(leagueId);
+      await runtime.journal.setKv(cacheKey, fresh);
       setInvite(fresh);
     } catch {
       setError('Couldn’t make a new code. Try again.');
@@ -137,7 +140,8 @@ export function MemberSheet({
   onClose: () => void;
   onChanged: () => void;
 }) {
-  const { api } = useAccountServices();
+  const { api, accountId } = useAccountServices();
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<'menu' | 'report' | 'confirm-remove' | 'confirm-transfer' | 'confirm-block'>('menu');
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -159,7 +163,15 @@ export function MemberSheet({
       onChanged();
     } catch (e) {
       const code = toApiError(e).code;
-      setMessage({ tone: 'danger', text: code === 'network' ? 'You’re offline. Try again when connected.' : 'That didn’t work. Try again.' });
+      const text =
+        code === 'network'
+          ? 'You’re offline. Try again when connected.'
+          : code === 'duel_exists'
+            ? 'You already have a duel with them this week.'
+            : code === 'duel_limit'
+              ? 'You have three duels this week already.'
+              : 'That didn’t work. Try again.';
+      setMessage({ tone: 'danger', text });
     } finally {
       setBusy(false);
     }
@@ -171,6 +183,23 @@ export function MemberSheet({
       {message ? <InlineStatus tone={message.tone} title={message.text} /> : null}
       {mode === 'menu' ? (
         <RowGroup style={{ backgroundColor: colors.surface }}>
+          {!member.hidden ? (
+            <Row
+              icon={Swords}
+              label="Challenge to a duel"
+              hint="This week, one on one. Best three days wins."
+              onPress={
+                busy
+                  ? undefined
+                  : () =>
+                      void run(async () => {
+                        await api.challengeDuel(member.member_id);
+                        await queryClient.invalidateQueries({ queryKey: [accountId, 'duels'] });
+                      }, `Challenge sent. ${name} can accept until Sunday.`)
+              }
+              testID="challenge-duel"
+            />
+          ) : null}
           <Row icon={Flag} label="Report" hint="Sends the name and league to moderators" onPress={() => setMode('report')} />
           <Row icon={Ban} label="Block" hint="You won’t see each other’s names" onPress={() => setMode('confirm-block')} last={!isOwner} />
           {isOwner ? (

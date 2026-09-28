@@ -7,6 +7,7 @@ import type { ActivityType, EffortKey, HistoryPage, ServerRun } from '@/api/sche
 import type { JournalChange, SavedRun } from '@/db/journal';
 import { useAccount } from '@/features/account/account-provider';
 import type { IndoorSession } from '@/features/indoor/indoor-run';
+import { useSelectedLeague } from '@/features/leagues/selected-league';
 import { EMPTY_METRICS, type RecorderSnapshot } from '@/features/recording/types';
 import type { SyncStatus } from '@/features/sync/sync-engine';
 
@@ -63,7 +64,11 @@ export function useCachedQuery<T>(
 export const useMe = () => useCachedQuery('me', [], (api) => api.getMe());
 export const useWeek = () => useCachedQuery('week', [], (api) => api.getWeekSummary(0));
 export const useProgress = () => useCachedQuery('progress', [], (api) => api.getProgress(4));
-export const useLeague = (weekOffset: 0 | -1 = 0) => useCachedQuery('league', [weekOffset], (api) => api.getMyLeague(weekOffset));
+/** The league the League tab shows (the runner's first unless they picked another, 4.1). */
+export function useLeague(weekOffset: 0 | -1 = 0) {
+  const [selected] = useSelectedLeague();
+  return useCachedQuery('league', [weekOffset, selected ?? ''], (api) => api.getMyLeague(weekOffset, selected));
+}
 export const useBlocks = () => useCachedQuery('blocks', [], (api) => api.listBlocks(), { staleTime: 0 });
 export const useServerRun = (serverRunId: string | null) =>
   useCachedQuery('run', [serverRunId ?? ''], (api) => api.getMyRun(serverRunId ?? ''), { enabled: !!serverRunId });
@@ -90,8 +95,10 @@ export const useStats = (input: StatsInput) =>
   useCachedQuery('stats', [input.from, input.to, input.bucket, input.activity ?? 'run'], (api) => api.getStats(input));
 export const useRunsBetween = (fromMs: number, toMs: number, activity: ActivityType | null, enabled = true) =>
   useCachedQuery('runs-between', [fromMs, toMs, activity ?? 'all'], (api) => api.listMyRunsBetween(fromMs, toMs, activity), { enabled });
-export const useLeagueCheers = (weekOffset: 0 | -1 = 0) =>
-  useCachedQuery('cheers', [weekOffset], (api) => api.getLeagueCheers(weekOffset), { staleTime: 10_000 });
+export function useLeagueCheers(weekOffset: 0 | -1 = 0) {
+  const [selected] = useSelectedLeague();
+  return useCachedQuery('cheers', [weekOffset, selected ?? ''], (api) => api.getLeagueCheers(weekOffset, selected), { staleTime: 10_000 });
+}
 
 export function useRunHistory() {
   const { state, api } = useAccount();

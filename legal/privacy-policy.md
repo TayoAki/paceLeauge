@@ -58,8 +58,10 @@ Only if you subscribe:
 
 ### Leagues and safety
 
-- The leagues you create or join, the invites you create, and weekly standings.
+- The leagues you create or join (up to five, and whether each is for friends, family or work), the invites you create, weekly standings and four-week season standings, and the seasons you won.
 - Cheers: who in your league cheered whom, and in which week.
+- Duels you start or answer: who, in which league and week, and whether it was accepted.
+- Group runs you plan (the title, time, meeting point and notes you enter) and your answers to others' (going, maybe or not going), and the group-chat link a league owner adds.
 - Reports you send (a reason from a list, never free text), a copy of what you reported for moderators, runners you block, and moderators' decisions about reports.
 
 ### Sharing, follows and the feed
@@ -120,7 +122,7 @@ We don't use your information for advertising, and we don't sell it or share it 
 ## Who can see what
 
 - You can see everything in your account, including your routes.
-- Your league sees your runner name, tier and weekly XP, and how many cheers you received this week. Your notes, shoes, records, badges, streak, training plan and whether you have Pro are visible only to you.
+- Each league you're in sees your runner name, tier and weekly XP, your season total, how many cheers you received this week, duels you're in, and group runs members plan with who's going. Your notes, shoes, records, badges, streak, training plan and whether you have Pro are visible only to you.
 - A run you share is seen by the people you chose: its title, date, distance, time and pace, its kudos and comments, and its map only if you turned the map on. Shared maps never show the first and last 200 m of a run or anything inside your privacy zones.
 - Other runners can see your profile: your runner name, tier, how many followers you have and how many runners you follow, and the runs you've shared with them. They can find you by name only if you allow it; otherwise only through your follow link.
 - Comments and kudos you give are seen by everyone who can see the run. Blocking a runner hides you from each other everywhere in PaceLeague; muting keeps their runs out of your feed without telling them.
@@ -142,12 +144,13 @@ We don't use your information for advertising, and we don't sell it or share it 
 - Whether you have Pro: until you delete your account. The log of subscription events: 60 days (after an account is deleted, without the link to it).
 - Your Strava connection and Garmin link: until you disconnect or delete your account. Garmin activities waiting for us to process them: 7 days after they are processed. Diagnostics reports you send: 30 days.
 - Kudos and comments: until you remove them, the run's owner deletes the comment or the run, or you delete your account. Follows, privacy zones and sharing choices: until you change them or delete your account.
+- Group runs, with their meeting points and answers: 30 days after the run (or its cancellation). Duels and season titles: until you delete your account.
 - Your phone's push token: until you sign out, turn notifications off in the app's settings on the phone and the phone tells us, uninstall the app, or delete your account. Notifications we've sent or dropped: 7 days.
 - App events: 14 days. Rate-limit records: 2 days. Resolved reports: 90 days after they are resolved. Expired invites: 30 days. Export files: 24 hours. Uploads that were never finished: 7 days. A record that an account deletion was completed, without your data: 30 days.
 
 ## Your choices and rights
 
-- **Export:** Profile → Privacy → Export gives you your data as JSON, with a GPX file for each route. It includes your training plans, your Pro status, your sharing choices and privacy zones, who you follow and who follows you, and your comments, kudos and notification choices.
+- **Export:** Profile → Privacy → Export gives you your data as JSON, with a GPX file for each route. It includes your training plans, your Pro status, your sharing choices and privacy zones, who you follow and who follows you, your comments, kudos and notification choices, and your duels, group runs, answers and season titles.
 - **Correct:** edit your profile or rename your runs at any time.
 - **Delete:** delete individual runs, or your whole account under Profile → Privacy → Delete account.
 - **Location:** you control location permission in your phone's settings. Recording a run needs it; everything else works without it. PaceLeague never asks for location "all the time" on Android.

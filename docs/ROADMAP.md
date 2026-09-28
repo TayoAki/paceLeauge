@@ -90,9 +90,10 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 
 **Progress (28 September 2026).** Phase 0's age check, Phases 1, 2 and 3, and the platform track
 (the Android app and the web app) are built and tested in code, and Phase 4 is under way: privacy
-zones and per-run sharing (4.2), follows (4.3), the feed (4.4), and push notifications and
-moderation (4.9) are built. The server is tested by 284 database and API tests, the app by 306
-unit tests and browser walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
+zones and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and
+moderation (4.9), and Leagues 2.0 with seasons, duels and group runs (4.1) are built. The server
+is tested by 294 database and API tests, the app by 309 unit tests and browser walkthroughs of the
+new screens. What remains is on devices and with people: the Part C audio
 matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
 Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
 coach's review of plans and notes, the 30-runner pilot, counsel's review of health data, and the
@@ -682,6 +683,18 @@ is where other people start seeing more than a name and a number.
 - How: lift the one-league-per-runner rule (D-008). Standings stay capped best-3-days everywhere.
 - Done when: the existing league tests pass per league, and seasons settle correctly across
   daylight-saving changes.
+- Built: up to five leagues per runner, each with its own standings counted from when the runner
+  joined it; a switcher on the League tab; Friends, Family and Work templates (family leagues are
+  the kind teens will join under 4.10); four-week seasons shared by every league (counted from
+  5 January 2026 in the competition calendar) with a champion kept once the last week is final;
+  weekly duels a runner starts from a league-mate's name (best three days wins, three a week at
+  most); a recap card from Sunday; group runs with a day, time, meeting point, notes and RSVPs,
+  a push to members and a reminder an hour before to everyone going; and the owner's group-chat
+  link (WhatsApp, Discord, Signal, Telegram, GroupMe or Messenger; iMessage has no invite links)
+  shown only to members. Every league call takes an optional league id and otherwise acts on the
+  first league, so older app versions keep working. `tests/backend/leagues2.test.ts` includes a
+  season across the end of daylight saving time in November 2025, where a run from 23:00 on the
+  season's last Sunday counts and one after midnight belongs to the next season.
 
 **4.2 Privacy zones and per-run visibility** · M
 - What: hide the start and end of a map within a chosen distance of saved places. Each run is

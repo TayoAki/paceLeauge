@@ -180,19 +180,38 @@ export const standingSchema = z.object({
 });
 export type Standing = z.infer<typeof standingSchema>;
 
+export const leagueKindSchema = z.enum(['friends', 'family', 'work']);
+export type LeagueKind = z.infer<typeof leagueKindSchema>;
+
+/** One of the runner's leagues, for the switcher (docs/ROADMAP.md 4.1). */
+export const myLeagueSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: leagueKindSchema,
+  is_owner: z.boolean(),
+  member_count: z.number(),
+  joined_at_ms: z.number(),
+});
+export type MyLeague = z.infer<typeof myLeagueSchema>;
+
 export const leagueViewSchema = z.object({
   league: z
     .object({
       id: z.string(),
       name: z.string(),
+      kind: leagueKindSchema.optional(),
       member_count: z.number(),
       capacity: z.number(),
       is_owner: z.boolean(),
       calendar_zone: z.string(),
+      /** The crew's group chat, shown to members only. */
+      chat_url: z.string().nullable().optional(),
       created_at_ms: z.number(),
       joined_at_ms: z.number(),
     })
     .nullable(),
+  leagues: z.array(myLeagueSchema).optional(),
+  max_leagues: z.number().optional(),
   week: z
     .object({
       week_start: z.string(),
@@ -216,8 +235,9 @@ export const inviteSchema = z.object({ code: z.string(), expires_at_ms: z.number
 export type Invite = z.infer<typeof inviteSchema>;
 
 export const invitePreviewSchema = z.object({
-  status: z.enum(['valid', 'full', 'already_member', 'in_other_league', 'not_found', 'closed', 'revoked', 'expired', 'unavailable']),
+  status: z.enum(['valid', 'full', 'already_member', 'league_limit', 'in_other_league', 'not_found', 'closed', 'revoked', 'expired', 'unavailable']),
   league_name: z.string().optional(),
+  kind: leagueKindSchema.optional(),
   member_count: z.number().optional(),
   capacity: z.number().optional(),
   expires_at_ms: z.number().optional(),

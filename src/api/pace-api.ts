@@ -5,6 +5,7 @@ import type { ActiveSegment } from '@/domain/types';
 
 import { ApiError } from './errors';
 import { feedApi, type FeedApi } from './feed-api';
+import { leaguesApi, type LeaguesApi } from './leagues-api';
 import { socialApi, type SocialApi } from './social-api';
 import {
   aliasCheckSchema,
@@ -76,6 +77,7 @@ import {
   type HistoryPage,
   type Invite,
   type InvitePreview,
+  type LeagueKind,
   type LeagueView,
   type Me,
   type Progress,
@@ -168,7 +170,7 @@ export interface TelemetryEvent {
   props: Record<string, string | boolean>;
 }
 
-export interface PaceApi extends SocialApi, FeedApi {
+export interface PaceApi extends SocialApi, FeedApi, LeaguesApi {
   getAppConfig(): Promise<AppConfig>;
   getMe(): Promise<Me>;
   checkAlias(alias: string): Promise<{ available: boolean; problem: 'invalid' | 'not_allowed' | 'taken' | null }>;
@@ -188,21 +190,22 @@ export interface PaceApi extends SocialApi, FeedApi {
   getWeekSummary(weekOffset?: number): Promise<WeekSummary>;
   getProgress(weeks?: number): Promise<Progress>;
 
-  getMyLeague(weekOffset?: 0 | -1): Promise<LeagueView>;
-  createLeague(name: string): Promise<LeagueView>;
-  createLeagueInvite(): Promise<Invite>;
-  rotateLeagueInvites(): Promise<Invite>;
+  /** Without a league id, the runner's first league (docs/ROADMAP.md 4.1). */
+  getMyLeague(weekOffset?: 0 | -1, leagueId?: string | null): Promise<LeagueView>;
+  createLeague(name: string, kind?: LeagueKind): Promise<LeagueView>;
+  createLeagueInvite(leagueId?: string | null): Promise<Invite>;
+  rotateLeagueInvites(leagueId?: string | null): Promise<Invite>;
   getInvitePreview(code: string): Promise<InvitePreview>;
   joinLeague(code: string): Promise<LeagueView>;
-  leaveLeague(): Promise<void>;
+  leaveLeague(leagueId?: string | null): Promise<void>;
   transferLeagueOwnership(memberId: string): Promise<LeagueView>;
   removeLeagueMember(memberId: string): Promise<LeagueView>;
-  renameLeague(name: string): Promise<LeagueView>;
+  renameLeague(name: string, leagueId?: string | null): Promise<LeagueView>;
 
   blockMember(memberId: string): Promise<void>;
   listBlocks(): Promise<BlockEntry[]>;
   unblock(blockId: string): Promise<void>;
-  submitReport(target: 'member' | 'league', memberId: string | null, reason: ReportReason): Promise<void>;
+  submitReport(target: 'member' | 'league', memberId: string | null, reason: ReportReason, leagueId?: string | null): Promise<void>;
 
   requestExport(): Promise<{ exportId: string; expiresAtMs: number }>;
   getExport(exportId: string): Promise<ExportData>;
@@ -225,7 +228,7 @@ export interface PaceApi extends SocialApi, FeedApi {
   getStreak(): Promise<Streak>;
   getBadges(): Promise<Badges>;
   cheerMember(memberId: string): Promise<Cheers>;
-  getLeagueCheers(weekOffset?: 0 | -1): Promise<Cheers>;
+  getLeagueCheers(weekOffset?: 0 | -1, leagueId?: string | null): Promise<Cheers>;
   getStats(input: StatsInput): Promise<Stats>;
   editRun(runId: string, expectedVersion: number, input: RunEditInput): Promise<RunEditResult>;
   mergeRuns(firstRunId: string, secondRunId: string): Promise<RunEditResult>;
@@ -346,22 +349,22 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     getWeekSummary: (weekOffset = 0) => call('get_week_summary', { p_week_offset: weekOffset }, weekSummarySchema),
     getProgress: (weeks = 4) => call('get_progress', { p_weeks: weeks }, progressSchema),
 
-    getMyLeague: (weekOffset = 0) => call('get_my_league', { p_week_offset: weekOffset }, leagueViewSchema),
-    createLeague: (name) => call('create_league', { p_name: name }, leagueViewSchema),
-    createLeagueInvite: () => call('create_league_invite', {}, inviteSchema),
-    rotateLeagueInvites: () => call('rotate_league_invites', {}, inviteSchema),
+    getMyLeague: (weekOffset = 0, leagueId = null) => call('get_my_league', { p_week_offset: weekOffset, p_league_id: leagueId }, leagueViewSchema),
+    createLeague: (name, kind = 'friends') => call('create_league', { p_name: name, p_kind: kind }, leagueViewSchema),
+    createLeagueInvite: (leagueId = null) => call('create_league_invite', { p_league_id: leagueId }, inviteSchema),
+    rotateLeagueInvites: (leagueId = null) => call('rotate_league_invites', { p_league_id: leagueId }, inviteSchema),
     getInvitePreview: (code) => call('get_invite_preview', { p_code: code }, invitePreviewSchema),
     joinLeague: async (code) => {
       const r = await call('join_league', { p_code: code }, joinResultSchema);
       if ('error' in r) throw new ApiError(r.error, 200);
       return r;
     },
-    leaveLeague: async () => {
-      await call('leave_league', {}, leaveResultSchema);
+    leaveLeague: async (leagueId = null) => {
+      await call('leave_league', { p_league_id: leagueId }, leaveResultSchema);
     },
     transferLeagueOwnership: (memberId) => call('transfer_league_ownership', { p_member_id: memberId }, leagueViewSchema),
     removeLeagueMember: (memberId) => call('remove_league_member', { p_member_id: memberId }, leagueViewSchema),
-    renameLeague: (name) => call('rename_league', { p_name: name }, leagueViewSchema),
+    renameLeague: (name, leagueId = null) => call('rename_league', { p_name: name, p_league_id: leagueId }, leagueViewSchema),
 
     blockMember: async (memberId) => {
       await rpc('block_member', { p_member_id: memberId });
@@ -370,8 +373,8 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     unblock: async (blockId) => {
       await rpc('unblock', { p_block_id: blockId });
     },
-    submitReport: async (target, memberId, reason) => {
-      await call('submit_report', { p_target_kind: target, p_member_id: memberId, p_reason: reason }, reportResultSchema);
+    submitReport: async (target, memberId, reason, leagueId = null) => {
+      await call('submit_report', { p_target_kind: target, p_member_id: memberId, p_reason: reason, p_league_id: leagueId }, reportResultSchema);
     },
 
     requestExport: async () => {
@@ -413,7 +416,7 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     getStreak: () => call('get_streak', {}, streakSchema),
     getBadges: () => call('get_badges', {}, badgesSchema),
     cheerMember: (memberId) => call('cheer_member', { p_member_id: memberId }, cheersSchema),
-    getLeagueCheers: (weekOffset = 0) => call('get_league_cheers', { p_week_offset: weekOffset }, cheersSchema),
+    getLeagueCheers: (weekOffset = 0, leagueId = null) => call('get_league_cheers', { p_week_offset: weekOffset, p_league_id: leagueId }, cheersSchema),
     getStats: (input) =>
       call('get_stats', { p_from: input.from, p_to: input.to, p_bucket: input.bucket, p_activity: input.activity ?? 'run' }, statsSchema),
     editRun: (runId, expectedVersion, input) =>
@@ -472,5 +475,6 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     // Phase 4 (docs/ROADMAP.md): sharing, privacy zones and follows; the feed, pushes and moderation
     ...socialApi(call),
     ...feedApi(call),
+    ...leaguesApi(call),
   };
 }

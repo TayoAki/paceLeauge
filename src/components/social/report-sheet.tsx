@@ -40,6 +40,7 @@ export function ReportSheet({ target, onClose, onBlocked }: { target: ReportTarg
 
   if (!target) return null;
   const reasons = REPORT_REASONS[target.kind];
+  const owner = target.owner;
   return (
     <Sheet visible onClose={close} title={done ? 'Thanks for telling us' : `Report this ${WHAT[target.kind]}`} busy={actions.busy}>
       {actions.error ? <InlineStatus tone="danger" title={actions.error} /> : null}
@@ -75,13 +76,13 @@ export function ReportSheet({ target, onClose, onBlocked }: { target: ReportTarg
               : `You won’t see this ${WHAT[target.kind]} anymore. A moderator will look at it within 24 hours.`}
             {env.supportEmail ? ` If someone is in danger, contact local emergency services, then email ${env.supportEmail}.` : ''}
           </Text>
-          {target.owner && !blocked ? (
+          {owner && !blocked ? (
             <SecondaryButton
-              label={`Block ${target.owner.alias}`}
+              label={`Block ${owner.alias}`}
               icon={Ban}
               loading={actions.busy}
               onPress={() =>
-                void actions.block(target.owner!.public_id).then(() => {
+                void actions.block(owner.public_id).then(() => {
                   setBlocked(true);
                   onBlocked?.();
                 })

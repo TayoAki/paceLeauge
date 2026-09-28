@@ -32,8 +32,8 @@ function memoryJournal(initial: Record<string, unknown> = {}) {
 
 function fakeApi(available = true) {
   return {
-    getNotificationSettings: jest.fn(async () => ({ available, prefs: { kudos: true, comments: true, follows: true, cheers: true, results: true }, devices: 0 })),
-    registerPushToken: jest.fn(async () => ({ available, prefs: { kudos: true, comments: true, follows: true, cheers: true, results: true }, devices: 1 })),
+    getNotificationSettings: jest.fn(async () => ({ available, prefs: { kudos: true, comments: true, follows: true, cheers: true, results: true, league: true }, devices: 0 })),
+    registerPushToken: jest.fn(async () => ({ available, prefs: { kudos: true, comments: true, follows: true, cheers: true, results: true, league: true }, devices: 1 })),
     unregisterPushToken: jest.fn(async () => true),
   };
 }

@@ -44,7 +44,7 @@ export type ReportKind = 'runner' | 'run' | 'comment';
 export const contentReportResultSchema = z.object({ report_id: z.string(), status: z.string(), due_at_ms: z.number() });
 export type ContentReportResult = z.infer<typeof contentReportResultSchema>;
 
-export const notificationKinds = ['kudos', 'comments', 'follows', 'cheers', 'results'] as const;
+export const notificationKinds = ['kudos', 'comments', 'follows', 'cheers', 'results', 'league'] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 
 export const notificationPrefsSchema = z.object({
@@ -53,6 +53,8 @@ export const notificationPrefsSchema = z.object({
   follows: z.boolean(),
   cheers: z.boolean(),
   results: z.boolean(),
+  /** Duels, group runs and season champions (docs/ROADMAP.md 4.1). */
+  league: z.boolean().default(true),
 });
 export type NotificationPrefs = z.infer<typeof notificationPrefsSchema>;
 

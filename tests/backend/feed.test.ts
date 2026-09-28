@@ -308,7 +308,7 @@ describe('push notifications', () => {
     const mateToken = await withDevice(mate);
     expect(await db.rpc(host, 'get_notification_settings')).toEqual({
       available: false,
-      prefs: { kudos: true, comments: true, follows: true, cheers: true, results: true },
+      prefs: { kudos: true, comments: true, follows: true, cheers: true, results: true, league: true },
       devices: 1,
     });
 
@@ -358,7 +358,7 @@ describe('push notifications', () => {
       await fire(1);
       expect((await outbox(to)).filter((o) => o.kind === kind)).toHaveLength(1);
     }
-    expect((await db.rpc(host, 'get_notification_settings')).prefs).toEqual({ kudos: true, comments: true, follows: true, cheers: true, results: true });
+    expect((await db.rpc(host, 'get_notification_settings')).prefs).toEqual({ kudos: true, comments: true, follows: true, cheers: true, results: true, league: true });
 
     const sent = await claim([hostToken, mateToken], [host, mate]);
     expect(sent.map((s) => [s.kind, s.title, s.body, s.url]).sort((a, b) => a[0]!.localeCompare(b[0]!))).toEqual([
@@ -390,8 +390,8 @@ describe('push notifications', () => {
 
     const sent = await claim(tokens, [owner, runner, resting]);
     expect(sent.map((s) => [s.token === tokens[0] ? 'owner' : s.token === tokens[1] ? 'runner' : 'resting', s.title, s.body]).sort()).toEqual([
-      ['owner', 'Your week in Res Owner crew', 'You finished 2nd of 3 with 77 XP. A new week has started.'],
-      ['runner', 'Your week in Res Owner crew', 'You finished 1st of 3 with 89 XP. A new week has started.'],
+      ['owner', 'Week results', 'You finished 2nd of 3 in Res Owner crew with 77 XP. A new week has started.'],
+      ['runner', 'Week results', 'You finished 1st of 3 in Res Owner crew with 89 XP. A new week has started.'],
     ]);
   });
 
@@ -531,6 +531,6 @@ describe('export', () => {
     const social = (await db.one<{ x: any }>('select private.social_export($1) as x', [fan.id])).x;
     expect(social.comments).toEqual([{ run_id: runId, reply: false, body: 'Exported words', created_at_ms: expect.any(Number), removed_by: null }]);
     expect(social.kudos_given).toEqual([{ run_id: runId, created_at_ms: expect.any(Number) }]);
-    expect(social.notifications).toEqual({ prefs: { kudos: true, comments: true, follows: true, cheers: true, results: false }, devices: 0 });
+    expect(social.notifications).toEqual({ prefs: { kudos: true, comments: true, follows: true, cheers: true, results: false, league: true }, devices: 0 });
   });
 });

@@ -517,12 +517,12 @@ there are (`RUN_JOBS=false` opts an instance out).
 
 | Job | Schedule | Does |
 |---|---|---|
-| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, and once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push. Logs `frequent jobs` when it did something |
+| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push (several leagues' results arrive as one), settles the season that just ended (its champions, once, a day after its last week), and queues group-run reminders an hour before the start. Logs `frequent jobs` when it did something |
 | Strava uploads and revocations | every minute, when Strava is configured | Queues accepted runs of connected runners, uploads them, follows processing, refreshes tokens, confirms webhook deauthorizations, revokes ended grants. Logs `strava jobs` |
 | Garmin events | every minute, when Terra is configured | Uploads queued Garmin activities as their runners, deauthorizes ended links, keeps processed events a week. Logs `garmin jobs` |
 | Pro billing | hourly | Sends trial reminders (production), and removes store events older than 60 days. Logs `billing jobs` |
 | Push notifications | every 15 s, when `PUSH_ENABLED=true` | Sends due pushes from `private.push_outbox` through Expo, retries failures with backoff (dropped after 5 tries), checks Expo's receipts after 15 minutes and forgets devices whose app was uninstalled. Logs `push jobs` |
-| `private.purge_expired()` + sign-in cleanup | hourly, and 5 s after each start | Removes uploads never finalized after 7 days (the phone keeps its copy), expired exports, operational events after 14 days, rate-limit windows after 2 days, resolved reports after 90 days, dead invites after 30 days, completed deletion records after 30 days, pushes sent or dropped after 7 days (and their repeat guards after 30), expired sign-in codes, and revoked sessions after 30 days. Logs `hourly retention` |
+| `private.purge_expired()` + sign-in cleanup | hourly, and 5 s after each start | Removes uploads never finalized after 7 days (the phone keeps its copy), expired exports, operational events after 14 days, rate-limit windows after 2 days, resolved reports after 90 days, dead invites after 30 days, completed deletion records after 30 days, pushes sent or dropped after 7 days (and their repeat guards after 30), group runs 30 days after they happened or were cancelled, expired sign-in codes, and revoked sessions after 30 days. Logs `hourly retention` |
 
 A failure logs `job failed` with the job name, and the job runs again on its next tick.
 
@@ -595,9 +595,11 @@ shown after every report) and name a moderation rota that covers the 24-hour tar
 
 ## Push notifications (4.9)
 
-Kudos, comments and replies, follows (requests, new followers, accepted requests), league cheers
-and week results. The database decides what to send (`private.notify`): nothing a runner switched
-off, nothing between 22:00 and 07:00 in their time zone (it waits until 07:00), nothing across a
+Kudos, comments and replies, follows (requests, new followers, accepted requests), league cheers,
+week results, and league activity (duel challenges, group runs, their changes and reminders, and
+season champions). The database decides what to send (`private.notify`): nothing a runner switched
+off, nothing between 22:00 and 07:00 in their time zone (it waits until 07:00; a group-run reminder an
+hour before an early start is the one exception), nothing across a
 block, and nothing about a run or comment deleted since. Kudos wait two minutes so a burst
 arrives as one push ("Maya and 2 others gave you kudos"). The `api` service sends what's due
 through Expo's push service, which hands it to Apple (APNs) or Google (FCM).

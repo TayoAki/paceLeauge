@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Flag, LogOut } from 'lucide-react-native';
+import { Flag, LogOut, MessagesSquare } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -16,6 +16,7 @@ import { LEAGUE_RULES } from '@/domain/config';
 import { useAccount } from '@/features/account/account-provider';
 import { useLeague } from '@/features/data/hooks';
 import { MemberSheet } from '@/features/leagues/league-sheets';
+import { useLeagueActions } from '@/features/leagues/use-leagues';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
 
@@ -35,6 +36,8 @@ export default function ManageLeagueScreen() {
   const [member, setMember] = useState<Standing | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [chat, setChat] = useState<string | null>(null);
+  const chatActions = useLeagueActions();
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -89,7 +92,33 @@ export default function ManageLeagueScreen() {
             label="Save name"
             disabled={!name || name.trim() === current.name}
             loading={busy}
-            onPress={() => void run(() => api!.renameLeague(name ?? current.name), 'League renamed.', () => setName(null))}
+            onPress={() => void run(() => api!.renameLeague(name ?? current.name, current.id), 'League renamed.', () => setName(null))}
+          />
+          <TextField
+            label="Group chat link"
+            value={chat ?? current.chat_url ?? ''}
+            onChangeText={setChat}
+            placeholder="https://chat.whatsapp.com/…"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            hint="Your crew’s WhatsApp, Discord, Signal, Telegram, GroupMe or Messenger invite link. Only members see it; there’s no chat inside PaceLeague."
+            error={chatActions.error}
+            testID="chat-link-input"
+          />
+          <SecondaryButton
+            label={chat === '' && current.chat_url ? 'Remove chat link' : 'Save chat link'}
+            icon={MessagesSquare}
+            disabled={chat === null || chat.trim() === (current.chat_url ?? '')}
+            loading={chatActions.busy}
+            onPress={() =>
+              void chatActions.setChatLink(current.id, chat?.trim() || null).then((saved) => {
+                if (saved) {
+                  setChat(null);
+                  setMessage({ tone: 'success', text: 'Chat link saved.' });
+                }
+              })
+            }
           />
           <Text variant="section" accessibilityRole="header">
             Members
@@ -117,7 +146,7 @@ export default function ManageLeagueScreen() {
                   key={r.value}
                   label={r.label}
                   last={i === REPORT_REASONS.length - 1}
-                  onPress={() => void run(() => api!.submitReport('league', null, r.value), 'Thanks. Moderators will review it.', () => setReporting(false))}
+                  onPress={() => void run(() => api!.submitReport('league', null, r.value, current.id), 'Thanks. Moderators will review it.', () => setReporting(false))}
                 />
               ))
             : null}
@@ -142,7 +171,7 @@ export default function ManageLeagueScreen() {
         destructive
         busy={busy}
         onConfirm={() =>
-          void run(() => api!.leaveLeague(), 'Done.', () => {
+          void run(() => api!.leaveLeague(current.id), 'Done.', () => {
             setConfirmLeave(false);
             router.back();
           })

@@ -55,7 +55,7 @@ describe('creating, inviting and joining', () => {
     expect(code).toMatch(/^[0-9A-HJKMNP-TV-Z]{8}$/);
 
     const anonymous = await db.rpc('anon', 'get_invite_preview', { p_code: code });
-    expect(anonymous).toEqual({ status: 'valid', league_name: 'Friday Crew', member_count: 1, capacity: 20, expires_at_ms: expect.any(Number) });
+    expect(anonymous).toEqual({ status: 'valid', league_name: 'Friday Crew', kind: 'friends', member_count: 1, capacity: 20, expires_at_ms: expect.any(Number) });
     // Codes are forgiving about case, separators and look-alike characters.
     const typed = `${code.slice(0, 4).toLowerCase()}-${code.slice(4)}`.replace(/1/g, 'l').replace(/0/g, 'o');
     expect((await db.rpc('anon', 'get_invite_preview', { p_code: typed })).status).toBe('valid');
@@ -99,13 +99,18 @@ describe('creating, inviting and joining', () => {
     expect(await joinError(runner, fresh.code)).toBe('league_closed');
   });
 
-  it('allows one league at a time', async () => {
+  it('allows up to five leagues at a time (Leagues 2.0 lifted the one-league rule, D-008)', async () => {
     const a = await newLeague('League Alpha', 'Alpha Owner');
     const b = await newLeague('League Beta', 'Beta Owner');
     const runner = await joinAs('Both Ways', a.code);
-    expect((await db.rpc(runner, 'get_invite_preview', { p_code: b.code })).status).toBe('in_other_league');
-    expect(await joinError(runner, b.code)).toBe('already_in_league');
-    await expectCode(db.rpc(runner, 'create_league', { p_name: 'Third League' }), 'already_in_league');
+    expect((await db.rpc(runner, 'get_invite_preview', { p_code: b.code })).status).toBe('valid');
+    expect((await db.rpc(runner, 'join_league', { p_code: b.code })).league.name).toBe('League Beta');
+    for (const name of ['Third League', 'Fourth League', 'Fifth League']) await db.rpc(runner, 'create_league', { p_name: name });
+    const c = await newLeague('League Gamma', 'Gamma Owner');
+    expect((await db.rpc(runner, 'get_invite_preview', { p_code: c.code })).status).toBe('league_limit');
+    expect(await joinError(runner, c.code)).toBe('league_limit');
+    await expectCode(db.rpc(runner, 'create_league', { p_name: 'Sixth League' }), 'league_limit');
+    // Without a league id, owner actions act on the first league joined, which this runner doesn't own.
     await expectCode(db.rpc(runner, 'create_league_invite'), 'not_league_owner');
   });
 

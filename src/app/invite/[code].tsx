@@ -11,7 +11,8 @@ import { EmptyState, InlineStatus } from '@/components/ui/elements';
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { useAccount } from '@/features/account/account-provider';
 import { useAuth } from '@/features/account/auth-provider';
-import { useLeague, useMe } from '@/features/data/hooks';
+import { useMe } from '@/features/data/hooks';
+import { useSelectedLeague } from '@/features/leagues/selected-league';
 import { formatCode } from '@/features/leagues/league-sheets';
 import { pendingInvite } from '@/features/leagues/pending-invite';
 import { Text } from '@/design/text';
@@ -33,7 +34,7 @@ const joinErrorCopy: Record<string, string> = {
   league_closed: statusCopy.closed!.title,
   league_full: statusCopy.full!.title,
   invite_unavailable: statusCopy.unavailable!.title,
-  already_in_league: 'You’re already in a league. Leave it first to join this one.',
+  league_limit: 'You’re in 5 leagues, the most at once. Leave one first (League › League options).',
   invites_paused: 'Joining is paused right now. Try again later.',
   rate_limited: 'Too many attempts. Wait a minute and try again.',
   network: 'You’re offline. Connect to join.',
@@ -47,7 +48,7 @@ export default function InviteScreen() {
   const auth = useAuth();
   const { state } = useAccount();
   const me = useMe();
-  const current = useLeague(0);
+  const [, selectLeague] = useSelectedLeague();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -72,7 +73,8 @@ export default function InviteScreen() {
     setBusy(true);
     setError(null);
     try {
-      await api.joinLeague(code);
+      const joined = await api.joinLeague(code);
+      if (joined.league) selectLeague(joined.league.id);
       if (state.status === 'ready') state.runtime.telemetry.track('league_joined', { source: source === 'code' ? 'code' : 'link' });
       await pendingInvite.clear();
       await queryClient.invalidateQueries();
@@ -90,7 +92,7 @@ export default function InviteScreen() {
   };
 
   const data = preview.data;
-  const usable = data && (data.status === 'valid' || data.status === 'in_other_league' || data.status === 'already_member');
+  const usable = data && (data.status === 'valid' || data.status === 'league_limit' || data.status === 'already_member');
 
   let footer: React.ReactNode = <TextButton label="Not now" onPress={leave} />;
   if (data?.status === 'valid') {
@@ -123,7 +125,7 @@ export default function InviteScreen() {
             <Users size={30} color={colors.accent} />
           </View>
           <Text variant="eyebrow" tone="secondary">
-            Private league
+            {data.kind === 'family' ? 'Family league' : data.kind === 'work' ? 'Work league' : 'Private league'}
           </Text>
           <Text variant="title" align="center">
             {data.league_name}
@@ -132,12 +134,8 @@ export default function InviteScreen() {
             {data.member_count} of {data.capacity} runners
           </Text>
           {data.status === 'already_member' ? <InlineStatus tone="success" title="You’re already in this league." /> : null}
-          {data.status === 'in_other_league' ? (
-            <InlineStatus
-              tone="warning"
-              title={`You’re in ${current.data?.data.league?.name ?? 'another league'}.`}
-              body="Leave it first (League → League options) to join this one."
-            />
+          {data.status === 'league_limit' ? (
+            <InlineStatus tone="warning" title="You’re in 5 leagues, the most at once." body="Leave one first (League › League options) to join this one." />
           ) : null}
           <View style={styles.privacy}>
             <ShieldCheck size={18} color={colors.textSecondary} />

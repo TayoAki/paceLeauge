@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { BellRing, Heart, MessageCircle, PartyPopper, Trophy, UserPlus } from 'lucide-react-native';
+import { BellRing, Heart, MessageCircle, PartyPopper, Swords, Trophy, UserPlus } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -20,6 +20,7 @@ const KINDS: { kind: NotificationKind; label: string; hint: string; icon: typeof
   { kind: 'follows', label: 'Follows', hint: 'Follow requests, new followers and accepted requests.', icon: UserPlus },
   { kind: 'cheers', label: 'League cheers', hint: 'When a league-mate cheers you on.', icon: PartyPopper },
   { kind: 'results', label: 'Weekly results', hint: 'How your league week went, the day after it ends. Only after weeks you ran.', icon: Trophy },
+  { kind: 'league', label: 'League activity', hint: 'Duel challenges, group runs and their reminders, and season champions.', icon: Swords },
 ];
 
 /**
@@ -57,7 +58,7 @@ export function ActivityNotifications() {
       <Card style={styles.card}>
         <Text variant="labelStrong">Friends and league</Text>
         <Text variant="caption" tone="secondary">
-          Notifications about kudos, comments, follows, cheers and weekly results go to the PaceLeague app on your phone.
+          Notifications about kudos, comments, follows, cheers, weekly results and league activity go to the PaceLeague app on your phone.
         </Text>
       </Card>
     );

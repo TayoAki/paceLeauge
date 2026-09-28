@@ -265,13 +265,40 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
       const claims = byAlias.get(alias);
       if (claims) await rpc(pool, claims, 'set_kudos', { p_run_id: mayaRun, p_on: true });
     }
-    const jules = byAlias.get('Jules');
-    if (jules) {
-      const [thread] = await rpc<{ id: string }[]>(pool, jules, 'add_comment', { p_run_id: mayaRun, p_body: 'Strong finish! That last kilometre looked quick.' });
+    const julesClaims = byAlias.get('Jules');
+    if (julesClaims) {
+      const [thread] = await rpc<{ id: string }[]>(pool, julesClaims, 'add_comment', { p_run_id: mayaRun, p_body: 'Strong finish! That last kilometre looked quick.' });
       if (thread) await rpc(pool, maya!, 'add_comment', { p_run_id: mayaRun, p_body: 'Thanks! Saving some for Sunday.', p_parent_id: thread.id });
     }
   }
+  // Leagues 2.0 (docs/ROADMAP.md 4.1): a family league, Saturday's group run and a duel to answer.
+  const family = await rpc<{ league: { id: string } }>(pool, viewer, 'create_league', {
+    p_name: `The ${options.viewerAlias ?? 'Alex'} family`,
+    p_kind: 'family',
+  });
+  const familyInvite = await rpc<{ code: string }>(pool, viewer, 'create_league_invite', { p_league_id: family.league.id });
+  const sam = byAlias.get('Sam');
+  if (sam) await rpc(pool, sam, 'join_league', { p_code: familyInvite.code });
+  if (maya) {
+    // The next Saturday at 08:00 in Chicago that's at least an hour away.
+    let saturday = weekStart + 5 * DAY_MS + 8 * 3_600_000;
+    while (saturday < Date.now() + 3_600_000) saturday += 7 * DAY_MS;
+    await rpc(pool, maya, 'create_group_run', {
+      p_title: 'Saturday long run',
+      p_starts_at_ms: saturday,
+      p_meeting_point: 'Lakefront Trail at Fullerton',
+      p_notes: 'Easy pace, coffee after.',
+      p_league_id: league.league.id,
+    });
+  }
+  const jules = byAlias.get('Jules');
+  const viewerMember = await pool.query<{ id: string }>('select id from public.league_members where league_id = $1 and user_id = $2 and left_at is null', [
+    league.league.id,
+    viewer.sub,
+  ]);
+  if (jules && viewerMember.rows[0]) await rpc(pool, jules, 'challenge_duel', { p_member_id: viewerMember.rows[0].id });
+
   console.log(
-    `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,
+    `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends and a family league; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,
   );
 }
