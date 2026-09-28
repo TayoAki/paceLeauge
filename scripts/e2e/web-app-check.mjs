@@ -45,6 +45,7 @@ const SCREENS = [
   { path: '/league/leaderboards', wait: 'best three days', name: 'leaderboards' },
   { path: `/live/${'0'.repeat(64)}`, wait: 'This live run has ended.', name: 'live-ended' },
   { path: '/train', wait: 'Train', name: 'train' },
+  { path: '/train/routes/plan', wait: 'Distance', name: 'route-planner' },
   { path: '/profile', wait: 'Profile', name: 'profile' },
   { path: '/profile/privacy', wait: 'Export', name: 'privacy' },
   { path: '/profile/run-settings', wait: 'Run settings', name: 'run-settings' },

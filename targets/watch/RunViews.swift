@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 struct RootView: View {
@@ -30,6 +31,18 @@ struct StartView: View {
           Text("#\(rank) in \(phone.context.leagueName ?? "your league")")
             .font(.footnote)
             .foregroundStyle(Palette.secondary)
+        }
+        if let route = phone.route {
+          VStack(alignment: .leading, spacing: 2) {
+            Label(route.name, systemImage: "map")
+              .font(.footnote)
+              .foregroundStyle(Palette.text)
+            Text("\(route.distanceText) · on the map during your run")
+              .font(.caption2)
+              .foregroundStyle(Palette.secondary)
+            Button("Clear route", role: .destructive) { phone.clearRoute() }
+              .font(.caption2)
+          }
         }
         if workout.phase == .saved {
           Label("Run saved. It syncs through your iPhone.", systemImage: "checkmark.circle")
@@ -77,6 +90,19 @@ struct RunningView: View {
   @State private var confirmEnd = false
 
   var body: some View {
+    // With a planned route (docs/ROADMAP.md 5.1), a second page shows it with where you are.
+    if let route = phone.route {
+      TabView {
+        metrics
+        RouteMapView(route: route)
+      }
+      .tabViewStyle(.verticalPage)
+    } else {
+      metrics
+    }
+  }
+
+  private var metrics: some View {
     TimelineView(.periodic(from: .now, by: 1)) { context in
       let elapsed = workout.elapsed(at: context.date)
       let units = phone.context
@@ -121,6 +147,22 @@ struct RunningView: View {
       Button("End and save") { workout.end() }
       Button("Keep running", role: .cancel) {}
     }
+  }
+}
+
+/** The planned route, with the runner's position, following their heading. */
+struct RouteMapView: View {
+  let route: WatchRoute
+  @State private var position: MapCameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
+
+  var body: some View {
+    Map(position: $position) {
+      MapPolyline(coordinates: route.coordinates)
+        .stroke(Palette.lime, lineWidth: 4)
+      UserAnnotation()
+    }
+    .mapStyle(.standard(pointsOfInterest: .excludingAll))
+    .accessibilityLabel("Map of \(route.name), \(route.distanceText), with where you are")
   }
 }
 

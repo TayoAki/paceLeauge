@@ -8,6 +8,7 @@ import { LiveShareSheet } from '@/components/run/live-share-sheet';
 import { GpsStatus, MetricBlock, RecordingControls, TouchLockOverlay, useAnnounce } from '@/components/run/run-components';
 import { routeLines } from '@/components/run/route-lines';
 import { RouteMap } from '@/components/run/route-map';
+import { RoutePanel } from '@/components/run/route-panel';
 import { WorkoutPanel } from '@/components/run/workout-panel';
 import { IconButton, PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
@@ -17,6 +18,7 @@ import { describeDistance, describeDuration, describePace, formatDistance, forma
 import { useAccountServices } from '@/features/account/account-provider';
 import { useMe, useRecorder } from '@/features/data/hooks';
 import { useRunPoints } from '@/features/recording/use-run-points';
+import { useFollowedRoute } from '@/features/routes/use-routes';
 import type { RunScreenField } from '@/features/voice/run-settings';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
@@ -48,6 +50,10 @@ export default function ActiveRunScreen() {
   const points = useRunPoints(session?.runId ?? null, session?.status === 'recording');
   const lines = useMemo(() => routeLines(points), [points]);
   const last = points[points.length - 1];
+  // The planned route this run follows (docs/ROADMAP.md 5.1), drawn beneath it.
+  const followed = useFollowedRoute();
+  const followedPoints = followed?.view ? followed.route.points : null;
+  const guide = useMemo(() => (followedPoints ? followedPoints.map((p) => ({ latitude: p[0], longitude: p[1] })) : null), [followedPoints]);
 
   useAnnounce(session ? { recording: 'Recording', paused: autoPaused ? 'Auto-paused' : 'Paused', interrupted: 'Recording stopped' }[session.status] : null);
 
@@ -251,6 +257,7 @@ export default function ActiveRunScreen() {
           />
         ) : null}
 
+        <RoutePanel units={units} />
         <WorkoutPanel units={units} onSkip={() => runtime.workout.skip(units)} />
         {metricsBlock}
 
@@ -263,10 +270,11 @@ export default function ActiveRunScreen() {
         <View style={recording ? styles.mapFill : undefined}>
           <RouteMap
             lines={lines}
+            guide={guide}
             height={recording ? 260 : 200}
             current={recording && last ? { latitude: last.lat, longitude: last.lon } : null}
             follow={recording}
-            accessibilityLabel="Map of your route so far. Visible only to you."
+            accessibilityLabel={guide ? `Map of your run so far on ${followed?.route.name ?? 'the planned route'}. Visible only to you.` : 'Map of your route so far. Visible only to you.'}
           />
         </View>
       </Screen>

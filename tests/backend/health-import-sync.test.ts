@@ -231,6 +231,7 @@ describe('Apple Watch app runs through sync', () => {
       ackRun: (name) => void pending.delete(name),
       onRun: () => () => undefined,
       onWorkout: () => () => undefined,
+      sendRoute: () => true,
     };
     // The watch also saved the workout to Apple Health, marked with the same run id.
     const healthCopy: HealthWorkout = {

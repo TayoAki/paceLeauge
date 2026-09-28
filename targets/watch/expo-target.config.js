@@ -12,7 +12,7 @@ module.exports = (config) => ({
   // <app bundle id>.watchkitapp; the phone recognises the watch's Health workouts by it.
   bundleIdentifier: '.watchkitapp',
   deploymentTarget: '10.0',
-  frameworks: ['SwiftUI', 'HealthKit', 'CoreLocation', 'WatchConnectivity', 'AVFoundation', 'WidgetKit'],
+  frameworks: ['SwiftUI', 'HealthKit', 'CoreLocation', 'WatchConnectivity', 'AVFoundation', 'WidgetKit', 'MapKit'],
   colors: {
     $accent: '#D5FF45',
   },

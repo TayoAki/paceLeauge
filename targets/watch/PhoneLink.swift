@@ -33,11 +33,19 @@ struct WatchRunFile: Codable {
 /**
  * The watch's side of WatchConnectivity: the phone's context (units, cues, week and league) comes
  * in as application context; finished runs go out as queued file transfers, which the system
- * delivers whenever the phone is next in reach, even hours later.
+ * delivers whenever the phone is next in reach, even hours later; a planned route comes in the
+ * same way (docs/ROADMAP.md 5.1).
  */
 @MainActor
 final class PhoneLink: NSObject, ObservableObject {
   @Published private(set) var context = SharedStore.loadContext()
+  /** The route for the next run, until the runner clears it. */
+  @Published private(set) var route: WatchRoute? = RouteStore.load()
+
+  func clearRoute() {
+    RouteStore.clear()
+    route = nil
+  }
 
   func activate() {
     guard WCSession.isSupported() else { return }
@@ -76,6 +84,13 @@ extension PhoneLink: WCSessionDelegate {
 
   nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
     Task { @MainActor in apply(applicationContext) }
+  }
+
+  nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+    // The system deletes the file after this returns, so read it now.
+    guard file.metadata?["kind"] as? String == "route", let data = try? Data(contentsOf: file.fileURL) else { return }
+    guard let route = RouteStore.save(data) else { return }
+    Task { @MainActor in self.route = route }
   }
 
   nonisolated func session(_ session: WCSession, didFinish fileTransfer: WCSessionFileTransfer, error: Error?) {

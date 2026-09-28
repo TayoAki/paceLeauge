@@ -44,6 +44,21 @@ export interface ServerConfig {
   revenuecat: RevenueCatConfig | null;
   /** Remote notifications through Expo's push service (docs/ROADMAP.md 4.9); null when off. */
   push: PushConfig | null;
+  /** Route planning through a GraphHopper routing API (docs/ROADMAP.md 5.1); null when off. */
+  routing: RoutingConfig | null;
+}
+
+export interface RoutingConfig {
+  /** GraphHopper's API base: `https://graphhopper.com/api/1`, or a self-hosted server's URL. */
+  url: string;
+  /** The hosted API's key; a self-hosted server needs none. */
+  key: string | null;
+  /** The routing profile with walking rules (`foot` on both). */
+  profile: string;
+  /** Ask for elevation, for a route's climb (the hosted API has it; a self-hosted server needs elevation data). */
+  elevation: boolean;
+  /** Most routing calls one planned loop may use (each costs on the hosted API). */
+  maxLoopCalls: number;
 }
 
 export interface PushConfig {
@@ -170,6 +185,7 @@ export function loadConfig(env: Env = process.env): ServerConfig {
   const garmin = garminConfig(env, returnPrefixes);
   const revenuecat = revenuecatConfig(env);
   const push = pushConfig(env, deployed);
+  const routing = routingConfig(env, deployed);
   return {
     appEnv,
     host: env.HOST ?? '::',
@@ -200,6 +216,37 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     garmin,
     revenuecat,
     push,
+    routing,
+  };
+}
+
+function routingConfig(env: Env, deployed: boolean): RoutingConfig | null {
+  const raw = env.ROUTING_URL?.trim();
+  const key = env.ROUTING_API_KEY?.trim() || null;
+  if (!raw) {
+    if (key) throw new ConfigError('ROUTING_API_KEY is set but ROUTING_URL is not');
+    return null;
+  }
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new ConfigError('ROUTING_URL must be the routing API’s base URL');
+  }
+  // Plain http only inside Railway's private network, or on this machine outside staging and production.
+  const privateHost = url.hostname.endsWith('.railway.internal');
+  const local = ['127.0.0.1', 'localhost'].includes(url.hostname) && !deployed;
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && (privateHost || local))) {
+    throw new ConfigError('ROUTING_URL must use https (or http on Railway’s private network)');
+  }
+  const profile = env.ROUTING_PROFILE?.trim() || 'foot';
+  if (!/^[a-z0-9_-]{1,40}$/.test(profile)) throw new ConfigError('ROUTING_PROFILE is not a valid profile name');
+  return {
+    url: url.toString().replace(/\/+$/, ''),
+    key,
+    profile,
+    elevation: bool(env, 'ROUTING_ELEVATION', false),
+    maxLoopCalls: int(env, 'ROUTING_MAX_LOOP_CALLS', 16, 4, 32),
   };
 }
 

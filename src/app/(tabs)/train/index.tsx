@@ -3,6 +3,7 @@ import { CalendarCheck, HeartPulse, Play, Settings2 } from 'lucide-react-native'
 import { useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 
+import { RouteList } from '@/components/routes/route-list';
 import { GuidedList } from '@/components/train/guided-list';
 import { dayLabel, Stat, warningText, WeekCard } from '@/components/train/train-components';
 import { PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
@@ -28,10 +29,13 @@ import { usePlanActions, usePlanState } from '@/features/plans/use-plan';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
-/** Train (docs/ROADMAP.md 3.1 and 3.4): the runner's plan, or a choice of plans, and guided runs. */
+/**
+ * Train (docs/ROADMAP.md 3.1, 3.4 and 5.1): the runner's plan, or a choice of plans, guided runs,
+ * and planned routes.
+ */
 export default function TrainScreen() {
   const { state, query, offline } = usePlanState();
-  const [section, setSection] = useState<'plan' | 'guided'>('plan');
+  const [section, setSection] = useState<'plan' | 'guided' | 'routes'>('plan');
   const refreshing = query.isFetching && !query.isPending;
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void query.refetch()} tintColor={colors.textSecondary} />}>
@@ -39,13 +43,14 @@ export default function TrainScreen() {
       <SegmentedControl
         options={[
           { value: 'plan', label: 'Plan' },
-          { value: 'guided', label: 'Guided runs' },
+          { value: 'guided', label: 'Guided' },
+          { value: 'routes', label: 'Routes' },
         ]}
         value={section}
         onChange={setSection}
         label="Train"
       />
-      {section === 'guided' ? <GuidedList /> : <PlanSection state={state} query={query} offline={offline} />}
+      {section === 'guided' ? <GuidedList /> : section === 'routes' ? <RouteList /> : <PlanSection state={state} query={query} offline={offline} />}
     </Screen>
   );
 }

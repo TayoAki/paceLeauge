@@ -63,8 +63,9 @@ const SECURITY_HEADERS = {
   'strict-transport-security': 'max-age=31536000; includeSubDomains',
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
-  // The web app never records, so it never needs location, motion, camera or microphone.
-  'permissions-policy': 'geolocation=(), camera=(), microphone=(), accelerometer=(), gyroscope=(), payment=()',
+  // The web app never records, so it never needs motion, camera or microphone; it asks for
+  // location only to plan a route from where the runner is (docs/ROADMAP.md 5.1).
+  'permissions-policy': 'geolocation=(self), camera=(), microphone=(), accelerometer=(), gyroscope=(), payment=()',
   'cross-origin-opener-policy': 'same-origin',
   'x-frame-options': 'DENY',
 };

@@ -6,12 +6,13 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createAppleVerifier } from '../../server/src/auth/apple';
 import { loadConfig, type ServerConfig } from '../../server/src/config';
 import { createPool } from '../../server/src/db';
-import { silentLogger } from '../../server/src/log';
+import { silentLogger, type Logger } from '../../server/src/log';
 import { createMemoryMailer, type MemoryMailer } from '../../server/src/mailer';
 import { createService } from '../../server/src/service';
 import type { GarminWorker, TerraApi } from '../../server/src/garmin';
 import type { ExpoPushApi, PushWorker } from '../../server/src/push';
 import type { BillingWorker, RevenueCatApi } from '../../server/src/revenuecat';
+import type { RoutingApi } from '../../server/src/routing';
 import type { StravaApi, StravaWorker } from '../../server/src/strava';
 import { TestDb } from '../backend/helpers/db';
 
@@ -47,7 +48,7 @@ export interface TestApi {
 
 export async function startTestApi(
   env: Record<string, string> = {},
-  options: { stravaApi?: StravaApi; terraApi?: TerraApi; revenuecatApi?: RevenueCatApi | null; pushApi?: ExpoPushApi } = {},
+  options: { stravaApi?: StravaApi; terraApi?: TerraApi; revenuecatApi?: RevenueCatApi | null; pushApi?: ExpoPushApi; routingApi?: RoutingApi; log?: Logger } = {},
 ): Promise<TestApi> {
   const db = await TestDb.create();
   const config = loadConfig({
@@ -75,13 +76,14 @@ export async function startTestApi(
   const { server, strava, garmin, billing, push } = await createService({
     config,
     pool,
-    log: silentLogger,
+    log: options.log ?? silentLogger,
     mailer,
     apple: createAppleVerifier(config.appleAudiences, fakeFetch),
     stravaApi: options.stravaApi,
     terraApi: options.terraApi,
     revenuecatApi: options.revenuecatApi,
     pushApi: options.pushApi,
+    routingApi: options.routingApi,
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

@@ -21,7 +21,7 @@ import {
 } from './social-schemas';
 
 /** Validates a call's result; the same helper the rest of the API client uses. */
-export type Call = <S extends z.ZodType>(fn: string, args: Record<string, unknown>, schema: S) => Promise<z.infer<S>>;
+export type Call = <S extends z.ZodType>(fn: string, args: Record<string, unknown>, schema: S, timeoutMs?: number) => Promise<z.infer<S>>;
 
 export interface SocialSettingsInput {
   defaultVisibility?: Visibility;

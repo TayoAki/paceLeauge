@@ -29,11 +29,14 @@ export interface WatchLinkPort {
   ackRun(name: string): void;
   onRun(listener: () => void): () => void;
   onWorkout(listener: (event: WatchWorkoutEvent) => void): () => void;
+  /** A planned route for the watch's next run (docs/ROADMAP.md 5.1); false when it can't go. */
+  sendRoute(json: string): boolean;
 }
 
 interface NativeWatchLink {
   status(): WatchStatus;
   updateContext(json: string): boolean;
+  sendRoute?(json: string): boolean;
   pendingRuns(): { name: string; json: string }[];
   ackRun(name: string): void;
   addListener(event: 'onWatchRun' | 'onWatchWorkout', listener: (payload: Record<string, unknown>) => void): { remove(): void };
@@ -52,6 +55,8 @@ export function deviceWatchLink(): WatchLinkPort | null {
     updateContext: (json) => native.updateContext(json),
     pendingRuns: () => native.pendingRuns(),
     ackRun: (name) => native.ackRun(name),
+    // Absent from builds made before routes could be sent.
+    sendRoute: (json) => native.sendRoute?.(json) ?? false,
     onRun: (listener) => {
       const sub = native.addListener('onWatchRun', () => listener());
       return () => sub.remove();

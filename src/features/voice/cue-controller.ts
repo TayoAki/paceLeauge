@@ -2,6 +2,7 @@ import { CueScheduler, cueText, type Cue } from '@/domain/cues';
 import type { Units } from '@/domain/types';
 import type { RecorderEvent } from '@/features/recording/recorder-service';
 import type { RecorderSnapshot } from '@/features/recording/types';
+import type { RouteCues } from '@/features/routes/route-controller';
 import type { WorkoutCues } from '@/features/workout/workout-controller';
 
 import { CUE_VOLUME, type RunSettings } from './run-settings';
@@ -10,7 +11,8 @@ import type { SpeakOutcome, VoiceOutput } from './voice-output';
 /**
  * Connects the recorder to the voice (docs/ROADMAP.md 1.1). Progress cues come from the live
  * metrics; status cues (started, paused, resumed, finished) from recorder events; workout steps
- * (3.1, 3.4) from the workout the run follows. Cues that fall due together are spoken as one, so
+ * (3.1, 3.4) from the workout the run follows; turns and off-route alerts (5.2) from the route it
+ * follows, first because they can't wait. Cues that fall due together are spoken as one, so
  * none cuts another off. Nothing is spoken once the run has ended, and a run picked up after a
  * relaunch never replays the splits or steps it already passed.
  */
@@ -42,6 +44,7 @@ export class CueController {
     private readonly voice: VoiceOutput,
     private readonly settings: CueSettingsSource,
     private readonly workout: WorkoutCues | null = null,
+    private readonly route: RouteCues | null = null,
   ) {}
 
   start(): void {
@@ -62,7 +65,7 @@ export class CueController {
   }
 
   private onSnapshot(): void {
-    const { session, metrics } = this.recorder.getSnapshot();
+    const { session, metrics, lastPosition } = this.recorder.getSnapshot();
     if (!session) {
       this.scheduler = null;
       this.runId = null;
@@ -72,6 +75,7 @@ export class CueController {
     if (session.runId !== this.runId) {
       this.runId = session.runId;
       this.rebuildScheduler(metrics);
+      this.route?.runStarted(session.runId);
       const firstStep = this.workout?.runStarted(session.runId, units) ?? null;
       if (this.startedPending) this.sayAll([this.textOf({ kind: 'started' }), firstStep]);
       else this.sayAll([firstStep]);
@@ -79,10 +83,11 @@ export class CueController {
     }
     this.lastMetrics = { distanceM: metrics.distanceM, activeMs: metrics.activeMs };
     if (session.status !== 'recording' || !this.scheduler) return;
-    // The workout moves on even with cues off, so the run screen stays right.
+    // The workout and the route move on even with cues off, so the run screen stays right.
+    const turn = this.route?.update(session.runId, lastPosition ?? null, units) ?? null;
     const step = this.workout?.update(session.runId, metrics.activeMs, metrics.distanceM, units) ?? null;
     const cue = this.scheduler.update({ distanceM: metrics.distanceM, activeMs: metrics.activeMs, currentPaceSPerKm: metrics.currentPaceSPerKm });
-    this.sayAll([step, cue ? this.textOf(cue) : null]);
+    this.sayAll([turn, step, cue ? this.textOf(cue) : null]);
   }
 
   private onEvent(event: RecorderEvent): void {
@@ -101,6 +106,7 @@ export class CueController {
         return;
       case 'run_saved_local':
         this.workout?.runEnded(event.runId);
+        this.route?.runEnded(event.runId);
         this.say({ kind: 'finished', distanceM: this.lastMetrics.distanceM, activeMs: event.activeMs });
         return;
       case 'recorder_interrupted':

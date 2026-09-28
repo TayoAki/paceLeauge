@@ -38,6 +38,10 @@ async function main(): Promise<void> {
     CORS_ORIGINS: '*',
     BOOTSTRAP_ENABLE_COMPETITION: 'true',
     APPLE_AUDIENCES: process.env.APPLE_AUDIENCES,
+    // Route planning (docs/ROADMAP.md 5.1): a GraphHopper server, such as one run locally.
+    ROUTING_URL: process.env.ROUTING_URL,
+    ROUTING_API_KEY: process.env.ROUTING_API_KEY,
+    ROUTING_ELEVATION: process.env.ROUTING_ELEVATION,
   });
 
   const admin = new pg.Client({ connectionString: ADMIN_URL });

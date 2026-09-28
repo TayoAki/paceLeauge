@@ -30,6 +30,11 @@ PaceLeague is in a beta. Features may change, pause or be removed, and you may f
 Group runs are planned by members, not by PaceLeague. Meet in public places, run within your
 limits, and tell someone where you're going.
 
+Routes you plan in PaceLeague, and the turns it speaks, come from map data that can be out of date
+or wrong: a path may be closed, private, unlit or unsafe to run. Check a route before you run it,
+follow what's on the ground and local signs over the app, and keep to places where running is
+allowed.
+
 ## Fair play
 
 - XP, tiers and standings follow the scoring rules shown in the app under How scoring works. To keep leagues fair, we may check, hold for review, adjust or remove runs and scores — for example, runs at impossible speeds or runs that weren't made on foot.

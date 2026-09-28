@@ -25,7 +25,7 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 
 ### Your runs
 
-- While you record a run, your phone's precise location: coordinates, times, accuracy and related readings. If you allow it, this continues while the screen is locked or the app is in the background, but only during a run you started. On Android, a notification shows for as long as the run records. The web app never uses your location. Before a run, the app briefly checks your location on the start screen to confirm a good GPS signal. PaceLeague does not collect your location at any other time.
+- While you record a run, your phone's precise location: coordinates, times, accuracy and related readings. If you allow it, this continues while the screen is locked or the app is in the background, but only during a run you started. On Android, a notification shows for as long as the run records. The web app never records your location; it asks for it only when you plan a route from where you are (below). Before a run, the app briefly checks your location on the start screen to confirm a good GPS signal. PaceLeague does not collect your location at any other time.
 - What we calculate from a run: distance, time, pace, splits, XP, which competition days it counts toward, your fastest times for set distances (personal records), badges and your weekly streak.
 - The titles, activity types and private notes you give your runs, and the shoes you track (their names, the distance you set for a replacement reminder, and which runs you wore them for).
 - If you fix a run (trim it, cut out a stop, change its activity or merge two runs), we keep the run as it was first saved, so you can restore it.
@@ -55,6 +55,14 @@ Only if you subscribe:
 - Apple (the App Store) or Google (Google Play) handles payment; we never receive your card or payment details. RevenueCat, a subscription service, processes your purchase for us: it receives the store's records of your purchase and an identifier for your PaceLeague account (not your email address).
 - We keep whether you have Pro, the product, which store it came from, whether it's a free trial, when it renews or ends, whether it will renew, and whether there's a billing problem, plus a log of subscription events (their identifiers, types and times) so each is processed once.
 - If you start a free trial, we email you two days before it ends. An email delivery provider, [Email provider], sends that email for us.
+
+### Planned routes
+
+Only if you plan a route in the Train tab:
+
+- The routes you save: their names, the points of each route and its turns, its distance and, when known, its climb. A saved route often starts at your home, so your routes are visible only to you: nobody else can see, open or follow them.
+- When you plan a loop or a route along paths, the points you choose, or your location if you plan from where you are, are sent to our routing provider, [Routing provider], which works out the path and sends it back. We don't send your name, email address or account with them, and we don't keep the points you tried unless you save the route.
+- Following a route on a run happens on your phone: where you are along it is worked out there, from the run's location, and isn't sent to us beyond the run itself. Routes you've opened are kept on your phone so you can follow them without a connection. If you send a route to your Apple Watch, it goes from your phone straight to the watch. If you share a route as a GPX file, you choose where it goes.
 
 ### Leagues and safety
 
@@ -127,14 +135,14 @@ We don't use your information for advertising, and we don't sell it or share it 
 
 - You can see everything in your account, including your routes.
 - Each league you're in sees your runner name, tier and weekly XP, your season total, how many cheers you received this week, duels you're in, and group runs members plan with who's going.
-- Each club you're in shows its members your runner name, tier and weekly XP on the club board, and group runs with who's going. A public club's name, description and member count, and the runner names of its owner and admins, can be seen by anyone signed in to PaceLeague. If you join a league's or club's challenge, its members see your runner name, tier and progress on the challenge's board; the monthly challenges for everyone have no board, and only you see your progress in them. If you join the leaderboards, anyone signed in to PaceLeague can see your runner name, tier and weekly score on the boards for your tier and your country; never a route, a run or where you run. Leaving takes you off every board at once. If you share your live location, anyone who has the link (they don't need an account) sees your runner name, your latest position and your distance and time so far, until the run ends, you stop sharing or the time you chose runs out. Only share the link with people you trust: anyone can pass it on. Your notes, shoes, records, badges, streak, training plan and whether you have Pro are visible only to you.
+- Each club you're in shows its members your runner name, tier and weekly XP on the club board, and group runs with who's going. A public club's name, description and member count, and the runner names of its owner and admins, can be seen by anyone signed in to PaceLeague. If you join a league's or club's challenge, its members see your runner name, tier and progress on the challenge's board; the monthly challenges for everyone have no board, and only you see your progress in them. If you join the leaderboards, anyone signed in to PaceLeague can see your runner name, tier and weekly score on the boards for your tier and your country; never a route, a run or where you run. Leaving takes you off every board at once. If you share your live location, anyone who has the link (they don't need an account) sees your runner name, your latest position and your distance and time so far, until the run ends, you stop sharing or the time you chose runs out. Only share the link with people you trust: anyone can pass it on. Your notes, shoes, records, badges, streak, training plan, planned routes and whether you have Pro are visible only to you.
 - A run you share is seen by the people you chose: its title, date, distance, time and pace, its kudos and comments, and its map only if you turned the map on. Shared maps never show the first and last 200 m of a run or anything inside your privacy zones.
 - Other runners can see your profile: your runner name, tier, how many followers you have and how many runners you follow, and the runs you've shared with them. They can find you by name only if you allow it; otherwise only through your follow link.
 - Comments and kudos you give are seen by everyone who can see the run. Blocking a runner hides you from each other everywhere in PaceLeague; muting keeps their runs out of your feed without telling them.
 - If you use Share, the image shows only distance, time and pace, with no map or location, and you choose where it goes.
 - Moderators working for us see reports and what they need to decide them. Routes are never part of moderation.
 - If you connect Strava or Garmin, the runs described above go to Strava or come from Terra, each under its own terms.
-- Service providers process data on our behalf to run PaceLeague: Railway hosts the service and its database in the United States. Apple provides Sign in with Apple if you use it, draws the maps in the app with Apple Maps (so the map areas you view are requested from Apple), and distributes the app through TestFlight and the App Store under Apple's own privacy policy.
+- Service providers process data on our behalf to run PaceLeague: Railway hosts the service and its database in the United States. Apple provides Sign in with Apple if you use it, draws the maps in the app with Apple Maps (so the map areas you view are requested from Apple), and distributes the app through TestFlight and the App Store under Apple's own privacy policy. On Android, Google draws the maps with Google Maps in the same way. If you plan routes along paths, [Routing provider] works them out as described above.
 - If you subscribe to Pro, RevenueCat processes your purchase for us as described above, and Apple or Google handles payment. If you start a free trial, an email delivery provider processes your email address to send the reminder.
 - If you allow notifications, Expo (the maker of the tools the app is built with) delivers them to Apple's or Google's notification service, which delivers them to your phone.
 - We may disclose information if the law requires it, or to protect the rights, property or safety of our users, the public or us.
@@ -145,7 +153,7 @@ We don't use your information for advertising, and we don't sell it or share it 
 - Your account, profile, runs and routes: until you delete them or your account. The same goes for notes, shoes, records, badges, streak weeks, cheers and the saved original of a fixed run (until you restore it, delete the run or delete your account).
 - Deleting a run removes its route and details right away. A small placeholder with no location stays so your devices stay in sync.
 - Deleting your account hides you from your league immediately and removes your data within 7 days (usually within minutes). Copies may remain in backups for up to 30 days before they are overwritten.
-- Your training plans, their sessions and your feedback: until you delete your account (plans you end stay in your history).
+- Your training plans, their sessions and your feedback: until you delete your account (plans you end stay in your history). Your saved routes: until you delete them or your account.
 - Whether you have Pro: until you delete your account. The log of subscription events: 60 days (after an account is deleted, without the link to it).
 - Your Strava connection and Garmin link: until you disconnect or delete your account. Garmin activities waiting for us to process them: 7 days after they are processed. Diagnostics reports you send: 30 days.
 - Kudos and comments: until you remove them, the run's owner deletes the comment or the run, or you delete your account. Follows, privacy zones and sharing choices: until you change them or delete your account.
@@ -155,7 +163,7 @@ We don't use your information for advertising, and we don't sell it or share it 
 
 ## Your choices and rights
 
-- **Export:** Profile → Privacy → Export gives you your data as JSON, with a GPX file for each route. It includes your training plans, your Pro status, your sharing choices and privacy zones, who you follow and who follows you, your comments, kudos and notification choices, your duels, group runs, answers and season titles, your clubs, your challenges with your progress in each, and your leaderboard country and results.
+- **Export:** Profile → Privacy → Export gives you your data as JSON, with a GPX file for each route. It includes your training plans, your Pro status, your sharing choices and privacy zones, who you follow and who follows you, your comments, kudos and notification choices, your duels, group runs, answers and season titles, your clubs, your challenges with your progress in each, your leaderboard country and results, and your saved routes.
 - **Correct:** edit your profile or rename your runs at any time.
 - **Delete:** delete individual runs, or your whole account under Profile → Privacy → Delete account.
 - **Location:** you control location permission in your phone's settings. Recording a run needs it; everything else works without it. PaceLeague never asks for location "all the time" on Android.

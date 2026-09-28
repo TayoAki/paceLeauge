@@ -8,7 +8,8 @@ import WatchConnectivity
  *    context, which the watch always gets the latest of;
  *  - finished runs from the watch as queued file transfers, kept in Application Support until the
  *    app has saved them (src/features/watch/watch-runs.ts);
- *  - the live run from the watch through workout mirroring (iOS 17), for the Today screen.
+ *  - the live run from the watch through workout mirroring (iOS 17), for the Today screen;
+ *  - a planned route to the watch as a queued file transfer (docs/ROADMAP.md 5.1), one at a time.
  */
 public class WatchLinkModule: Module {
   private let link = WatchLink()
@@ -42,6 +43,10 @@ public class WatchLinkModule: Module {
 
     Function("ackRun") { (name: String) in
       self.link.ack(name: name)
+    }
+
+    Function("sendRoute") { (json: String) -> Bool in
+      self.link.send(route: json)
     }
   }
 }
@@ -99,6 +104,24 @@ final class WatchLink: NSObject, WCSessionDelegate {
     }
   }
 
+  /** A planned route for the watch's next run; one still waiting to go is replaced. */
+  func send(route json: String) -> Bool {
+    guard WCSession.isSupported(), WCSession.default.activationState == .activated, WCSession.default.isWatchAppInstalled else { return false }
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("outgoing-routes", isDirectory: true)
+    do {
+      try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+      for transfer in WCSession.default.outstandingFileTransfers where transfer.file.metadata?["kind"] as? String == "route" {
+        transfer.cancel()
+      }
+      let file = folder.appendingPathComponent("route-\(UUID().uuidString).json")
+      try json.write(to: file, atomically: true, encoding: .utf8)
+      WCSession.default.transferFile(file, metadata: ["kind": "route"])
+      return true
+    } catch {
+      return false
+    }
+  }
+
   func pendingRuns() -> [[String: String]] {
     let files = (try? FileManager.default.contentsOfDirectory(at: inbox, includingPropertiesForKeys: nil)) ?? []
     return files
@@ -119,6 +142,13 @@ final class WatchLink: NSObject, WCSessionDelegate {
   // MARK: WCSessionDelegate
 
   func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+
+  func session(_ session: WCSession, didFinish fileTransfer: WCSessionFileTransfer, error: Error?) {
+    // A route that reached the watch (or was replaced) needn't stay here.
+    if fileTransfer.file.metadata?["kind"] as? String == "route" {
+      try? FileManager.default.removeItem(at: fileTransfer.file.fileURL)
+    }
+  }
 
   func sessionDidBecomeInactive(_ session: WCSession) {}
 

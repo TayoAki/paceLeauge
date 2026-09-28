@@ -54,6 +54,7 @@ class FakeLink implements WatchLinkPort {
     return () => undefined;
   };
   onWorkout = () => () => undefined;
+  sendRoute = () => true;
 }
 
 describe('watch run files', () => {

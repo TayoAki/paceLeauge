@@ -93,8 +93,9 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and moderation
 (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5), challenges (4.6),
 opt-in leaderboards (4.7), live location (4.8) and teen accounts in family leagues (4.10,
-switched off until counsel's review). Phase 5 (maps) is under way. The server is tested by 327
-database and API tests, the app by 326 unit tests and browser walkthroughs of the new screens.
+switched off until counsel's review). Phase 5 (maps) is under way: route planning (5.1) and
+following a route with spoken turns (5.2's navigation) are built. The server is tested by 343
+database and API tests, the app by 349 unit tests and browser walkthroughs of the new screens.
 What remains is on devices and with people: the Part C audio matrix and the Part A failure
 tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new Swift and Kotlin code (the
 watch app is off until then), the recorded voice and guided runs, the coach's review of plans
@@ -900,6 +901,21 @@ is where other people start seeing more than a name and a number.
   GraphHopper. Costs grow with users, so check pricing before choosing.
 - Done when: a planned 10 km loop is within 2% of 10 km and can be followed on the phone and
   the watch.
+- Built: a Routes section in Train. The planner makes a loop of a chosen distance from where the
+  runner is (or a point they tap), with "Try another loop", or draws a route tap by tap, each
+  stretch following paths or, with "Follow paths" off, a straight line; undo, back to the start,
+  and save with a name. The API service plans through GraphHopper's Routing API (hosted or
+  self-hosted, off until `ROUTING_URL` is set; drawing works without it) and keeps its key; round
+  trips come out 10–20 % off the distance asked for, so it asks for four at a time and corrects
+  the distance until one is within 2 % (checked against GraphHopper 11 on OpenStreetMap data
+  around Cambridge, UK: 135 of 150 loops of 3–21.1 km within 2 %, 8 calls on average; the rest
+  show their real distance). Saved routes are private, measured by the server from their points,
+  in the export and deleted with the account; teens can plan their own. A route page shows the
+  map, the distance, climb and turn-by-turn list, and offers "Run this route", "Send to Apple
+  Watch" (the watch app shows it on a map during a run) and a GPX file for Garmin Connect and
+  other watches. Following it on a run is 5.2's navigator; the run screen shows the next turn and
+  the distance to go. Android builds need a Google Maps key (`GOOGLE_MAPS_ANDROID_KEY`) for real
+  maps, and draw routes on a grid without one; the web app plans loops and shows routes on a grid.
 
 **5.2 Offline maps and navigation** · L–XL
 - What: download a map area and a route before a run. Get turn cues and off-route alerts through
@@ -907,6 +923,16 @@ is where other people start seeing more than a name and a number.
 - How: Apple's MapKit offers apps no way to download map areas, so this uses Mapbox offline
   packs (`@rnmapbox/maps`) for these screens.
 - Done when: a route can be followed in airplane mode with turn and off-route cues.
+- Built so far, the navigation: a navigator on the phone matches each GPS fix to the route near
+  where the runner was (so out-and-backs, spurs and a loop's shared start and finish are followed
+  in order, the runner's direction deciding), says each turn once about 60 m before it ("In 60
+  meters, turn left onto Elm Street", two close turns together), says when the runner is more
+  than 45 m off the route for 8 seconds and which way it is (again each minute), "Back on the
+  route", a wrong-way warning and the end, through the voice cues ahead of anything else due. It
+  needs no connection: a route opened once is kept in the phone's encrypted journal, and where
+  the runner is along it is saved as they go, so a relaunch carries on without repeating turns.
+  On 14 real GraphHopper loops (698 turns) walked with 12 m of GPS noise, every turn was said or
+  folded into the one a few metres before it, with no false off-route or wrong-way alert.
 
 **5.3 Segments** · XL
 - What: stretches of path with leaderboards.

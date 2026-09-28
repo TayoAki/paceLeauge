@@ -10,6 +10,7 @@ import { familyApi, type FamilyApi } from './family-api';
 import { feedApi, type FeedApi } from './feed-api';
 import { leaderboardsApi, type LeaderboardsApi } from './leaderboards-api';
 import { liveApi, type LiveApi } from './live-api';
+import { routesApi, type RoutesApi } from './routes-api';
 import { leaguesApi, type LeaguesApi } from './leagues-api';
 import { socialApi, type SocialApi } from './social-api';
 import {
@@ -175,7 +176,7 @@ export interface TelemetryEvent {
   props: Record<string, string | boolean>;
 }
 
-export interface PaceApi extends SocialApi, FeedApi, LeaguesApi, ClubsApi, ChallengesApi, LeaderboardsApi, LiveApi, FamilyApi {
+export interface PaceApi extends SocialApi, FeedApi, LeaguesApi, ClubsApi, ChallengesApi, LeaderboardsApi, LiveApi, FamilyApi, RoutesApi {
   getAppConfig(): Promise<AppConfig>;
   getMe(): Promise<Me>;
   checkAlias(alias: string): Promise<{ available: boolean; problem: 'invalid' | 'not_allowed' | 'taken' | null }>;
@@ -486,5 +487,7 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     ...leaderboardsApi(call),
     ...liveApi(call),
     ...familyApi(call),
+    // Phase 5 (docs/ROADMAP.md): maps
+    ...routesApi(call),
   };
 }

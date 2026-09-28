@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CalendarCheck, Headphones, Info, Lock, MapPin, Satellite } from 'lucide-react-native';
+import { CalendarCheck, Headphones, Info, Lock, MapPin, Route as RouteIcon, Satellite } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 
@@ -25,6 +25,9 @@ import { colors, space } from '@/design/tokens';
 import { useNow } from '@/lib/use-now';
 import { RecordInApp } from '@/components/run/record-in-app';
 import { RECORDING_AVAILABLE } from '@/features/recording/recording-support';
+import { routeDistance, shortDistance } from '@/features/routes/route-text';
+import { followedRoute, useRoute } from '@/features/routes/use-routes';
+import { haversineM } from '@/domain/geo';
 
 /** iOS asks for "Always" location; Android's foreground service records on "while in use". */
 const NEEDS_BACKGROUND = locationDriver.needsBackgroundPermission ?? locationDriver.supportsBackground;
@@ -69,7 +72,7 @@ function PreflightScreen() {
 
   // A planned session to follow (docs/ROADMAP.md 3.1): ready for the run to start, and let go
   // if the runner leaves without starting.
-  const { session: sessionId, guided: guidedId } = useLocalSearchParams<{ session?: string; guided?: string }>();
+  const { session: sessionId, guided: guidedId, route: routeId } = useLocalSearchParams<{ session?: string; guided?: string; route?: string }>();
   const { state: plan } = usePlanState();
   const planned = sessionId && plan?.server.status === 'active' ? (plan.server.sessions.find((s) => s.id === sessionId) ?? null) : null;
   const planId = plan?.server.id ?? null;
@@ -98,6 +101,23 @@ function PreflightScreen() {
       if (!runtime.recorder.getSnapshot().session) runtime.workout.cancel();
     };
   }, [runtime, planned, planId, zones, planZones, guided]);
+
+  // A planned route to follow (docs/ROADMAP.md 5.1), read from the phone when offline; ready for
+  // the run to start, and let go if the runner leaves without starting.
+  const routeQuery = useRoute(typeof routeId === 'string' && routeId ? routeId : null);
+  const route = routeQuery.data?.data ?? null;
+  const [followRoute, setFollowRoute] = useState(true);
+  const units = runtime.runSettings.units;
+  useEffect(() => {
+    if (!route || !followRoute) {
+      runtime.route.cancel();
+      return;
+    }
+    runtime.route.prepare(followedRoute(route));
+    return () => {
+      if (!runtime.recorder.getSnapshot().session) runtime.route.cancel();
+    };
+  }, [runtime, route, followRoute]);
 
   const refresh = useCallback(async () => {
     const services = await Location.hasServicesEnabledAsync().catch(() => true);
@@ -301,12 +321,37 @@ function PreflightScreen() {
           />
         </RowGroup>
       ) : null}
+      {route ? (
+        <RowGroup>
+          <Row
+            icon={RouteIcon}
+            label={followRoute ? route.name : `${route.name} (not following)`}
+            value={routeDistance(route.distance_m, units)}
+            hint={
+              followRoute
+                ? pf.fix
+                  ? `Starts ${shortDistance(haversineM({ lat: pf.fix.latitude, lon: pf.fix.longitude }, route.start), units)} from you. Turns are spoken as you go.`
+                  : 'Turns are spoken as you go, and you’re told if you go off the route.'
+                : 'This run won’t follow a route.'
+            }
+            accessory={<TextButton label={followRoute ? 'Don’t follow' : 'Follow'} onPress={() => setFollowRoute((v) => !v)} />}
+            last
+          />
+        </RowGroup>
+      ) : null}
       <RouteMap
         lines={[]}
+        guide={route && followRoute ? route.points.map((p) => ({ latitude: p[0], longitude: p[1] })) : null}
         height={230}
         current={pf.fix ? { latitude: pf.fix.latitude, longitude: pf.fix.longitude } : null}
-        follow
-        accessibilityLabel={pf.fix ? 'Map showing your current position' : 'Map, waiting for your position'}
+        follow={!route || !followRoute}
+        accessibilityLabel={
+          route && followRoute
+            ? `Map of ${route.name}${pf.fix ? ', with your current position' : ''}`
+            : pf.fix
+              ? 'Map showing your current position'
+              : 'Map, waiting for your position'
+        }
       />
       <RowGroup>
         <Row

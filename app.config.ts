@@ -37,6 +37,14 @@ const TARGETS = [...(WITH_WIDGETS ? ['widgets'] : []), ...(WITH_WATCH ? ['watch'
 /** Shared by the app and its widget extension (the widget derives the same name from its bundle id). */
 const APP_GROUP = `group.${BUNDLE_ID}`;
 
+/**
+ * Google Maps on Android (docs/ROADMAP.md 5.1): react-native-maps needs a Maps SDK key there (iOS
+ * uses Apple Maps, which needs none). Set at build time to a key restricted to this app's package
+ * and signing certificates. Without it the app draws routes on a grid instead of a map
+ * (src/features/routes/maps-support.ts).
+ */
+const ANDROID_MAPS_KEY = process.env.GOOGLE_MAPS_ANDROID_KEY?.trim() || null;
+
 const LOCATION_ALWAYS_COPY = 'PaceLeague records your run’s route while your screen is locked. Location is only collected during a run you start.';
 const LOCATION_WHEN_IN_USE_COPY = 'PaceLeague uses your location to prepare and record your run.';
 
@@ -83,6 +91,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/images/adaptive-icon.png',
     },
     predictiveBackGestureEnabled: false,
+    ...(ANDROID_MAPS_KEY ? { config: { googleMaps: { apiKey: ANDROID_MAPS_KEY } } } : {}),
     permissions: [
       'android.permission.ACCESS_COARSE_LOCATION',
       'android.permission.ACCESS_FINE_LOCATION',
@@ -195,6 +204,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     appEnv: APP_ENV,
     appGroup: WITH_WIDGETS ? APP_GROUP : null,
+    androidMaps: ANDROID_MAPS_KEY !== null,
     eas: { projectId: EAS_PROJECT_ID },
   },
 });

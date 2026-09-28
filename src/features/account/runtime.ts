@@ -21,6 +21,7 @@ import { devicePedometer } from '@/features/indoor/pedometer';
 import { deviceWatchLink } from '@/features/watch/watch-link';
 import { WatchRunInbox } from '@/features/watch/watch-runs';
 import { deviceRunActivity, LiveActivityController } from '@/features/run-activity/live-activity';
+import { RouteController } from '@/features/routes/route-controller';
 import { CueController } from '@/features/voice/cue-controller';
 import { RunSettingsStore } from '@/features/voice/run-settings';
 import { deviceVoiceOutput } from '@/features/voice/voice-output';
@@ -53,6 +54,8 @@ export interface AccountRuntime {
   watchRuns: WatchRunInbox;
   /** The live-location link for the run in progress (docs/ROADMAP.md 4.8). */
   liveShare: LiveShareController;
+  /** The planned route the run follows, with its turns (docs/ROADMAP.md 5.1 and 5.2). */
+  route: RouteController;
 }
 
 let current: AccountRuntime | null = null;
@@ -127,7 +130,9 @@ async function create(accountId: string): Promise<AccountRuntime> {
   // workout it was following.
   const workout = new WorkoutController(journal);
   await workout.restore();
-  const cues = new CueController(recorder, deviceVoiceOutput(), runSettings, workout);
+  const route = new RouteController(journal);
+  await route.restore();
+  const cues = new CueController(recorder, deviceVoiceOutput(), runSettings, workout, route);
   cues.start();
   const liveActivity = new LiveActivityController(recorder, deviceRunActivity(), () => runSettings.units);
   liveActivity.start();
@@ -145,7 +150,7 @@ async function create(accountId: string): Promise<AccountRuntime> {
   });
   await indoor.restore();
   const watchRuns = new WatchRunInbox({ journal, link: deviceWatchLink() });
-  return { accountId, journal, recorder, telemetry, runSettings, cues, workout, health, liveActivity, healthImport, indoor, watchRuns, liveShare };
+  return { accountId, journal, recorder, telemetry, runSettings, cues, workout, health, liveActivity, healthImport, indoor, watchRuns, liveShare, route };
 }
 
 export async function openAccountRuntime(accountId: string): Promise<AccountRuntime> {

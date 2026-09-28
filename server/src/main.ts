@@ -25,6 +25,7 @@ async function main(): Promise<void> {
     garmin: config.garmin !== null,
     revenuecat: config.revenuecat !== null,
     push: config.push !== null,
+    routing: config.routing !== null,
   });
 
   let closing = false;

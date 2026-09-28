@@ -17,7 +17,7 @@ import {
   signInWithEmail,
   userJson,
 } from './auth/users';
-import type { GarminConfig, RevenueCatConfig, ServerConfig, StravaConfig } from './config';
+import type { GarminConfig, RevenueCatConfig, RoutingConfig, ServerConfig, StravaConfig } from './config';
 import { transaction, type Pool } from './db';
 import { verifyJwt, type Claims } from './jwt';
 import type { LegalDoc } from './legal';
@@ -26,6 +26,7 @@ import type { Mailer } from './mailer';
 import { callRpc, type Claims as RpcClaims } from './rpc';
 import { handleTerraEvent, IngestError, startGarminConnect, verifyTerraSignature, type TerraApi } from './garmin';
 import { handleRevenueCatEvent, webhookAuthorized, type RevenueCatApi } from './revenuecat';
+import { PlanInputError, planRoute, RoutingError, type RoutingApi } from './routing';
 import { stravaCallback, stravaWebhookChallenge, stravaWebhookEvent, type StravaApi, type StravaHttpResult } from './strava';
 
 /**
@@ -50,6 +51,8 @@ export interface ApiDeps {
   garmin?: { terra: TerraApi; config: GarminConfig } | null;
   /** Pro through RevenueCat (server/src/revenuecat.ts), when configured. */
   revenuecat?: { config: RevenueCatConfig; api: RevenueCatApi | null } | null;
+  /** Route planning (server/src/routing.ts), when a routing service is configured. */
+  routing?: { api: RoutingApi; config: RoutingConfig } | null;
 }
 
 class HttpError extends Error {
@@ -398,6 +401,21 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
         if (error instanceof IngestError) return fail(error.code);
         log.warn('garmin connect start failed', { error: error instanceof Error ? error.message : String(error) });
         return fail('server_error', 502);
+      }
+    }
+    if (fn === 'plan_route') {
+      const fail = (message: string, status = 400) => send(res, status, { code: 'P0001', details: null, hint: null, message });
+      if (claims.role !== 'authenticated') return fail('not_authenticated', 401);
+      if (!deps.routing) return fail('not_available');
+      try {
+        return send(res, 200, await planRoute({ pool, api: deps.routing.api, config: deps.routing.config, log }, claims.sub as string, body));
+      } catch (error) {
+        if (error instanceof PlanInputError) return fail(error.code);
+        if (error instanceof RoutingError) {
+          if (error.code === 'routing_failed') log.warn('routing failed', { error: error.message });
+          return fail(error.code, error.code === 'routing_failed' ? 502 : 400);
+        }
+        throw error;
       }
     }
     const result = await callRpc(pool, fn, body, claims, {

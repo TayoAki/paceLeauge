@@ -2,8 +2,10 @@ import { createHash, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 
 import { competitionWeekAt } from '../../src/domain/calendar';
+import { destinationPoint } from '../../src/domain/geo';
 import { chunk, encodeChunk } from '../../src/domain/route-codec';
-import { steadyRun } from '../../src/domain/synthetic';
+import { deriveCues, toRoutePoint, type RoutePoint } from '../../src/domain/routes';
+import { CHICAGO_LAKEFRONT, steadyRun } from '../../src/domain/synthetic';
 
 import { hashPassword } from '../../server/src/auth/passwords';
 import { callRpc, type Claims } from '../../server/src/rpc';
@@ -369,6 +371,28 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
     await rpc(pool, claims, 'join_leaderboards', { p_country: 'US' });
   }
   await pool.query('select private.refresh_leaderboards()');
+
+  // Planned routes (docs/ROADMAP.md 5.1): a drawn loop from where the demo runs start.
+  const corners: [number, number][] = [
+    [0, 800],
+    [90, 600],
+    [180, 800],
+    [270, 600],
+  ];
+  const loop: RoutePoint[] = [toRoutePoint(CHICAGO_LAKEFRONT)];
+  let corner = CHICAGO_LAKEFRONT;
+  for (const [bearing, m] of corners) {
+    corner = destinationPoint(corner, bearing, m);
+    loop.push(toRoutePoint(corner));
+  }
+  await rpc(pool, viewer, 'save_route', {
+    p_route_id: null,
+    p_name: 'Loop round the park',
+    p_kind: 'drawn',
+    p_points: loop,
+    p_cues: deriveCues(loop),
+    p_ascent_m: null,
+  });
 
   console.log(
     `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends and a family league, with a club and challenges; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,

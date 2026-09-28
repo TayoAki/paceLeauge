@@ -125,6 +125,21 @@ Android phone.
 | P4-TEEN | With `teen_accounts_enabled` on: C is a Family Sharing child account aged 14, D aged 16, each on its own iPhone; A runs a family league. C and D sign up, then enter the league's code; A approves D and declines C, then approves C on a second request | Sign-up shows "A teen account"; both see only "Join your family's league" until approved; A gets a push for each request; after approval, D's League shows only the family league and its challenges, Profile has no People or Connections, sharing offers only "Only me" and "My leagues"; C (14) has no heart-rate or Apple Health settings; D's live link opens for A signed in and says "for family" in a private browser window |
 | P4-REPORT | From A, report B's comment and B's run; as a moderator on a third phone, open Profile › Moderation | Both disappear for A at once; the moderator sees both with "Due in 24 hours" and can remove the comment and hide the run; B's run then leaves A's feed and the comment is gone for everyone |
 
+## Phase 5 device checks (docs/ROADMAP.md)
+
+On a server with route planning switched on (OPERATIONS.md, "Route planning"), an iPhone, an
+Android phone built with `GOOGLE_MAPS_ANDROID_KEY`, and an Apple Watch with the watch app
+(`PL_WATCH=1`). Headphones on for the running cases.
+
+| Case | Steps | Pass criteria |
+|---|---|---|
+| P5-PLAN | Train › Routes › Plan a route, at home: a 10 km loop from where you are, "Try another loop" twice, save one; then draw a route of five taps with "Follow paths" on, undo one, "Back to start", save; share one as a GPX file into Garmin Connect (or COROS) | Each loop shows its distance and "Within 2%" (note any that don't, with the place); drawn stretches follow real paths; the saved routes list with their maps; the GPX opens as a course of the same shape and distance (within 1 %) |
+| P5-FOLLOW | Open a saved loop of 3–5 km with several turns, "Run this route", start, lock the phone, run it; on purpose, miss one turn by 100 m, then go back | Each turn is spoken once, about 60 m before it, over music that dips and returns; missing the turn is said within about 15 seconds of passing 50 m from the route, with the right side ("to your left"), then "Back on the route"; the end is announced; the run screen shows the next turn and the distance to go, matching the voice; no false off-route alert on the rest of the run |
+| P5-OFFLINE | Open the route once with a connection; then airplane mode (GPS still works), relaunch the app, start the same route | The route loads from the phone; turns and off-route alerts work as in P5-FOLLOW; the run syncs after airplane mode is off |
+| P5-RELAUNCH | During P5-FOLLOW, force-quit the app halfway and open it again | The run carries on with the route; no turn already passed is said again |
+| P5-WATCH | On the route page, "Send to Apple Watch"; leave the phone at home and start an outdoor run on the watch | The watch's start screen names the route; during the run a second page shows the route and your position moving along it; the run syncs to the phone later as usual |
+| P5-A11Y | With VoiceOver (iPhone) and TalkBack (Android): plan a loop and save it, open it, start following it | Every control has a label; the loop's distance and "Within 2%" are read when the loop appears; the run screen's next-turn line is read when it changes |
+
 ## Android device checks (docs/ROADMAP.md P.1)
 
 The Android version of this protocol. It passes when every case passes on three phones from

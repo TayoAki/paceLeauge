@@ -72,6 +72,10 @@ service), `EXPO_ACCESS_TOKEN` (only if the Expo project turns on "enhanced secur
 notifications"; a sealed variable) and `EXPO_PUSH_URL` (Expo's API; https only outside
 development). See [Push notifications](#push-notifications-49).
 
+Route planning (roadmap 5.1): `ROUTING_URL` (unset: off), `ROUTING_API_KEY` (sealed),
+`ROUTING_PROFILE`, `ROUTING_ELEVATION` and `ROUTING_MAX_LOOP_CALLS`. See
+[Route planning](#route-planning-51).
+
 The service will not start in production with log-only email, a development sign-in code, the
 competition bootstrap, a short `JWT_SECRET`, a missing `PUBLIC_API_KEY`, or only half of the
 review account — the deploy fails instead.
@@ -378,7 +382,8 @@ take the distance the runner types in; step counting there waits for a device te
 The web app is the same code base, built for the browser: history, runs and their routes,
 league standings, plans, stats, records, the Pro analytics, settings, export and account deletion.
 It doesn't record runs (a browser can't keep GPS going in a pocket; *Start run* explains that
-recording is in the phone app), sell Pro, or read Apple Health or Health Connect.
+recording is in the phone app), sell Pro, or read Apple Health or Health Connect. It plans loops
+and shows saved routes on a plain grid; drawing a route needs the phone app's map.
 
 **Deploy it as a second Railway service** in the same project and environment:
 
@@ -403,7 +408,8 @@ recording is in the phone app), sell Pro, or read Apple Health or Health Connect
 `scripts/web/serve.mjs` serves the build: the app's page for every route, hashed bundles cached
 for a year, and strict headers: a Content-Security-Policy that allows only the app's own scripts
 and the API (plus WebAssembly for the browser's SQLite), no framing, HSTS, and a
-Permissions-Policy that turns off location, motion, camera and microphone. The browser keeps the
+Permissions-Policy that turns off motion, camera and microphone, and allows location for the app's
+own page only (to plan a route from where the runner is, roadmap 5.1). The browser keeps the
 session in local storage like any single-page app, which is why the CSP matters; signing out
 removes the account's local copy from the browser unless something hasn't synced.
 
@@ -644,6 +650,47 @@ with the app. The page needs no account: `public.get_live_location` is the third
 anonymous callers may use (with `get_app_config` and `get_invite_preview`), limited to 600 looks
 an hour per link. Nothing about a link is kept once it stops except its row (the hash of its
 code, its times and why it stopped) for 7 days; positions are never logged.
+
+## Route planning (5.1)
+
+Runners can always draw a route point to point and save it. Loops of a chosen distance, and
+drawing that follows paths, need a routing service with walking rules: the API calls
+[GraphHopper's Routing API](https://docs.graphhopper.com/) itself (`server/src/routing.ts`), so its
+key never reaches the app. Until `ROUTING_URL` is set, the app says planning isn't switched on and
+`plan_route` answers `not_available`.
+
+| Variable | Value |
+|---|---|
+| `ROUTING_URL` | `https://graphhopper.com/api/1` for GraphHopper's hosted API, or a self-hosted GraphHopper, for example `http://graphhopper.railway.internal:8989` on Railway's private network (plain http is refused anywhere else) |
+| `ROUTING_API_KEY` | The hosted API's key, as a sealed variable. A self-hosted server needs none |
+| `ROUTING_PROFILE` | Optional; `foot` (the walking profile on both) |
+| `ROUTING_ELEVATION` | Optional; `true` for each route's climb. The hosted API has elevation; a self-hosted server needs elevation data configured |
+| `ROUTING_MAX_LOOP_CALLS` | Optional; 16. The most calls one loop may use |
+
+What it costs: each stretch drawn along paths is one routing call; each loop is up to 16 (8 on
+average), because round trips come out 10 to 20 % off the distance asked for and the service asks
+for four candidates at a time, correcting the distance, until one is within 2 %. Checked against
+GraphHopper 11 on OpenStreetMap data around Cambridge (UK): 135 of 150 loops of 3 to 21.1 km came
+within 2 %; the rest are shown with their real distance. Each runner may plan 12 loops in 10
+minutes and 40 a day, and 150 stretches in 10 minutes and 600 a day (`private.route_plan_check`).
+Check GraphHopper's current pricing for the hosted API against those numbers before choosing it;
+self-hosting is free software (Apache 2.0) but needs a server with memory for the region's map
+data (a city fits in about 1 GB) and a fresh OpenStreetMap extract now and then. Both use
+OpenStreetMap data, which the app credits where routes are planned. Logs: `route planned` (mode,
+calls, whether a loop was within 2 %, time) and `routing failed`; never coordinates.
+
+Locally: run GraphHopper with an OpenStreetMap extract (its `config-example.yml` with the `foot`
+profile) and start the development backend with `ROUTING_URL=http://127.0.0.1:8989`.
+
+**Maps on Android.** `react-native-maps` needs a Google Maps SDK key on Android (iOS uses Apple
+Maps). Create one in Google Cloud restricted to the app's package and signing certificates, and set
+it as `GOOGLE_MAPS_ANDROID_KEY` in the EAS build's environment. Without it, Android builds draw
+routes on a grid with no map, and drawing a route by tapping the map is off there.
+
+**Following a route** needs no service: the phone matches its GPS to the route and speaks turns
+(about 60 m before each) and off-route alerts with the voice cues, so it works without a signal
+once the route has been opened on the phone (5.2). **Apple Watch:** *Send to Apple Watch* on a
+route page queues it to the watch app, which shows it on a map during the next run there.
 
 ## Push notifications (4.9)
 

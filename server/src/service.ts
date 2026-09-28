@@ -11,6 +11,7 @@ import { findDbDir } from './migrate';
 import { createGarminWorker, createTerraApi, publishGarminSettings, type GarminWorker, type TerraApi } from './garmin';
 import { createExpoPushApi, createPushWorker, publishPushSettings, type ExpoPushApi, type PushWorker } from './push';
 import { createBillingWorker, createRevenueCatApi, type BillingWorker, type RevenueCatApi } from './revenuecat';
+import { createGraphHopperApi, publishRoutingSettings, type RoutingApi } from './routing';
 import { createStravaApi, createStravaWorker, publishStravaSettings, type StravaApi, type StravaWorker } from './strava';
 
 /**
@@ -45,6 +46,8 @@ export async function createService(options: {
   revenuecatApi?: RevenueCatApi | null;
   /** Replaces Expo's push API (tests). */
   pushApi?: ExpoPushApi;
+  /** Replaces the routing service (tests). */
+  routingApi?: RoutingApi;
 }): Promise<
   ReturnType<typeof createApi> & { strava: StravaWorker | null; garmin: GarminWorker | null; billing: BillingWorker; push: PushWorker | null }
 > {
@@ -76,7 +79,10 @@ export async function createService(options: {
   // Push notifications (docs/ROADMAP.md 4.9), likewise: the app offers them only when this is on.
   await publishPushSettings(pool, config.push);
   const pushApi = config.push ? (options.pushApi ?? createExpoPushApi(config.push, options.fetchImpl)) : null;
-  const api = createApi({ config, pool, secret, mailer, apple, log, legal, strava, garmin, revenuecat });
+  // Route planning (docs/ROADMAP.md 5.1), likewise: without it, runners can still draw routes.
+  await publishRoutingSettings(pool, config.routing);
+  const routing = config.routing ? { api: options.routingApi ?? createGraphHopperApi(config.routing, options.fetchImpl), config: config.routing } : null;
+  const api = createApi({ config, pool, secret, mailer, apple, log, legal, strava, garmin, revenuecat, routing });
   return {
     ...api,
     strava: strava ? createStravaWorker({ pool, api: strava.api, config: strava.config, log }) : null,
