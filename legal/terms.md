@@ -51,7 +51,8 @@ limits, and tell someone where you're going.
 - Don't misuse invites, follows, kudos, comments, reports or blocks, and don't try to reach other people's data or disrupt PaceLeague — for example by scraping, getting around limits, overloading the service, or probing it for weaknesses without our permission.
 - If you own or help run a club, you're responsible for its name, description, group runs and challenges, and for using the removal tools fairly. We may reset or close clubs that break these rules. The same goes for a league's owner and the challenges they set.
 - Challenges and their badges are for fun: they never change your XP, and a badge goes away if the runs behind it are deleted or don't count.
-- You can report runners, runs, comments, clubs, group runs and challenges, and block other runners. We aim to act on reports within 24 hours. We may remove comments, stop a run from being shared, reset names, remove members from leagues or close accounts.
+- Leaderboards are opt-in and for real runs only. Results are provisional until checked; we may hold or remove a result, or take a runner off the leaderboards, when runs look like a vehicle, a copied or replayed route, or a typed-in run. You can leave the leaderboards at any time.
+- You can report runners, runs, comments, clubs, group runs, challenges and leaderboard results, and block other runners. We aim to act on reports within 24 hours. We may remove comments, stop a run from being shared, reset names, remove members from leagues or close accounts.
 
 ## Your content
 

@@ -91,9 +91,9 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 **Progress (28 September 2026).** Phase 0's age check, Phases 1, 2 and 3, and the platform track
 (the Android app and the web app) are built and tested in code, and Phase 4 is under way: privacy
 zones and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and
-moderation (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5) and
-challenges (4.6) are built. The server is tested by 310 database and API tests, the app by 314
-unit tests and browser
+moderation (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5),
+challenges (4.6) and opt-in leaderboards (4.7) are built. The server is tested by 317 database
+and API tests, the app by 317 unit tests and browser
 walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
 matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
 Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
@@ -797,6 +797,21 @@ is where other people start seeing more than a name and a number.
   - New accounts join after two weeks of normal runs.
 - Done when: a simulated cheating account (car-speed runs, a replayed route, a hand-typed run)
   never appears on a final board.
+- Built: League › Leaderboards. Weekly boards for each tier (the runner's tier when the week
+  began) and each country (chosen by the runner, never worked out from their runs), showing only
+  name, tier and score. Anyone signed in can look; runners join in one tap, from the screen or an
+  invitation on the League tab after winning a league's week or a full league week, and leaving
+  takes them off every board, past weeks included. Scores are the best three days, capped, from
+  accepted GPS runs the server had within a day of the week's end (no treadmill or typed-in runs).
+  Accounts appear once they have two weeks of runs and are 14 days old. Boards stay provisional
+  until 48 hours after the week closes; the top ten of every board are checked for a route with
+  the same GPS points as another run at another time (every route now has a fingerprint of its
+  points without their times), a pace under 3:00/km over 5 km or more, and runs held for speed that
+  week. A result that fails is held off the board and goes to the moderation queue, where a
+  moderator releases it, removes it or takes the runner off the leaderboards; anyone can report a
+  result too. `tests/backend/leaderboards.test.ts` runs the simulated cheater: its car-speed runs
+  are held for review, its typed-in marathon never scores, and three replays of its own earlier
+  route, which the validator accepts, are caught before any board and never reach a final one.
 
 **4.8 Live location sharing** · L
 - What: share a live link with chosen people for this run only. It stops when the run ends or

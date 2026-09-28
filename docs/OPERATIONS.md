@@ -299,8 +299,9 @@ Zones and health trends stay on the phone, so they aren't "collected".
 runner, for app functionality, and push tokens as "Device ID", linked, for app functionality.
 Location stays as declared: shared maps come from the runner's own routes, cut on the server.
 Nothing reads the address book. Apple's guideline 1.2 for user-generated content is met by the
-comment filter, reporting on runners, runs, comments, clubs, group runs and challenges, blocking,
-the 24-hour response target and the published contact (Staff roles and moderation).
+comment filter, reporting on runners, runs, comments, clubs, group runs, challenges and
+leaderboard results, blocking, the 24-hour response target and the published contact (Staff roles
+and moderation). The leaderboards' country is typed in by the runner, not location data.
 
 ## Android builds for testers (Google Play, P.1)
 
@@ -517,7 +518,7 @@ there are (`RUN_JOBS=false` opts an instance out).
 
 | Job | Schedule | Does |
 |---|---|---|
-| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push (several leagues' results arrive as one), settles the season that just ended (its champions, once, a day after its last week), and queues group-run reminders an hour before the start. Logs `frequent jobs` when it did something |
+| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push (several leagues' results arrive as one), settles the season that just ended (its champions, once, a day after its last week), queues group-run reminders an hour before the start, and works out the leaderboards (this week's and last week's results for everyone who joined, the checks on the top ten of every board, and last week made final 48 hours after it closed, Wednesday 00:00 Chicago). Logs `frequent jobs` when it did something |
 | Strava uploads and revocations | every minute, when Strava is configured | Queues accepted runs of connected runners, uploads them, follows processing, refreshes tokens, confirms webhook deauthorizations, revokes ended grants. Logs `strava jobs` |
 | Garmin events | every minute, when Terra is configured | Uploads queued Garmin activities as their runners, deauthorizes ended links, keeps processed events a week. Logs `garmin jobs` |
 | Pro billing | hourly | Sends trial reminders (production), and removes store events older than 60 days. Logs `billing jobs` |
@@ -569,6 +570,12 @@ reason and target in `private.moderation_actions`.
 | Club | `dismiss`, `reset_club` (a neutral name, no description; members stay), `close_club` |
 | Group run | `dismiss`, `remove_group_run`, `reset_alias` (its host) |
 | Challenge (a league's or club's) | `dismiss`, `reset_challenge_name` (back to the name made from its goal and month; entries and badges stay), `remove_challenge` (with its badges), `reset_alias` (who set it) |
+| Leaderboard result | `dismiss` (a held result stays held), `release_result` (on the board, and not held again unless the score changes), `remove_result` (that week), `remove_from_leaderboards` (every result, and the runner can't join again), `reset_alias` |
+
+Leaderboard results the automatic checks hold arrive in the same queue as a report with no
+reporter, reason "Not a real run", and the checks that failed: the same GPS points as another run
+at another time (a replayed or copied route), under 3:00/km over 5 km, or a run held for its speed
+that week. Until a moderator releases it, the result stays off the board, provisional or final.
 
 Removing a comment, hiding a run or taking down a club, group run or challenge closes every open
 report about it. Club owners and admins moderate their own clubs too: removing a member

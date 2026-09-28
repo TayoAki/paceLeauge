@@ -39,6 +39,8 @@ const FRIENDS: (Member & { runs: DemoRun[] })[] = [
     alias: 'Maya',
     email: 'maya@demo.paceleague.test',
     runs: [
+      [-20, km(5.1), 1790],
+      [-13, km(5.3), 1850],
       [-6, km(6.6), 2300],
       [-4, km(6.4), 2280],
       [0, km(10), 3480],
@@ -50,6 +52,8 @@ const FRIENDS: (Member & { runs: DemoRun[] })[] = [
     alias: 'Jules',
     email: 'jules@demo.paceleague.test',
     runs: [
+      [-20, km(5.4), 1880],
+      [-13, km(5.6), 1960],
       [-7, km(10), 3700],
       [-5, km(10.2), 3720],
       [-2, km(6.6), 2400],
@@ -62,6 +66,8 @@ const FRIENDS: (Member & { runs: DemoRun[] })[] = [
     alias: 'Theo',
     email: 'theo@demo.paceleague.test',
     runs: [
+      [-19, km(5), 1830],
+      [-12, km(5.2), 1905],
       [-3, km(5.2), 1920],
       [1, km(5.2), 1930],
       [2, km(5.2), 1925],
@@ -72,6 +78,8 @@ const FRIENDS: (Member & { runs: DemoRun[] })[] = [
     alias: 'Rin',
     email: 'rin@demo.paceleague.test',
     runs: [
+      [-18, km(4.8), 1760],
+      [-11, km(5.1), 1870],
       [-6, km(8), 2900],
       [0, km(6.6), 2500],
       [2, km(5), 1950],
@@ -336,6 +344,16 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
   const monthly = await rpc<{ current: { id: string; scope: string; metric: string }[] }>(pool, viewer, 'list_challenges');
   const twelveDays = monthly.current.find((c) => c.scope === 'global' && c.metric === 'active_days');
   if (twelveDays) await rpc(pool, viewer, 'join_challenge', { p_challenge_id: twelveDays.id });
+
+  // Leaderboards (docs/ROADMAP.md 4.7): four friends joined, with accounts old enough and weeks of
+  // runs enough to appear. The viewer hasn't joined, so won last week's league and is invited.
+  for (const alias of ['Maya', 'Jules', 'Theo', 'Rin']) {
+    const claims = byAlias.get(alias);
+    if (!claims) continue;
+    await pool.query(`update public.profiles set created_at = now() - interval '40 days' where user_id = $1`, [claims.sub]);
+    await rpc(pool, claims, 'join_leaderboards', { p_country: 'US' });
+  }
+  await pool.query('select private.refresh_leaderboards()');
 
   console.log(
     `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends and a family league, with a club and challenges; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,

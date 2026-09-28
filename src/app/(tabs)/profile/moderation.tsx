@@ -11,7 +11,7 @@ import { EmptyState, InlineStatus, SegmentedControl, TextField } from '@/compone
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { formatDistance } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
-import { monthLabel } from '@/features/challenges/challenge-text';
+import { dayLabel, monthLabel } from '@/features/challenges/challenge-text';
 import { useCachedQuery, useMe } from '@/features/data/hooks';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
@@ -27,6 +27,7 @@ const KIND: Record<ModReport['target_kind'], string> = {
   club: 'Club',
   group_run: 'Group run',
   challenge: 'Challenge',
+  leaderboard: 'Leaderboard result',
 };
 
 const REASON: Record<string, string> = {
@@ -56,9 +57,23 @@ const ACTION: Record<ModAction, { label: string; body: string; destructive: bool
     destructive: true,
   },
   remove_challenge: { label: 'Remove challenge', body: 'The challenge and its badges are removed for everyone. Other reports about it close too.', destructive: true },
+  release_result: { label: 'Release result', body: 'The result goes (back) on the board, and isn’t held again unless the score changes.', destructive: false },
+  remove_result: { label: 'Remove result', body: 'This week’s result comes off the board for good. The runner keeps their runs and XP.', destructive: true },
+  remove_from_leaderboards: {
+    label: 'Remove from leaderboards',
+    body: 'All their results come off the boards and they can’t join again. Their runs, XP and leagues stay.',
+    destructive: true,
+  },
 };
 
 const TITLE: Partial<Record<ModReport['target_kind'], string>> = { group_run: 'Group run', challenge: 'Challenge' };
+
+/** What the leaderboard checks found (db/migrations/20261003000400_leaderboards.sql). */
+const FLAG: Record<string, string> = {
+  replayed_route: 'the same GPS points as another run',
+  elite_pace: 'under 3:00/km over 5 km',
+  speed_flags: 'a run held for its speed',
+};
 
 /** The snapshot's fields worth showing, labelled for what was reported. */
 function fields(kind: ModReport['target_kind']): [string, string][] {
@@ -90,6 +105,10 @@ function Snapshot({ report }: { report: ModReport }) {
     .map(([key, label]) => [label, s[key] as string]);
   if (typeof s.distance_m === 'number') lines.push(['Distance', (({ value, unit }) => `${value} ${unit}`)(formatDistance(s.distance_m, 'metric'))]);
   if (typeof s.started_at_ms === 'number') lines.push(['Started', new Date(s.started_at_ms).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })]);
+  if (typeof s.week_start === 'string' && typeof s.score === 'number') {
+    lines.push(['Week', `${dayLabel(s.week_start)} · ${s.score} (${String(s.tier ?? '')}, ${String(s.country ?? '')})`]);
+  }
+  if (Array.isArray(s.flags) && s.flags.length > 0) lines.push(['Checks', s.flags.map((f) => FLAG[String(f)] ?? String(f)).join(', ')]);
   if (typeof s.metric === 'string' && typeof s.target === 'number') {
     const month = typeof s.starts_on === 'string' ? ` in ${monthLabel(s.starts_on)}` : '';
     lines.push(['Goal', `${s.target} ${s.metric === 'active_days' ? 'days' : 'points'}${month}`]);

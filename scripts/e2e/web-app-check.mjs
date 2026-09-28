@@ -42,6 +42,7 @@ const SCREENS = [
   { path: '/league', wait: 'League', name: 'league' },
   { path: '/feed', wait: 'Maya', name: 'feed' },
   { path: '/league/challenges', wait: 'For everyone', name: 'challenges' },
+  { path: '/league/leaderboards', wait: 'best three days', name: 'leaderboards' },
   { path: '/train', wait: 'Train', name: 'train' },
   { path: '/profile', wait: 'Profile', name: 'profile' },
   { path: '/profile/privacy', wait: 'Export', name: 'privacy' },

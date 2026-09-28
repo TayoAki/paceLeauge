@@ -272,6 +272,7 @@ describe('maintenance', () => {
       results_queued: expect.any(Number),
       seasons_settled: expect.any(Number),
       group_run_reminders: expect.any(Number),
+      leaderboard_changes: expect.any(Number),
     });
   });
 });

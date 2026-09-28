@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { CircleHelp, Flag, MessagesSquare, Newspaper, Plus, Settings2, Users, UsersRound } from 'lucide-react-native';
+import { CircleHelp, Flag, MessagesSquare, Newspaper, Plus, Settings2, Trophy, Users, UsersRound } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Linking, RefreshControl, StyleSheet, View } from 'react-native';
 
@@ -7,6 +7,7 @@ import type { Standing } from '@/api/schemas';
 import { GroupChallengesCard } from '@/components/league/challenge-card';
 import { DuelsCard } from '@/components/league/duels-card';
 import { GroupRunsCard } from '@/components/league/group-runs-card';
+import { LeaderboardInvite } from '@/components/league/leaderboard-invite';
 import { LeagueRow } from '@/components/league/league-row';
 import { RecapCard } from '@/components/league/recap-card';
 import { SeasonCard } from '@/components/league/season-card';
@@ -24,13 +25,21 @@ import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 import { useNow } from '@/lib/use-now';
 
-/** The feed (docs/ROADMAP.md 4.4), clubs (4.5) and challenges (4.6). */
-function SocialRows({ onFeed, onClubs, onChallenges }: { onFeed: () => void; onClubs: () => void; onChallenges: () => void }) {
+/** The feed (docs/ROADMAP.md 4.4), clubs (4.5), challenges (4.6) and leaderboards (4.7). */
+function SocialRows({ open }: { open: (path: '/feed' | '/league/clubs' | '/league/challenges' | '/league/leaderboards') => void }) {
   return (
     <RowGroup>
-      <Row icon={Newspaper} label="Feed" hint="Runs your friends and league share, with kudos and comments" onPress={onFeed} testID="open-feed" />
-      <Row icon={UsersRound} label="Clubs" hint="Bigger groups with a weekly board and group runs" onPress={onClubs} testID="open-clubs" />
-      <Row icon={Flag} label="Challenges" hint="Monthly goals with a badge each" onPress={onChallenges} last testID="open-challenges" />
+      <Row icon={Newspaper} label="Feed" hint="Runs your friends and league share, with kudos and comments" onPress={() => open('/feed')} testID="open-feed" />
+      <Row icon={UsersRound} label="Clubs" hint="Bigger groups with a weekly board and group runs" onPress={() => open('/league/clubs')} testID="open-clubs" />
+      <Row icon={Flag} label="Challenges" hint="Monthly goals with a badge each" onPress={() => open('/league/challenges')} testID="open-challenges" />
+      <Row
+        icon={Trophy}
+        label="Leaderboards"
+        hint="Weekly boards for your tier and country, if you join"
+        onPress={() => open('/league/leaderboards')}
+        last
+        testID="open-leaderboards"
+      />
     </RowGroup>
   );
 }
@@ -92,7 +101,7 @@ export default function LeagueScreen() {
       <Screen refreshControl={refresh}>
         <LargeHeader title="League" />
         {league.isError ? <InlineStatus tone="danger" title="Couldn’t load your league." body="Pull to try again." /> : null}
-        <SocialRows onFeed={() => router.push('/feed')} onClubs={() => router.push('/league/clubs')} onChallenges={() => router.push('/league/challenges')} />
+        <SocialRows open={(path) => router.push(path)} />
         <Card>
           <EmptyState icon={Users} title="A little friendly competition." body="Start a private league for your crew, or join one with an invite code. Your best three days each week count.">
             <PrimaryButton label="Create league" onPress={() => router.push('/league/create')} testID="create-league" />
@@ -154,7 +163,7 @@ export default function LeagueScreen() {
         />
       ) : null}
 
-      <SocialRows onFeed={() => router.push('/feed')} onClubs={() => router.push('/league/clubs')} onChallenges={() => router.push('/league/challenges')} />
+      <SocialRows open={(path) => router.push(path)} />
 
       <SegmentedControl
         label="Week"
@@ -214,6 +223,7 @@ export default function LeagueScreen() {
         </Text>
       ) : null}
 
+      <LeaderboardInvite />
       {recap !== null && view.competition_enabled ? <RecapCard leagueId={leagueId} leagueName={view.league.name} weekOffset={recap} units={units} /> : null}
       <SeasonCard leagueId={leagueId} />
       <DuelsCard leagueId={leagueId} weekOffset={weekOffset} />
