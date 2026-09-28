@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { AppState, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { Monogram } from '@/components/art/art';
+import { ActivityNotifications } from '@/components/social/activity-notifications';
 import { IconButton, SecondaryButton } from '@/components/ui/buttons';
 import { InlineStatus } from '@/components/ui/elements';
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
@@ -45,7 +46,10 @@ function shifted(settings: ReminderSettings, deltaMinutes: number): { hour: numb
   return { hour: Math.floor(total / 60), minute: total % 60 };
 }
 
-/** REQ-012 — one optional local reminder at a runner-chosen time. Opt-in; calm copy only. */
+/**
+ * REQ-012 — one optional local reminder at a runner-chosen time. Opt-in; calm copy only. Below it,
+ * the pushes about friends and the league (docs/ROADMAP.md 4.9), each switchable.
+ */
 export default function NotificationsScreen() {
   const { state } = useAccount();
   const journal = state.status === 'ready' ? state.runtime.journal : null;
@@ -179,7 +183,10 @@ export default function NotificationsScreen() {
             accessible
             accessibilityRole="adjustable"
             accessibilityLabel="Reminder time"
-            accessibilityValue={{ text: time }}
+            aria-valuenow={current.hour * 60 + current.minute}
+            aria-valuemin={0}
+            aria-valuemax={DAY_MINUTES - 1}
+            aria-valuetext={time}
             accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
             onAccessibilityAction={(event) =>
               setTime(shifted(current, event.nativeEvent.actionName === 'increment' ? STEP_MINUTES : -STEP_MINUTES))
@@ -227,6 +234,8 @@ export default function NotificationsScreen() {
       <Text variant="caption" tone="secondary">
         The reminder is scheduled on this phone only. It stops when you turn it off or sign out.
       </Text>
+
+      <ActivityNotifications />
     </Screen>
   );
 }

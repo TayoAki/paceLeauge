@@ -3,7 +3,8 @@ import { Platform } from 'react-native';
 
 /**
  * One optional local reminder at a runner-chosen time (REQ-012). Opt-in only; calm copy
- * with no rank-loss threats, pace pressure or sensitive lock-screen detail. No remote pushes.
+ * with no rank-loss threats, pace pressure or sensitive lock-screen detail. Remote pushes about
+ * other runners (docs/ROADMAP.md 4.9) are in src/features/notifications/push.ts.
  */
 const IDENTIFIER = 'pl-daily-reminder';
 /** Android shows notifications through channels the runner can tune in Settings. */

@@ -42,6 +42,15 @@ export interface ServerConfig {
   garmin: GarminConfig | null;
   /** Pro through RevenueCat (docs/ROADMAP.md 3.6); null when not configured. */
   revenuecat: RevenueCatConfig | null;
+  /** Remote notifications through Expo's push service (docs/ROADMAP.md 4.9); null when off. */
+  push: PushConfig | null;
+}
+
+export interface PushConfig {
+  /** Expo's push API base (`https://exp.host/--/api/v2`); tests point it at a local fake. */
+  apiUrl: string;
+  /** Needed only when the Expo project turns on "enhanced security for push notifications". */
+  accessToken: string | null;
 }
 
 export interface RevenueCatConfig {
@@ -160,6 +169,7 @@ export function loadConfig(env: Env = process.env): ServerConfig {
   const strava = stravaConfig(env, deployed, returnPrefixes);
   const garmin = garminConfig(env, returnPrefixes);
   const revenuecat = revenuecatConfig(env);
+  const push = pushConfig(env, deployed);
   return {
     appEnv,
     host: env.HOST ?? '::',
@@ -189,7 +199,20 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     strava,
     garmin,
     revenuecat,
+    push,
   };
+}
+
+function pushConfig(env: Env, deployed: boolean): PushConfig | null {
+  const accessToken = env.EXPO_ACCESS_TOKEN?.trim() || null;
+  if (!bool(env, 'PUSH_ENABLED', false)) {
+    if (accessToken) throw new ConfigError('EXPO_ACCESS_TOKEN is set but PUSH_ENABLED is not true');
+    return null;
+  }
+  const apiUrl = (env.EXPO_PUSH_URL?.trim() || 'https://exp.host/--/api/v2').replace(/\/+$/, '');
+  const local = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(apiUrl);
+  if (!apiUrl.startsWith('https://') && !(local && !deployed)) throw new ConfigError('EXPO_PUSH_URL must be an https URL');
+  return { apiUrl, accessToken };
 }
 
 function revenuecatConfig(env: Env): RevenueCatConfig | null {

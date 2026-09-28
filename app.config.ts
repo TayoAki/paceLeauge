@@ -147,6 +147,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-notifications',
       {
         color: '#D5FF45',
+        // Remote pushes (docs/ROADMAP.md 4.9) use Apple's production service in store builds.
+        mode: APP_ENV === 'development' ? 'development' : 'production',
       },
     ],
     [

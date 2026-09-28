@@ -41,6 +41,8 @@ const DATA_HANDLING = [
   'A training plan keeps your setup answers, its sessions, your changes and how each session felt, including whether something hurt. Only you can see it.',
   `Heart-rate zones and health trends from ${HEALTH.name} are worked out on this phone and never sent to PaceLeague.`,
   `Pro purchases go through ${STORE.name} and RevenueCat; PaceLeague never sees your payment details.`,
+  'Kudos and comments you give are seen by everyone who can see the run. Reports go to moderators with what you reported, never who you are.',
+  'If you turn on notifications, they go through Expo’s push service and Apple or Google, with the name of the runner involved and the first words of a comment.',
 ];
 
 function runDate(ms: number | null): string | undefined {
@@ -125,12 +127,18 @@ export default function PrivacyScreen() {
           Your run. Your data.
         </Text>
         <Text variant="body" tone="secondary" align="center">
-          Routes are visible only to you.
+          Runs and maps are yours unless you share them.
         </Text>
       </View>
 
       <RowGroup>
-        <Row icon={Route} label="Routes" value="Only you" hint="Routes never appear in leagues or share images. Runs you post to Strava are the one exception you control." />
+        <Row
+          icon={Route}
+          label="Routes"
+          value="Yours"
+          hint="Maps appear only on runs you share with the map turned on, never near your privacy zones or the start and finish. Share images never include a map."
+          onPress={() => router.push('/profile/sharing')}
+        />
         <Row icon={Users} label="League profile" value="Members only" hint="Your league sees your runner name, tier and weekly XP." />
         <Row icon={Bell} label="Notifications" value="Manage" onPress={() => router.push('/profile/notifications')} last />
       </RowGroup>

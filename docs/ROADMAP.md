@@ -89,8 +89,10 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 | 5 | Maps | Route planning, offline maps and navigation, segments, heatmaps | 18–28 weeks |
 
 **Progress (28 September 2026).** Phase 0's age check, Phases 1, 2 and 3, and the platform track
-(the Android app and the web app) are built and tested in code: the server by 260 database and API tests, the app by 294 unit tests and browser
-walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
+(the Android app and the web app) are built and tested in code, and Phase 4 is under way: privacy
+zones and per-run sharing (4.2), follows (4.3), the feed (4.4), and push notifications and
+moderation (4.9) are built. The server is tested by 284 database and API tests, the app by 306
+unit tests and browser walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
 matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
 Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
 coach's review of plans and notes, the 30-runner pilot, counsel's review of health data, and the
@@ -689,6 +691,12 @@ is where other people start seeing more than a name and a number.
   default.
 - Done when: no shared map ever includes points inside a privacy zone, tested against the
   stored route.
+- Built: up to five privacy zones (100–800 m) set from where you are or where a recent run
+  started; each run's visibility and map switch on its page, with defaults for new runs in
+  Profile › Sharing and privacy zones; the server cuts every shared map (`private.shared_route`:
+  coordinates rounded before they're checked, 200 m off each end, lines split where points were
+  left out, at most about 400 points). `tests/backend/social.test.ts` checks every shown point
+  against the stored route.
 
 **4.3 Follow friends and profiles** · M
 - What: follow a runner, with approval required by default. Find people through invite links,
@@ -696,6 +704,10 @@ is where other people start seeing more than a name and a number.
 - How: a follow table, requests, and block and mute that hide both runners from each other
   everywhere.
 - Done when: a blocked runner can't find, follow or see the other, including through a cached link.
+- Built: runner profiles, follow requests with approval on by default, follow links and codes
+  that can be replaced, opt-in name search, People (following, followers, requests, your link),
+  mute, and block from any profile or the league. A block ends follows both ways and hides both
+  runners everywhere, including through an old link (`tests/backend/social.test.ts`).
 
 **4.4 Feed with kudos and comments** · L
 - What: runs from people you follow and your leagues. Posts are stats-only cards unless the
@@ -706,6 +718,16 @@ is where other people start seeing more than a name and a number.
   - Comments pass the blocked-terms filter and a rate limit, and can be reported.
   - Apple's rules for user-generated content (guideline 1.2) apply.
 - Done when: reporting, blocking and deleting all remove content everywhere it appears.
+- Built: the feed (League › Feed, and "From friends" on Today): your runs, runs your follows share
+  with followers or everyone, and runs league-mates share with the league, newest first, pulled a
+  page at a time; stats-only cards unless the map is shared. Kudos (a burst arrives as one push)
+  and comments with one level of replies on each run's page. Comments are filtered (500
+  characters, no links, no hidden characters, whole blocked words) and limited (8 a minute, 100 a
+  day); the author and the run's owner can delete them. Runners, runs and comments can be
+  reported: a reported run or comment disappears for the reporter at once, and three reports hold
+  a comment for review. `tests/backend/feed.test.ts` shows reporting, blocking, deleting a run and
+  deleting an account each removing the content from the feed, the run page, profiles, counts and
+  comments.
 
 **4.5 Clubs** · L
 - What: larger groups (up to a few hundred) with a club page, a weekly club board, group runs
@@ -755,6 +777,18 @@ is where other people start seeing more than a name and a number.
   tables are extended to comments, clubs and challenges.
 - Done when: every notification type can be switched off, and a report is acted on within the
   response target in a drill.
+- Built: pushes for kudos, comments and replies, follows, cheers and week results (the day after
+  a week is final, only to members who ran), queued by the database and sent by the API service
+  through Expo (`server/src/push.ts`): each type has its own switch under Profile ›
+  Notifications, nothing arrives between 22:00 and 07:00 local time, a block or deletion drops a
+  push that hasn't gone out, uninstalled apps are forgotten from Expo's receipts, and a tap opens
+  only the app's own screens. Moderation: a 24-hour response target on every report, Profile ›
+  Moderation for staff (the queue by due time, snapshots without routes or contact details,
+  audited actions: remove a comment, hide a run, reset a name, and the league actions), overdue
+  reports in the health report, and the published contact after every report. The drill runs in
+  `tests/backend/feed.test.ts`; OPERATIONS.md has it for people, and the APNs and FCM setup. Not
+  yet on a device: pushes need the APNs key and FCM credentials in EAS and `PUSH_ENABLED` on the
+  API.
 
 **4.10 Teen accounts in family leagues** · L
 - What: 13–17 year olds can join a family league created by an adult, with a parent's consent

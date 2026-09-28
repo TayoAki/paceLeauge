@@ -43,13 +43,14 @@ PaceLeague is in a beta. Features may change, pause or be removed, and you may f
 
 ## Community rules
 
-- Choose respectful runner and league names. No harassment, hate, sexual content, impersonation, or other people's personal information.
-- Don't misuse invites, reports or blocks, and don't try to reach other people's data or disrupt PaceLeague — for example by scraping, getting around limits, overloading the service, or probing it for weaknesses without our permission.
-- You can report and block other runners. We review reports and may reset names, remove members from leagues or close accounts.
+- Choose respectful runner and league names, run titles and comments. There is no tolerance for harassment, hate, threats, sexual content, spam, impersonation, or sharing other people's personal information.
+- Comments can't include links, and some words aren't allowed.
+- Don't misuse invites, follows, kudos, comments, reports or blocks, and don't try to reach other people's data or disrupt PaceLeague — for example by scraping, getting around limits, overloading the service, or probing it for weaknesses without our permission.
+- You can report runners, runs and comments, and block other runners. We aim to act on reports within 24 hours. We may remove comments, stop a run from being shared, reset names, remove members from leagues or close accounts.
 
 ## Your content
 
-You keep ownership of what you put into PaceLeague, such as your runs, run titles and names. You give us permission to store, process and show it only as needed to run PaceLeague — for example, showing your runner name and weekly XP to your league. That permission ends when you delete the content or your account, except for copies kept briefly as described in the Privacy Policy.
+You keep ownership of what you put into PaceLeague, such as your runs, run titles, names and comments. You give us permission to store, process and show it only as needed to run PaceLeague — for example, showing your runner name and weekly XP to your league, a run you share to the people you share it with, and your comments to everyone who can see the run. That permission ends when you delete the content or your account, except for copies kept briefly as described in the Privacy Policy.
 
 ## Our service
 

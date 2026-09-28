@@ -4,6 +4,7 @@ import type { RunOrigin } from '@/db/journal';
 import type { ActiveSegment } from '@/domain/types';
 
 import { ApiError } from './errors';
+import { feedApi, type FeedApi } from './feed-api';
 import { socialApi, type SocialApi } from './social-api';
 import {
   aliasCheckSchema,
@@ -167,7 +168,7 @@ export interface TelemetryEvent {
   props: Record<string, string | boolean>;
 }
 
-export interface PaceApi extends SocialApi {
+export interface PaceApi extends SocialApi, FeedApi {
   getAppConfig(): Promise<AppConfig>;
   getMe(): Promise<Me>;
   checkAlias(alias: string): Promise<{ available: boolean; problem: 'invalid' | 'not_allowed' | 'taken' | null }>;
@@ -468,7 +469,8 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     matchPlanSession: (planId, sessionId, runId) =>
       call('match_plan_session', { p_plan_id: planId, p_session_id: sessionId, p_run_id: runId }, serverPlanSchema),
     getEntitlements: () => call('get_entitlements', {}, entitlementsSchema),
-    // Phase 4 (docs/ROADMAP.md): sharing, privacy zones and follows
+    // Phase 4 (docs/ROADMAP.md): sharing, privacy zones and follows; the feed, pushes and moderation
     ...socialApi(call),
+    ...feedApi(call),
   };
 }

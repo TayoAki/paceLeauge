@@ -67,6 +67,11 @@ changes), `JWT_SECRET` (≥ 32 characters; otherwise one is generated on first b
 with a fixed code, for App Review), `DATABASE_POOL_MAX` (10), `RUN_JOBS` (true), `TRUST_PROXY`
 (on automatically on Railway).
 
+Push notifications (roadmap 4.9): `PUSH_ENABLED` (false; `true` sends them through Expo's push
+service), `EXPO_ACCESS_TOKEN` (only if the Expo project turns on "enhanced security for push
+notifications"; a sealed variable) and `EXPO_PUSH_URL` (Expo's API; https only outside
+development). See [Push notifications](#push-notifications-49).
+
 The service will not start in production with log-only email, a development sign-in code, the
 competition bootstrap, a short `JWT_SECRET`, a missing `PUBLIC_API_KEY`, or only half of the
 review account — the deploy fails instead.
@@ -283,6 +288,20 @@ the runner, for app functionality. Declare them under "Health & Fitness". Purcha
 "Purchases" (purchase history, through RevenueCat), linked to the runner, for app functionality.
 Zones and health trends stay on the phone, so they aren't "collected".
 
+### Phase 4 native pieces
+
+- **Remote notifications** (4.9) use the `expo-notifications` plugin already in the build: it adds
+  the Push Notifications capability (`aps-environment`), and Android shows them in their own
+  channel, "Friends and league", which runners can tune in Settings. Credentials are in
+  [Push notifications](#push-notifications-49).
+
+**App Store and Google Play privacy (Phase 4).** Add "Other User Content" (comments) linked to the
+runner, for app functionality, and push tokens as "Device ID", linked, for app functionality.
+Location stays as declared: shared maps come from the runner's own routes, cut on the server.
+Nothing reads the address book. Apple's guideline 1.2 for user-generated content is met by the
+comment filter, reporting on runners, runs and comments, blocking, the 24-hour response target and
+the published contact (Staff roles and moderation).
+
 ## Android builds for testers (Google Play, P.1)
 
 The same `pilot` profile builds the Android app against staging. The package is
@@ -498,11 +517,12 @@ there are (`RUN_JOBS=false` opts an instance out).
 
 | Job | Schedule | Does |
 |---|---|---|
-| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts) and applies pending scoring. Logs `frequent jobs` when it did something |
+| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, and once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push. Logs `frequent jobs` when it did something |
 | Strava uploads and revocations | every minute, when Strava is configured | Queues accepted runs of connected runners, uploads them, follows processing, refreshes tokens, confirms webhook deauthorizations, revokes ended grants. Logs `strava jobs` |
 | Garmin events | every minute, when Terra is configured | Uploads queued Garmin activities as their runners, deauthorizes ended links, keeps processed events a week. Logs `garmin jobs` |
 | Pro billing | hourly | Sends trial reminders (production), and removes store events older than 60 days. Logs `billing jobs` |
-| `private.purge_expired()` + sign-in cleanup | hourly, and 5 s after each start | Removes uploads never finalized after 7 days (the phone keeps its copy), expired exports, operational events after 14 days, rate-limit windows after 2 days, resolved reports after 90 days, dead invites after 30 days, completed deletion records after 30 days, expired sign-in codes, and revoked sessions after 30 days. Logs `hourly retention` |
+| Push notifications | every 15 s, when `PUSH_ENABLED=true` | Sends due pushes from `private.push_outbox` through Expo, retries failures with backoff (dropped after 5 tries), checks Expo's receipts after 15 minutes and forgets devices whose app was uninstalled. Logs `push jobs` |
+| `private.purge_expired()` + sign-in cleanup | hourly, and 5 s after each start | Removes uploads never finalized after 7 days (the phone keeps its copy), expired exports, operational events after 14 days, rate-limit windows after 2 days, resolved reports after 90 days, dead invites after 30 days, completed deletion records after 30 days, pushes sent or dropped after 7 days (and their repeat guards after 30), expired sign-in codes, and revoked sessions after 30 days. Logs `hourly retention` |
 
 A failure logs `job failed` with the job name, and the job runs again on its next tick.
 
@@ -518,6 +538,8 @@ A failure logs `job failed` with the job name, and the job runs again on its nex
 | `pending_scoring` | > 0 while `competition_enabled` | Scoring job stalled — check for `job failed` in the logs, then run `select private.run_frequent_jobs();` |
 | `runs_in_review` | any, older than 48 h | Review (below) |
 | `open_reports` / `oldest_open_report_hours` | any older than 24 h | Moderation (below) |
+| `overdue_reports` | > 0 | A report is past its 24-hour response target: moderate it now (below) |
+| `push_backlog` | > 0 for 15 minutes | Pushes aren't going out: look for `push send failed` or `push receipt error` in the logs, and check Expo's status page and the push credentials (below) |
 
 The service logs one JSON line per event. Request lines carry the method, route, status and
 duration — never emails, passwords, tokens, codes (outside `log` mode), bodies or coordinates. Alert on
@@ -531,14 +553,74 @@ and observability tools), and wire `health_report()` into the same place before 
 select private.grant_staff_role('<user uuid>', 'moderator', 'Pilot moderation rota', 'ops:alex');
 ```
 
-A moderator signs in to the app normally; the staff RPCs (`mod_list_reports`,
-`mod_resolve_report`) are then available to their own session — for example from a small internal
-tool that calls the API with that session. Actions: `dismiss`, `reset_alias`, `rename_league`,
-`remove_from_league`. Reports keep a snapshot of the reported name, and every action records the
-moderator, reason and target in `private.moderation_actions`.
+A moderator signs in to the app normally and gets **Profile › Moderation** (roadmap 4.9): the
+queue ordered by due time, each report's snapshot (the reported name, run title and numbers, or
+comment text — never routes, emails or who reported it), how many open reports concern the same
+thing, and the actions that fit it. Every action needs a note and is recorded with the moderator,
+reason and target in `private.moderation_actions`.
 
-Before launch (REQ-011): publish a real reviewer/support contact (`EXPO_PUBLIC_SUPPORT_EMAIL`),
-name a moderation rota, and set a response target.
+| Reported | Actions |
+|---|---|
+| League member | `dismiss`, `reset_alias`, `remove_from_league` |
+| League | `dismiss`, `rename_league` |
+| Runner | `dismiss`, `reset_alias` |
+| Run | `dismiss`, `hide_run` (only the runner sees it until they share it again; their data stays), `reset_alias` |
+| Comment | `dismiss`, `remove_comment`, `reset_alias` |
+
+Removing a comment or hiding a run closes every open report about it. What runners see:
+
+- A runner who reports a run or a comment stops seeing it at once.
+- Three open reports from different runners hold a comment: only its author sees it until a
+  moderator decides. Dismissing the last open report puts it back.
+- Comments are filtered before they're saved: at most 500 characters, no links, no hidden or
+  control characters, and no whole word from `private.blocked_terms` (add terms in lower case:
+  `insert into private.blocked_terms (term) values ('…');`). Eight comments a minute and 100 a
+  day per runner at most.
+
+**Response target: 24 hours.** Each report's `due_at` is 24 hours after it arrives. The queue
+shows what's due next and what's overdue; `mod_queue_health` (the card at the top of the screen)
+counts open, overdue and, over the last 7 days, reports resolved within the target; and the health
+report's `overdue_reports` alerts on anything past due.
+
+**Drill** (before launch, then monthly): from a test account, report a comment and a run on a
+staging account; as a moderator, open Profile › Moderation, confirm both appear with "Due in 24
+hours", remove the comment and hide the run with a note, and confirm: the card counts them as
+resolved within the target, the comment is gone for everyone, the run left the other account's
+feed, and both actions are in `private.moderation_actions`. `tests/backend/feed.test.ts`
+("acts on reports within the response target in a drill") runs the same drill against the
+database on every test run.
+
+Before launch (REQ-011): publish a real reviewer/support contact (`EXPO_PUBLIC_SUPPORT_EMAIL`,
+shown after every report) and name a moderation rota that covers the 24-hour target.
+
+## Push notifications (4.9)
+
+Kudos, comments and replies, follows (requests, new followers, accepted requests), league cheers
+and week results. The database decides what to send (`private.notify`): nothing a runner switched
+off, nothing between 22:00 and 07:00 in their time zone (it waits until 07:00), nothing across a
+block, and nothing about a run or comment deleted since. Kudos wait two minutes so a burst
+arrives as one push ("Maya and 2 others gave you kudos"). The `api` service sends what's due
+through Expo's push service, which hands it to Apple (APNs) or Google (FCM).
+
+To turn them on:
+
+1. **Apple:** EAS manages the APNs key: `eas credentials -p ios` → Push Notifications → set up
+   a key (or upload one from the Apple Developer account, Keys → Apple Push Notifications
+   service). Store builds use Apple's production service (`app.config.ts` sets it from
+   `EXPO_PUBLIC_APP_ENV`).
+2. **Google:** create a Firebase project for `com.tayoaki.paceleague`, then upload its FCM V1
+   service-account key with `eas credentials -p android` → FCM V1. The key stays with EAS; it
+   never goes in the repository.
+3. **Server:** set `PUSH_ENABLED=true` on the `api` service. If the Expo project enables enhanced
+   push security, also set `EXPO_ACCESS_TOKEN` (an Expo access token, sealed). The app offers
+   the switches under Profile › Notifications only while the server sends pushes.
+4. Check with two test accounts on phones: allow notifications on one, give its run kudos from
+   the other, and the push arrives within about three minutes; tapping it opens the run.
+
+Pushes that fail are retried with backoff and dropped after 5 tries; Expo's receipts tell the
+service when an app was uninstalled, and that device is forgotten. A phone's token is removed
+when the runner signs out. `select * from private.push_outbox order by id desc limit 20;` shows
+recent pushes (`sent_at`, `dropped_at`, `last_error`).
 
 ## Runs held for review
 

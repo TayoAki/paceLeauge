@@ -1,6 +1,7 @@
 import type { Pool } from './db';
 import type { Logger } from './log';
 import type { GarminWorker } from './garmin';
+import type { PushWorker } from './push';
 import type { BillingWorker } from './revenuecat';
 import type { StravaWorker } from './strava';
 
@@ -14,6 +15,7 @@ const HOURLY_LOCK = 7_340_102;
 const STRAVA_LOCK = 7_340_103;
 const GARMIN_LOCK = 7_340_104;
 const BILLING_LOCK = 7_340_105;
+const PUSH_LOCK = 7_340_106;
 
 const AUTH_CLEANUP = `
   delete from auth.one_time_codes where expires_at < now() - interval '1 hour';
@@ -80,20 +82,30 @@ export async function runBillingJobs(pool: Pool, log: Logger, worker: BillingWor
   });
 }
 
+/** Push notifications through Expo (docs/ROADMAP.md 4.9), one instance at a time. */
+export async function runPushJobs(pool: Pool, log: Logger, worker: PushWorker): Promise<void> {
+  await withLock(pool, PUSH_LOCK, async () => {
+    const result = await worker.runOnce();
+    if (Object.values(result).some((n) => n > 0)) log.info('push jobs', { ...result });
+  });
+}
+
 export function startJobs(
   pool: Pool,
   log: Logger,
   options: {
-    intervals?: { frequentMs: number; hourlyMs: number };
+    intervals?: { frequentMs: number; hourlyMs: number; pushMs?: number };
     strava?: StravaWorker | null;
     garmin?: GarminWorker | null;
     billing?: BillingWorker | null;
+    push?: PushWorker | null;
   } = {},
 ): { stop: () => Promise<void> } {
   const intervals = options.intervals ?? { frequentMs: 60_000, hourlyMs: 3_600_000 };
   const strava = options.strava ?? null;
   const garmin = options.garmin ?? null;
   const billing = options.billing ?? null;
+  const push = options.push ?? null;
   let stopped = false;
   const running = new Set<Promise<void>>();
   const schedule = (name: string, everyMs: number, job: () => Promise<void>) => {
@@ -116,6 +128,8 @@ export function startJobs(
     ...(strava ? [schedule('strava', intervals.frequentMs, () => runStravaJobs(pool, log, strava))] : []),
     ...(garmin ? [schedule('garmin', intervals.frequentMs, () => runGarminJobs(pool, log, garmin))] : []),
     ...(billing ? [schedule('billing', intervals.hourlyMs, () => runBillingJobs(pool, log, billing))] : []),
+    // Pushes should arrive within seconds of a kudos or comment, so they go out more often.
+    ...(push ? [schedule('push', intervals.pushMs ?? 15_000, () => runPushJobs(pool, log, push))] : []),
   ];
   return {
     async stop() {

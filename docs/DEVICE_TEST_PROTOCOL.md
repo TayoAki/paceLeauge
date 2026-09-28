@@ -105,6 +105,20 @@ phone is nearby.
 | P3-TRENDS | Pro, with 12 weeks of Apple Watch data: turn on health trends | Resting heart rate, HRV, VO2 max and sleep match Apple Health's weekly averages within rounding |
 | P3-PRO | In the App Store sandbox: buy yearly (trial) and monthly, restore on a second device, let one expire, refund one, delete an account while subscribed (OPERATIONS.md, "Pro subscriptions") | Pro turns on within seconds of each purchase and off at expiry or refund; the trial email arrives two days before the end (staging with a real inbox); deletion works and says the subscription continues |
 
+## Phase 4 device checks (docs/ROADMAP.md)
+
+Two test accounts on two phones (A and B), on a server with `PUSH_ENABLED=true` and the push
+credentials in EAS (OPERATIONS.md, "Push notifications"). Run each case on an iPhone and on an
+Android phone.
+
+| Case | Steps | Pass criteria |
+|---|---|---|
+| P4-PUSH | On A, open Profile › Notifications and tap "Turn on notifications"; allow. From B, follow A, give A's shared run kudos, and comment on it | The permission is asked once, only after the tap; A gets a follow push at once, one kudos push within about three minutes, and a comment push at once; tapping each opens the right screen (People, then the run); on Android they arrive on the "Friends and league" channel, silently |
+| P4-PUSH-OFF | On A, switch "Kudos" off; from B, give another of A's runs kudos. Then switch everything back on and sign A out; from B, comment on A's run | No kudos push; after sign-out, no push reaches A's phone |
+| P4-QUIET | Set A's phone and profile time zone to one where it's 23:00; from B, comment on A's run | Nothing arrives until 07:00 local time, then the comment push does |
+| P4-FEED | B shares runs with the league (one with its map); A opens League › Feed and Today | B's runs appear newest first, the map only on the one shared with it and never near B's privacy zones; "From friends" on Today lists them |
+| P4-REPORT | From A, report B's comment and B's run; as a moderator on a third phone, open Profile › Moderation | Both disappear for A at once; the moderator sees both with "Due in 24 hours" and can remove the comment and hide the run; B's run then leaves A's feed and the comment is gone for everyone |
+
 ## Android device checks (docs/ROADMAP.md P.1)
 
 The Android version of this protocol. It passes when every case passes on three phones from

@@ -9,6 +9,7 @@ import type { Logger } from './log';
 import { createMailer, loadCodeTemplate, type Mailer } from './mailer';
 import { findDbDir } from './migrate';
 import { createGarminWorker, createTerraApi, publishGarminSettings, type GarminWorker, type TerraApi } from './garmin';
+import { createExpoPushApi, createPushWorker, publishPushSettings, type ExpoPushApi, type PushWorker } from './push';
 import { createBillingWorker, createRevenueCatApi, type BillingWorker, type RevenueCatApi } from './revenuecat';
 import { createStravaApi, createStravaWorker, publishStravaSettings, type StravaApi, type StravaWorker } from './strava';
 
@@ -42,7 +43,11 @@ export async function createService(options: {
   terraApi?: TerraApi;
   /** Replaces RevenueCat's API (tests). */
   revenuecatApi?: RevenueCatApi | null;
-}): Promise<ReturnType<typeof createApi> & { strava: StravaWorker | null; garmin: GarminWorker | null; billing: BillingWorker }> {
+  /** Replaces Expo's push API (tests). */
+  pushApi?: ExpoPushApi;
+}): Promise<
+  ReturnType<typeof createApi> & { strava: StravaWorker | null; garmin: GarminWorker | null; billing: BillingWorker; push: PushWorker | null }
+> {
   const { config, pool, log } = options;
   const secret = await resolveSigningSecret(pool, config);
   let template: string | null = null;
@@ -68,6 +73,9 @@ export async function createService(options: {
   const revenuecat = config.revenuecat
     ? { config: config.revenuecat, api: options.revenuecatApi !== undefined ? options.revenuecatApi : createRevenueCatApi(config.revenuecat, options.fetchImpl) }
     : null;
+  // Push notifications (docs/ROADMAP.md 4.9), likewise: the app offers them only when this is on.
+  await publishPushSettings(pool, config.push);
+  const pushApi = config.push ? (options.pushApi ?? createExpoPushApi(config.push, options.fetchImpl)) : null;
   const api = createApi({ config, pool, secret, mailer, apple, log, legal, strava, garmin, revenuecat });
   return {
     ...api,
@@ -75,5 +83,6 @@ export async function createService(options: {
     garmin: garmin ? createGarminWorker({ pool, terra: garmin.terra, log }) : null,
     // Trial reminders go out whether or not RevenueCat is configured here (grants have none).
     billing: createBillingWorker({ pool, mailer, log }),
+    push: pushApi ? createPushWorker({ pool, api: pushApi, log }) : null,
   };
 }

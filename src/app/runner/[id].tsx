@@ -1,8 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BellOff, Ban, UserCheck, UserPlus } from 'lucide-react-native';
+import { BellOff, Ban, Flag, UserCheck, UserPlus } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { ReportSheet } from '@/components/social/report-sheet';
 import { SharedRunCard } from '@/components/social/shared-run-card';
 import { PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
@@ -20,7 +21,7 @@ export default function RunnerScreen() {
   const units = useMe().data?.data.profile?.units ?? 'metric';
   const profile = useRunnerProfile(id ?? null);
   const actions = useSocialActions();
-  const [sheet, setSheet] = useState<'unfollow' | 'block' | null>(null);
+  const [sheet, setSheet] = useState<'unfollow' | 'block' | 'report' | null>(null);
   const data = profile.data?.data;
 
   if (!data) {
@@ -107,9 +108,15 @@ export default function RunnerScreen() {
             onPress={() => void actions.mute(publicId, !follow.muted)}
             accessibilityHint="Muted runners’ runs stay out of your feed. They aren’t told."
           />
+          <TextButton label="Report" icon={Flag} onPress={() => setSheet('report')} testID="runner-report" />
           <TextButton label="Block" icon={Ban} onPress={() => setSheet('block')} testID="runner-block" />
         </View>
       ) : null}
+      <ReportSheet
+        target={sheet === 'report' ? { kind: 'runner', id: publicId, owner: { public_id: publicId, alias: data.alias } } : null}
+        onClose={() => setSheet(null)}
+        onBlocked={() => router.back()}
+      />
 
       <ConfirmSheet
         visible={sheet === 'unfollow'}
@@ -142,5 +149,5 @@ export default function RunnerScreen() {
 const styles = StyleSheet.create({
   head: { gap: space.xs },
   row: { flexDirection: 'row', gap: space.lg },
-  menu: { flexDirection: 'row', gap: space.lg, justifyContent: 'center' },
+  menu: { flexDirection: 'row', flexWrap: 'wrap', gap: space.lg, justifyContent: 'center' },
 });

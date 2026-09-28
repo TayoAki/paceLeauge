@@ -8,8 +8,8 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 
 ## The short version
 
-- Your routes — the map of where you ran — are visible only to you. They never appear in leagues or in share images. If you choose to connect Strava, the runs you post there include their routes, under your Strava settings.
-- Your league sees your runner name, tier and weekly XP. Not your email address, and not your routes.
+- Your runs are visible only to you unless you share them, run by run or with a default you choose. Maps are shared only when you turn them on, and never show the first and last 200 m or the privacy zones you set. Share images never include a map. If you choose to connect Strava, the runs you post there include their routes, under your Strava settings.
+- Your league sees your runner name, tier and weekly XP. Not your email address.
 - Heart-rate zones and health trends from Apple Health or Health Connect are worked out on your phone and never sent to us.
 - We don't sell your data, show ads, or use third-party advertising or analytics tools.
 - You can export your data and delete your account from inside the app, at any time.
@@ -60,7 +60,19 @@ Only if you subscribe:
 
 - The leagues you create or join, the invites you create, and weekly standings.
 - Cheers: who in your league cheered whom, and in which week.
-- Reports you send, runners you block, and moderators' decisions about reports.
+- Reports you send (a reason from a list, never free text), a copy of what you reported for moderators, runners you block, and moderators' decisions about reports.
+
+### Sharing, follows and the feed
+
+- Who sees each run (only you, your leagues, your followers, or everyone signed in to PaceLeague) and whether its map is shared, plus your defaults for new runs.
+- Privacy zones: the places and sizes you save, used to cut shared maps.
+- Who you follow and who follows you, follow requests, your follow link, runners you mute, whether you approve followers, and whether people can find you by name.
+- Kudos you give and comments you write, with the runs they're on. When a comment is deleted its text is removed; we keep that it was there so replies keep their place.
+
+### Notifications
+
+- If you allow notifications on your phone: a push token for the phone, and which kinds you want (kudos, comments, follows, cheers, weekly results).
+- Each notification names the runner involved and the run, and for comments includes the first words of the comment. They are sent through Expo's push service and then Apple or Google, and nothing is sent between 10 pm and 7 am in your time zone.
 
 ### Technical information
 
@@ -108,12 +120,16 @@ We don't use your information for advertising, and we don't sell it or share it 
 ## Who can see what
 
 - You can see everything in your account, including your routes.
-- Your league sees your runner name, tier and weekly XP, and how many cheers you received this week. Nothing about where you ran. Your notes, shoes, records, badges, streak, training plan and whether you have Pro are visible only to you.
+- Your league sees your runner name, tier and weekly XP, and how many cheers you received this week. Your notes, shoes, records, badges, streak, training plan and whether you have Pro are visible only to you.
+- A run you share is seen by the people you chose: its title, date, distance, time and pace, its kudos and comments, and its map only if you turned the map on. Shared maps never show the first and last 200 m of a run or anything inside your privacy zones.
+- Other runners can see your profile: your runner name, tier, how many followers you have and how many runners you follow, and the runs you've shared with them. They can find you by name only if you allow it; otherwise only through your follow link.
+- Comments and kudos you give are seen by everyone who can see the run. Blocking a runner hides you from each other everywhere in PaceLeague; muting keeps their runs out of your feed without telling them.
 - If you use Share, the image shows only distance, time and pace, with no map or location, and you choose where it goes.
 - Moderators working for us see reports and what they need to decide them. Routes are never part of moderation.
 - If you connect Strava or Garmin, the runs described above go to Strava or come from Terra, each under its own terms.
 - Service providers process data on our behalf to run PaceLeague: Railway hosts the service and its database in the United States. Apple provides Sign in with Apple if you use it, draws the maps in the app with Apple Maps (so the map areas you view are requested from Apple), and distributes the app through TestFlight and the App Store under Apple's own privacy policy.
 - If you subscribe to Pro, RevenueCat processes your purchase for us as described above, and Apple or Google handles payment. If you start a free trial, an email delivery provider processes your email address to send the reminder.
+- If you allow notifications, Expo (the maker of the tools the app is built with) delivers them to Apple's or Google's notification service, which delivers them to your phone.
 - We may disclose information if the law requires it, or to protect the rights, property or safety of our users, the public or us.
 - If PaceLeague is sold or reorganized, your information may move to the new owner, who must keep honoring this policy.
 
@@ -125,18 +141,21 @@ We don't use your information for advertising, and we don't sell it or share it 
 - Your training plans, their sessions and your feedback: until you delete your account (plans you end stay in your history).
 - Whether you have Pro: until you delete your account. The log of subscription events: 60 days (after an account is deleted, without the link to it).
 - Your Strava connection and Garmin link: until you disconnect or delete your account. Garmin activities waiting for us to process them: 7 days after they are processed. Diagnostics reports you send: 30 days.
+- Kudos and comments: until you remove them, the run's owner deletes the comment or the run, or you delete your account. Follows, privacy zones and sharing choices: until you change them or delete your account.
+- Your phone's push token: until you sign out, turn notifications off in the app's settings on the phone and the phone tells us, uninstall the app, or delete your account. Notifications we've sent or dropped: 7 days.
 - App events: 14 days. Rate-limit records: 2 days. Resolved reports: 90 days after they are resolved. Expired invites: 30 days. Export files: 24 hours. Uploads that were never finished: 7 days. A record that an account deletion was completed, without your data: 30 days.
 
 ## Your choices and rights
 
-- **Export:** Profile → Privacy → Export gives you your data as JSON, with a GPX file for each route. It includes your training plans and your Pro status.
+- **Export:** Profile → Privacy → Export gives you your data as JSON, with a GPX file for each route. It includes your training plans, your Pro status, your sharing choices and privacy zones, who you follow and who follows you, and your comments, kudos and notification choices.
 - **Correct:** edit your profile or rename your runs at any time.
 - **Delete:** delete individual runs, or your whole account under Profile → Privacy → Delete account.
 - **Location:** you control location permission in your phone's settings. Recording a run needs it; everything else works without it. PaceLeague never asks for location "all the time" on Android.
 - **Health and motion:** you control Apple Health access in the Health app, Health Connect access in Health Connect, and motion access (for treadmill runs) in your phone's settings. Heart-rate zones and health trends each have their own switch.
 - **Pro:** cancel in your App Store settings (Settings → your name → Subscriptions) or in Google Play (Payments & subscriptions → Subscriptions). Deleting your PaceLeague account doesn't cancel a subscription.
 - **Connections:** connect or disconnect Strava and Garmin at any time in Profile → Connections.
-- **Reminders:** optional, and you can turn them off at any time. They are scheduled on your phone; we don't send push notifications.
+- **Sharing:** choose who sees each run and whether its map is shown, set your defaults and privacy zones in Profile → Sharing and privacy zones, and block or mute runners from their profile.
+- **Notifications:** the daily reminder is optional and scheduled on your phone. Notifications about kudos, comments, follows, cheers and weekly results are optional too: switch each kind off in Profile → Notifications, or turn notifications off for PaceLeague in your phone's settings.
 
 Depending on where you live, for example in California, you may have rights to know, access, correct or delete your personal information, and not to be discriminated against for using them. We honor these requests for everyone. Contact us at [Contact email]; we may need to confirm it's you first.
 

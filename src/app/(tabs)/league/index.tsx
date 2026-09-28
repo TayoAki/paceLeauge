@@ -1,12 +1,12 @@
 import { useRouter } from 'expo-router';
-import { CircleHelp, Plus, Settings2, Users } from 'lucide-react-native';
+import { CircleHelp, Newspaper, Plus, Settings2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import type { Standing } from '@/api/schemas';
 import { LeagueRow } from '@/components/league/league-row';
 import { IconButton, PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
-import { EmptyState, InlineStatus, Pill, SegmentedControl } from '@/components/ui/elements';
+import { EmptyState, InlineStatus, Pill, Row, RowGroup, SegmentedControl } from '@/components/ui/elements';
 import { Card, LargeHeader, Screen } from '@/components/ui/layout';
 import { formatXp, ordinal } from '@/domain/format';
 import { useLeague, useLeagueCheers } from '@/features/data/hooks';
@@ -15,6 +15,15 @@ import { InviteSheet, MemberSheet } from '@/features/leagues/league-sheets';
 import { deviceTimeZone, weekStateLine } from '@/features/leagues/week-copy';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
+
+/** The feed of runs from people you follow and your league (docs/ROADMAP.md 4.4). */
+function FeedRow({ onPress }: { onPress: () => void }) {
+  return (
+    <RowGroup>
+      <Row icon={Newspaper} label="Feed" hint="Runs your friends and league share, with kudos and comments" onPress={onPress} last testID="open-feed" />
+    </RowGroup>
+  );
+}
 
 /** S08 (no crew) · S09 private weekly league. */
 export default function LeagueScreen() {
@@ -65,6 +74,7 @@ export default function LeagueScreen() {
       <Screen refreshControl={refresh}>
         <LargeHeader title="League" />
         {league.isError ? <InlineStatus tone="danger" title="Couldn’t load your league." body="Pull to try again." /> : null}
+        <FeedRow onPress={() => router.push('/feed')} />
         <Card>
           <EmptyState icon={Users} title="A little friendly competition." body="Start a private league for your crew, or join one with an invite code. Your best three days each week count.">
             <PrimaryButton label="Create league" onPress={() => router.push('/league/create')} testID="create-league" />
@@ -101,6 +111,8 @@ export default function LeagueScreen() {
           Private · {view.league.member_count} {view.league.member_count === 1 ? 'runner' : 'runners'}
         </Text>
       </View>
+
+      <FeedRow onPress={() => router.push('/feed')} />
 
       <SegmentedControl
         label="Week"

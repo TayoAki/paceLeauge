@@ -5,6 +5,7 @@ import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Monogram } from '@/components/art/art';
 import { RunRow, TierCard, WeeklyGoal } from '@/components/progress/progress-components';
+import { FriendsActivity } from '@/components/social/friends-activity';
 import { TodaysWorkoutCard } from '@/components/train/train-components';
 import { PrimaryButton, TextButton } from '@/components/ui/buttons';
 import { InlineStatus } from '@/components/ui/elements';
@@ -198,6 +199,8 @@ export default function TodayScreen() {
         </View>
         <ChevronRight size={20} color={colors.textSecondary} />
       </Pressable>
+
+      <FriendsActivity units={units} />
     </Screen>
   );
 }

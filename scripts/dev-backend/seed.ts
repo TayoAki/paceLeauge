@@ -221,11 +221,19 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
   const league = await rpc<{ league: { id: string } }>(pool, viewer, 'create_league', { p_name: 'Friday Crew' });
   const invite = await rpc<{ code: string }>(pool, viewer, 'create_league_invite');
 
-  const friends: { claims: Claims; runs: DemoRun[] }[] = [];
+  const friends: { alias: string; claims: Claims; runs: DemoRun[] }[] = [];
   for (const friend of FRIENDS) {
     const claims = await ensureRunner(pool, friend);
     await rpc(pool, claims, 'join_league', { p_code: invite.code });
-    friends.push({ claims, runs: friend.runs });
+    // Friends share their runs with the league (docs/ROADMAP.md 4.2); Maya shares her maps too.
+    // The viewer keeps the defaults: runs visible only to them.
+    await rpc(pool, claims, 'set_social_settings', {
+      p_default_visibility: 'leagues',
+      p_default_map_shared: friend.alias === 'Maya',
+      p_follow_approval: null,
+      p_discoverable: null,
+    });
+    friends.push({ alias: friend.alias, claims, runs: friend.runs });
   }
   // Everyone has been in the league for a few weeks, so all of this week's segments count.
   const joinedAt = weekStart - 21 * DAY_MS;
@@ -241,6 +249,27 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
   for (const { claims, run } of runs) {
     if (await upload(pool, claims, run, weekStart)) uploaded += 1;
     else skipped += 1;
+  }
+  // A little life in the feed (docs/ROADMAP.md 4.4): kudos and a short thread on Maya's latest run.
+  const byAlias = new Map(friends.map((f) => [f.alias, f.claims]));
+  const maya = byAlias.get('Maya');
+  const latest = maya
+    ? await pool.query<{ id: string }>(
+        `select id from public.runs where owner_id = $1 and deleted_at is null and status = 'accepted' order by started_at desc limit 1`,
+        [maya.sub],
+      )
+    : null;
+  const mayaRun = latest?.rows[0]?.id;
+  if (mayaRun) {
+    for (const alias of ['Jules', 'Theo', 'Rin']) {
+      const claims = byAlias.get(alias);
+      if (claims) await rpc(pool, claims, 'set_kudos', { p_run_id: mayaRun, p_on: true });
+    }
+    const jules = byAlias.get('Jules');
+    if (jules) {
+      const [thread] = await rpc<{ id: string }[]>(pool, jules, 'add_comment', { p_run_id: mayaRun, p_body: 'Strong finish! That last kilometre looked quick.' });
+      if (thread) await rpc(pool, maya!, 'add_comment', { p_run_id: mayaRun, p_body: 'Thanks! Saving some for Sunday.', p_parent_id: thread.id });
+    }
   }
   console.log(
     `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,

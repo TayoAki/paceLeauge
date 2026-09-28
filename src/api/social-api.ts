@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 
+import { feedItemSchema, type FeedItem } from './feed-schemas';
 import {
   blockedResultSchema,
   followCodeSchema,
@@ -46,7 +47,8 @@ export interface SocialApi {
   savePrivacyZone(zone: PrivacyZoneInput): Promise<SocialSettings>;
   deletePrivacyZone(zoneId: string): Promise<SocialSettings>;
   setRunSharing(runId: string, visibility: Visibility, mapShared: boolean): Promise<SharedRun>;
-  getSharedRun(runId: string): Promise<SharedRun>;
+  /** The run with its kudos and comment counts. */
+  getSharedRun(runId: string): Promise<FeedItem>;
   followRunner(publicId: string): Promise<RunnerWithFollow>;
   getFollowCode(rotate?: boolean): Promise<string>;
   getFollowLink(code: string): Promise<RunnerWithFollow>;
@@ -80,7 +82,7 @@ export function socialApi(call: Call): SocialApi {
     deletePrivacyZone: (zoneId) => call('delete_privacy_zone', { p_zone_id: zoneId }, socialSettingsSchema),
     setRunSharing: (runId, visibility, mapShared) =>
       call('set_run_sharing', { p_run_id: runId, p_visibility: visibility, p_map_shared: mapShared }, sharedRunSchema),
-    getSharedRun: (runId) => call('get_shared_run', { p_run_id: runId }, sharedRunSchema),
+    getSharedRun: (runId) => call('get_shared_run', { p_run_id: runId }, feedItemSchema),
     followRunner: (publicId) => call('follow_runner', { p_public_id: publicId }, runnerWithFollowSchema),
     getFollowCode: async (rotate = false) => (await call('get_follow_code', { p_rotate: rotate }, followCodeSchema)).code,
     getFollowLink: (code) => call('get_follow_link', { p_code: code }, runnerWithFollowSchema),

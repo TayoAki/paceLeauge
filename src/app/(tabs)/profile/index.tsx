@@ -2,7 +2,7 @@ import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Ban, Bell, CloudUpload, CreditCard, Footprints, LifeBuoy, Link2, LogIn, LogOut, MapPinOff, ShieldCheck, Sparkles, Tag, UserPen, Users } from 'lucide-react-native';
+import { Ban, Bell, CloudUpload, CreditCard, Footprints, Gavel, LifeBuoy, Link2, LogIn, LogOut, MapPinOff, ShieldCheck, Sparkles, Tag, UserPen, Users } from 'lucide-react-native';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -194,7 +194,8 @@ export default function ProfileScreen() {
         <Row icon={MapPinOff} label="Sharing and privacy zones" onPress={() => router.push('/profile/sharing')} testID="profile-sharing" />
         <Row icon={ShieldCheck} label="Privacy" onPress={() => router.push('/profile/privacy')} testID="profile-privacy" />
         <Row icon={Ban} label="Blocked runners" onPress={() => router.push('/profile/blocked')} />
-        <Row icon={LifeBuoy} label="Support & legal" onPress={() => router.push('/profile/support')} last />
+        <Row icon={LifeBuoy} label="Support & legal" onPress={() => router.push('/profile/support')} last={!data?.is_staff} />
+        {data?.is_staff ? <Row icon={Gavel} label="Moderation" hint="Staff only" onPress={() => router.push('/profile/moderation')} last testID="profile-moderation" /> : null}
       </RowGroup>
 
       <RowGroup>

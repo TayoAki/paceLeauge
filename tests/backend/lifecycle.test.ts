@@ -266,6 +266,6 @@ describe('maintenance', () => {
 
   it('runs the frequent job bundle', async () => {
     const r = await db.one<{ r: any }>('select private.run_frequent_jobs() as r');
-    expect(r.r).toEqual({ deletions_completed: expect.any(Number), pending_scored: expect.any(Number) });
+    expect(r.r).toEqual({ deletions_completed: expect.any(Number), pending_scored: expect.any(Number), results_queued: expect.any(Number) });
   });
 });

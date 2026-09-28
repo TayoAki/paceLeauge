@@ -7,6 +7,7 @@ import { api } from '@/api/client';
 import type { PaceApi } from '@/api/pace-api';
 import { env } from '@/config/env';
 import { deleteAccountDatabase } from '@/db/open';
+import { syncPushRegistration, unregisterPush } from '@/features/notifications/push';
 import { cancelReminder, restoreReminder } from '@/features/reminders/reminders';
 import { createRunActions, type RunActions } from '@/features/sync/run-actions';
 import { writeWidgetWeek } from '@/features/widgets/widget-data';
@@ -149,6 +150,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     };
   }, [runtime, engine, queryClient]);
 
+  // Push notifications (docs/ROADMAP.md 4.9): keep this phone registered while they're allowed.
+  useEffect(() => {
+    if (!runtime || !api || !accessToken) return;
+    void syncPushRegistration(api, runtime.journal).catch(() => undefined);
+  }, [runtime, accessToken]);
+
   // Runs from the PaceLeague Apple Watch app (docs/ROADMAP.md 2.2): saved as they arrive, and on
   // open and on returning to the app, then synced like recorded runs.
   useEffect(() => {
@@ -194,6 +201,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         ? state.accountId
         : null;
     await cancelReminder().catch(() => undefined);
+    // This phone stops getting the account's pushes.
+    if (state.status === 'ready' && api) await unregisterPush(api, state.runtime.journal).catch(() => undefined);
     writeWidgetWeek(null);
     if (state.status === 'ready') state.engine?.stop();
     await closeAccountRuntime();

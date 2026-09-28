@@ -14,6 +14,7 @@ import { AgeNeededScreen, AgeRestrictedScreen, useExistingAgeCheck } from '@/fea
 import { AuthProvider, useAuth } from '@/features/account/auth-provider';
 import { useMe } from '@/features/data/hooks';
 import { watchPermissionRationale } from '@/features/health/permission-rationale';
+import { usePushResponses } from '@/features/notifications/use-push-responses';
 import { colors } from '@/design/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -62,6 +63,8 @@ function RootNavigator() {
   const profile = me.data?.data.profile ?? null;
   const loading = auth.status === 'loading' || (signedIn && (state.status === 'opening' || (ready && me.isPending)));
   const ageGate = useExistingAgeCheck(signedIn && ready ? profile : null);
+  // Tapping a push opens what it's about (docs/ROADMAP.md 4.9).
+  usePushResponses(signedIn && ready && profile !== null && profile.age_signal !== 'minor');
 
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync().catch(() => undefined);
@@ -122,6 +125,7 @@ function RootNavigator() {
         <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
         <Stack.Screen name="runner/[id]" />
         <Stack.Screen name="shared/[id]" />
+        <Stack.Screen name="feed" />
       </Stack.Protected>
       <Stack.Screen name="invite/[code]" />
       <Stack.Screen name="follow/[code]" />
