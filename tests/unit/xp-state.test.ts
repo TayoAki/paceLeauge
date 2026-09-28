@@ -1,5 +1,6 @@
 import type { ServerRun } from '@/api/schemas';
 import type { SavedRun } from '@/db/journal';
+import { reviewNextSteps } from '@/features/recording/reason-copy';
 import { xpPanelState } from '@/features/recording/xp-state';
 
 const T0 = Date.UTC(2026, 8, 25, 12, 0, 0);
@@ -85,6 +86,16 @@ describe('XP panel (saved ≠ synced ≠ accepted)', () => {
     expect(personal).toHaveProperty('reason', expect.stringContaining('100 m'));
     const review = xpPanelState(localRun(), serverRun({ status: 'review', reason_codes: ['speed_anomaly'], xp_award: null }), false);
     expect(review.kind).toBe('review');
+    // Why it's held, and what happens next.
+    expect(review).toHaveProperty('reason', expect.stringContaining('unusually fast'));
+    expect(review).toHaveProperty('reason', expect.stringContaining('A person checks held runs, usually within 2 days'));
+  });
+
+  it('says how to ask for another look at a held run when there is a support address', () => {
+    expect(reviewNextSteps('help@example.test')).toBe(
+      'A person checks held runs, usually within 2 days, and the result shows here. To ask for another look, email help@example.test with the run’s date.',
+    );
+    expect(reviewNextSteps('')).not.toContain('email');
   });
 
   it('says scoring is paused when the server accepted the run but competition is off', () => {

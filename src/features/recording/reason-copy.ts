@@ -23,6 +23,15 @@ const serverReasonCopy: Record<string, string> = {
   file_import: 'Imported files can be edited, so they’re kept as history. They count for your weekly goal and streak.',
 };
 
+/**
+ * What happens to a run held for review, and how to ask for another look (docs/ROADMAP.md,
+ * Phase 0). Operators decide held runs; the health report flags any older than 48 hours.
+ */
+export function reviewNextSteps(supportEmail: string): string {
+  const ask = supportEmail ? ` To ask for another look, email ${supportEmail} with the run’s date.` : '';
+  return `A person checks held runs, usually within 2 days, and the result shows here.${ask}`;
+}
+
 /** Why a run was set aside: another recording of the same run is the one that counts. */
 export const duplicateCopy = 'Another recording of this run was kept (the one with the better GPS record), so it only counts once.';
 

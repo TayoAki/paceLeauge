@@ -2,7 +2,9 @@ import type { ServerRun } from '@/api/schemas';
 import type { XpPanelState } from '@/components/run/run-components';
 import type { SavedRun } from '@/db/journal';
 
-import { duplicateCopy, reasonText, syncErrorCopy } from './reason-copy';
+import { env } from '@/config/env';
+
+import { duplicateCopy, reasonText, reviewNextSteps, syncErrorCopy } from './reason-copy';
 
 /**
  * What the XP panel may claim. Only a server-accepted, scored run shows earned XP; a local
@@ -13,7 +15,7 @@ export function xpPanelState(local: SavedRun | null, server: ServerRun | null, o
     if (server.status === 'duplicate') return { kind: 'personal_only', reason: duplicateCopy };
     if (server.activity_type && server.activity_type !== 'run') return { kind: 'not_a_run' };
     if (server.status === 'personal_only') return { kind: 'personal_only', reason: reasonText(server.reason_codes) };
-    if (server.status === 'review') return { kind: 'review', reason: reasonText(server.reason_codes) };
+    if (server.status === 'review') return { kind: 'review', reason: `${reasonText(server.reason_codes)} ${reviewNextSteps(env.supportEmail)}` };
     if (server.scoring_state === 'pending') return { kind: 'scoring_paused' };
     if (server.xp_award) {
       return {

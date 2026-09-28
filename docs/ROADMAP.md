@@ -95,7 +95,7 @@ and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and
 opt-in leaderboards (4.7), live location (4.8) and teen accounts in family leagues (4.10,
 switched off until counsel's review). Phase 5 brought route planning (5.1), offline maps and
 navigation (5.2), segments (5.3) and the heatmap with suggested loops (5.4). The server is
-tested by 364 database and API tests, the app by 365 unit tests and browser walkthroughs of the
+tested by 364 database and API tests, the app by 366 unit tests and browser walkthroughs of the
 new screens. What remains is on devices and with people: the Part C audio matrix and the Part A
 failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new Swift and Kotlin
 code (the watch app is off until then), the recorded voice and guided runs, the coach's review
@@ -330,8 +330,12 @@ From the gap analysis, before inviting testers:
 - **Set the support email.** Password resets depend on it, and the TestFlight profile in
   `eas.json` doesn't set `EXPO_PUBLIC_SUPPORT_EMAIL` yet.
 - **Say where routes go**: one line in onboarding and on the App Store page. Only you see your route.
+  (Built in the app: onboarding says "Your routes stay private." The App Store page is still to
+  write.)
 - **Explain held runs**: when the validator holds a run for review, say why and how to ask for
-  another look.
+  another look. (Built: the run's panel gives the reason, that a person checks held runs, usually
+  within 2 days, with the result on the same screen, and, once `EXPO_PUBLIC_SUPPORT_EMAIL` is set,
+  to email support with the run's date for another look.)
 - **Check age at sign-up** (built): Apple's Declared Age Range and Google Play Age Signals through
   `expo-age-range`, alongside the existing adult self-declaration. Texas has required age
   assurance for new Apple accounts since 1 January 2026 (decision 3). See
