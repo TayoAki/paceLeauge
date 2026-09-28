@@ -10,13 +10,21 @@ export async function recordFixLocally(
   journal: Pick<Journal, 'listSavedRuns' | 'updateSavedRun'>,
   result: RunEditResult,
   localRunId?: string | null,
+  health?: { replace(runId: string): Promise<void>; remove(runId: string): Promise<void> },
 ): Promise<void> {
   const locals = await journal.listSavedRuns({ includeDeleted: true });
   const kept = locals.find((r) => r.runId === localRunId) ?? locals.find((r) => r.serverRunId === result.run.id);
-  if (kept) await journal.updateSavedRun(kept.runId, { server: result.run, routeCached: false });
+  if (kept) {
+    await journal.updateSavedRun(kept.runId, { server: result.run, routeCached: false });
+    // Apple Health gets the fixed run in place of the old one.
+    await health?.replace(kept.runId).catch(() => undefined);
+  }
   if (result.removed_run_id) {
     const removed = locals.find((r) => r.serverRunId === result.removed_run_id);
-    if (removed) await journal.updateSavedRun(removed.runId, { deleted: true });
+    if (removed) {
+      await journal.updateSavedRun(removed.runId, { deleted: true });
+      await health?.remove(removed.runId).catch(() => undefined);
+    }
   }
 }
 

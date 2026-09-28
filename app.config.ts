@@ -16,6 +16,17 @@ const BUNDLE_ID = process.env.IOS_BUNDLE_IDENTIFIER ?? (APP_ENV === 'development
 /** The Expo project @tayom/paceleague. Not a secret: it only tells EAS which project this is. */
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '605e184b-7dc5-4cf9-b0a6-878729602fa4';
 
+/**
+ * Phase 1 native extras (docs/ROADMAP.md 1.2, 1.6, 1.11). Each can be left out of a build by setting
+ * its variable to 0, for example while tracking down a native build problem; the app then hides it.
+ *  - PL_WIDGETS: the widget extension (run Live Activity and the "this week" widget).
+ *  - PL_HEALTHKIT: saving runs to Apple Health.
+ */
+const WITH_WIDGETS = process.env.PL_WIDGETS !== '0';
+const WITH_HEALTHKIT = process.env.PL_HEALTHKIT !== '0';
+/** Shared by the app and its widget extension (the widget derives the same name from its bundle id). */
+const APP_GROUP = `group.${BUNDLE_ID}`;
+
 const LOCATION_ALWAYS_COPY = 'PaceLeague records your run’s route while your screen is locked. Location is only collected during a run you start.';
 const LOCATION_WHEN_IN_USE_COPY = 'PaceLeague uses your location to prepare and record your run.';
 
@@ -32,10 +43,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   backgroundColor: '#101315',
   ios: {
     bundleIdentifier: BUNDLE_ID,
+    // Signs the widget extension in local Xcode builds; EAS signs every target from its credentials.
+    ...(process.env.APPLE_TEAM_ID ? { appleTeamId: process.env.APPLE_TEAM_ID } : {}),
     supportsTablet: false,
     usesAppleSignIn: true,
     // Apple's Declared Age Range (expo-age-range): age assurance for regulated regions.
-    entitlements: { 'com.apple.developer.declared-age-range': true },
+    entitlements: {
+      'com.apple.developer.declared-age-range': true,
+      ...(WITH_WIDGETS ? { 'com.apple.security.application-groups': [APP_GROUP] } : {}),
+    },
     config: { usesNonExemptEncryption: false },
     infoPlist: {
       NSLocationWhenInUseUsageDescription: LOCATION_WHEN_IN_USE_COPY,
@@ -43,6 +59,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSPhotoLibraryAddUsageDescription: 'Save your stats-only share image to your photo library.',
       // audio: voice cues speak while the phone is locked in a pocket (docs/ROADMAP.md Part C).
       UIBackgroundModes: ['location', 'audio'],
+      // The run on the lock screen and in the Dynamic Island.
+      ...(WITH_WIDGETS ? { NSSupportsLiveActivities: true } : {}),
     },
   },
   android: {
@@ -90,6 +108,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         isAccessMediaLocationEnabled: false,
       },
     ],
+    ...(WITH_WIDGETS ? ['@bacons/apple-targets'] : []),
+    ...(WITH_HEALTHKIT
+      ? [
+          [
+            '@kingstinct/react-native-healthkit',
+            {
+              NSHealthUpdateUsageDescription: 'When you turn it on, PaceLeague saves your runs to Apple Health with their distance and route.',
+              NSHealthShareUsageDescription: 'PaceLeague doesn’t read your Health data. It only saves the runs you record, when you turn that on.',
+              background: false,
+            },
+          ] as [string, unknown],
+        ]
+      : []),
     [
       'expo-splash-screen',
       {
@@ -105,6 +136,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     appEnv: APP_ENV,
+    appGroup: WITH_WIDGETS ? APP_GROUP : null,
     eas: { projectId: EAS_PROJECT_ID },
   },
 });

@@ -8,6 +8,7 @@ import type { PaceApi } from '@/api/pace-api';
 import { env } from '@/config/env';
 import { cancelReminder, restoreReminder } from '@/features/reminders/reminders';
 import { createRunActions, type RunActions } from '@/features/sync/run-actions';
+import { writeWidgetWeek } from '@/features/widgets/widget-data';
 import { SyncEngine } from '@/features/sync/sync-engine';
 import { sha256Hex } from '@/lib/crypto';
 
@@ -83,7 +84,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setOpened({
           accountId,
           attempt,
-          state: { status: 'ready', accountId, runtime, engine, actions: engine ? createRunActions(runtime.journal, engine) : null },
+          state: {
+            status: 'ready',
+            accountId,
+            runtime,
+            engine,
+            // A deleted run also leaves Apple Health (docs/ROADMAP.md 1.6).
+            actions: engine ? createRunActions(runtime.journal, engine, { onRemoved: (runId) => void runtime.health.remove(runId).catch(() => undefined) }) : null,
+          },
         });
         void restoreReminder(runtime.journal).catch(() => undefined);
       },
@@ -122,6 +130,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     if (state.status === 'ready' && (await state.runtime.journal.getSession())) throw new RunInProgressError();
     await cancelReminder().catch(() => undefined);
+    writeWidgetWeek(null);
     if (state.status === 'ready') state.engine?.stop();
     await closeAccountRuntime();
     queryClient.clear();

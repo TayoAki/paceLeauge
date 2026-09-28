@@ -1,4 +1,4 @@
-import { Headphones, Pause, Volume2 } from 'lucide-react-native';
+import { Headphones, HeartPulse, Pause, Volume2 } from 'lucide-react-native';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -55,6 +55,8 @@ export default function RunSettingsScreen() {
   const units = useMe().data?.data.profile?.units ?? store.units;
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [healthBlocked, setHealthBlocked] = useState(false);
+  const health = runtime.health;
 
   useEffect(() => store.setUnits(units), [store, units]);
 
@@ -63,6 +65,18 @@ export default function RunSettingsScreen() {
     void store.save(next).catch(() => setError('Couldn’t save your settings. Try again.'));
   };
   const setCues = (cues: CueSettings) => save({ ...settings, cues });
+
+  const toggleHealth = async (on: boolean) => {
+    setHealthBlocked(false);
+    if (!on) {
+      save({ ...settings, appleHealth: false });
+      return;
+    }
+    // Permission is asked only now, when the runner switches this on.
+    const allowed = await health.requestAccess();
+    if (allowed) save({ ...store.get(), appleHealth: true });
+    else setHealthBlocked(true);
+  };
 
   const unit = units === 'imperial' ? 'mile' : 'km';
   const unitLong = units === 'imperial' ? 'mile' : 'kilometer';
@@ -184,6 +198,27 @@ export default function RunSettingsScreen() {
           testID="auto-pause-switch"
         />
       </RowGroup>
+
+      {health.available ? (
+        <RowGroup>
+          <SwitchRow
+            icon={HeartPulse}
+            label="Save runs to Apple Health"
+            hint="Runs you finish appear in Health and Fitness with their route. Deleting or fixing a run here updates it there."
+            value={settings.appleHealth}
+            onChange={(on) => void toggleHealth(on)}
+            last
+            testID="apple-health-switch"
+          />
+        </RowGroup>
+      ) : null}
+      {healthBlocked ? (
+        <InlineStatus
+          tone="warning"
+          title="PaceLeague can’t save to Health yet."
+          body="Allow it in the Health app: your profile › Apps › PaceLeague › turn on Workouts and Workout Routes."
+        />
+      ) : null}
 
       {error ? <InlineStatus tone="danger" title={error} /> : null}
       <Text variant="caption" tone="secondary">

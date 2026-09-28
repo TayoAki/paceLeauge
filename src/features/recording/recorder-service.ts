@@ -31,7 +31,7 @@ export type RecorderEvent =
   | { name: 'auto_resumed' }
   | { name: 'paused' }
   | { name: 'resumed' }
-  | { name: 'run_saved_local'; interrupted: boolean; activeMs: number; points: number }
+  | { name: 'run_saved_local'; runId: string; interrupted: boolean; activeMs: number; points: number }
   | { name: 'recorder_interrupted'; reason: 'process' | 'permission' };
 
 export interface RecorderDeps {
@@ -237,7 +237,7 @@ export class RecorderService {
     this.mono = null;
     this.verifiedRunId = null;
     this.snapshot = { ...this.snapshot, lastSaved: saved };
-    this.emitEvent({ name: 'run_saved_local', interrupted: saved.interrupted, activeMs: saved.activeMs, points: saved.pointCount });
+    this.emitEvent({ name: 'run_saved_local', runId: saved.runId, interrupted: saved.interrupted, activeMs: saved.activeMs, points: saved.pointCount });
     await this.rebuild();
     return saved;
   }

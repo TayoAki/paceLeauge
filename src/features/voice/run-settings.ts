@@ -15,6 +15,8 @@ export interface RunSettings {
   cueVolume: CueVolume;
   /** When headphones disconnect mid-run, keep speaking through the phone speaker. */
   speakerFallback: boolean;
+  /** Write finished runs to Apple Health (iOS; asks permission when switched on). */
+  appleHealth: boolean;
 }
 
 export const DEFAULT_RUN_SETTINGS: RunSettings = {
@@ -22,6 +24,7 @@ export const DEFAULT_RUN_SETTINGS: RunSettings = {
   cues: DEFAULT_CUE_SETTINGS,
   cueVolume: 'normal',
   speakerFallback: false,
+  appleHealth: false,
 };
 
 /** The account journal key holding this account's run settings. */
@@ -55,6 +58,7 @@ export function parseRunSettings(value: unknown): RunSettings {
     },
     cueVolume: v.cueVolume === 'quiet' || v.cueVolume === 'normal' || v.cueVolume === 'loud' ? v.cueVolume : DEFAULT_RUN_SETTINGS.cueVolume,
     speakerFallback: typeof v.speakerFallback === 'boolean' ? v.speakerFallback : DEFAULT_RUN_SETTINGS.speakerFallback,
+    appleHealth: typeof v.appleHealth === 'boolean' ? v.appleHealth : DEFAULT_RUN_SETTINGS.appleHealth,
   };
 }
 

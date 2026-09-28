@@ -7,7 +7,7 @@ import type { SyncEngine } from './sync-engine';
  * User actions on saved runs. Local effects are immediate (the run disappears or is
  * renamed at once); the server side goes through the durable outbox.
  */
-export function createRunActions(journal: Journal, engine: SyncEngine) {
+export function createRunActions(journal: Journal, engine: SyncEngine, hooks: { onRemoved?: (runId: string) => void } = {}) {
   return {
     async rename(runId: string, rawTitle: string): Promise<void> {
       const title = rawTitle.trim().replace(/\s+/g, ' ').slice(0, PROFILE_RULES.runTitleMaxLength);
@@ -26,6 +26,7 @@ export function createRunActions(journal: Journal, engine: SyncEngine) {
     async remove(runId: string, serverRunId: string | null = null): Promise<void> {
       await journal.updateSavedRun(runId, { deleted: true });
       await journal.enqueue('delete_run', runId, serverRunId ? { serverRunId } : {});
+      hooks.onRemoved?.(runId);
       void engine.run();
     },
 

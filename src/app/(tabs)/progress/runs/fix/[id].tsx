@@ -17,6 +17,7 @@ import { fromCompact } from '@/domain/route-codec';
 import { findStops, MIN_KEPT_MS, previewEdit, type RunEdit, type StopSection } from '@/domain/run-fix';
 import type { TrackPoint } from '@/domain/types';
 import { useAccountServices } from '@/features/account/account-provider';
+import { healthRunFromServer } from '@/features/health/apple-health';
 import { useMe, useRunHistory, useRunRoute, useServerRun } from '@/features/data/hooks';
 import { fixErrorCopy, recordFixLocally } from '@/features/progress/run-fixes';
 import { Text } from '@/design/text';
@@ -119,7 +120,15 @@ export default function FixRunScreen() {
   const after = preview ? formatDistance(preview.distanceM, units) : null;
 
   const finish = async (result: RunEditResult) => {
-    await recordFixLocally(runtime.journal, result, localRunId || null).catch(() => undefined);
+    const health = {
+      remove: (runId: string) => runtime.health.remove(runId),
+      replace: (runId: string) =>
+        runtime.health.replace(runId, async () => {
+          const fixed = await api!.getMyRunRoute(result.run.id);
+          return healthRunFromServer(result.run, { segments: fixed.segments, points: fixed.points.map(fromCompact) }, runId);
+        }),
+    };
+    await recordFixLocally(runtime.journal, result, localRunId || null, health).catch(() => undefined);
     await queryClient.invalidateQueries();
     setDone(result);
   };
@@ -282,15 +291,21 @@ export default function FixRunScreen() {
             const when = later ? `Started ${gapText(gap)} after this run ended` : `Ended ${gapText(gap)} before this run started`;
             return (
               <View key={c.id} style={styles.candidate}>
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodyStrong" numberOfLines={1}>
+                    {c.title}
+                  </Text>
+                  <Text variant="caption" tone="secondary">
+                    {d.value} {d.unit} · {when}
+                  </Text>
+                </View>
                 <SecondaryButton
                   icon={Merge}
-                  label={`Merge with “${c.title}” · ${d.value} ${d.unit}`}
+                  label="Merge"
+                  accessibilityLabel={`Merge with ${c.title}, ${d.value} ${d.unitLong}`}
                   accessibilityHint={when}
                   onPress={() => setPending({ kind: 'merge', other: c })}
                 />
-                <Text variant="caption" tone="secondary">
-                  {when}
-                </Text>
               </View>
             );
           })}
@@ -350,7 +365,7 @@ function Trimmer({ label, value, onStep, onReset }: { label: string; value: stri
 
 const styles = StyleSheet.create({
   compare: { flexDirection: 'row', gap: space.md },
-  candidate: { gap: space.xs },
+  candidate: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   trimmer: { gap: space.sm },
   trimHeader: { flexDirection: 'row', alignItems: 'center' },
   steps: { flexDirection: 'row', gap: space.sm },

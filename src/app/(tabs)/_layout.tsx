@@ -3,10 +3,12 @@ import { ChartColumn, House, Trophy, User } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { ActiveRunBanner } from '@/components/run/active-run-banner';
+import { useWidgetSync } from '@/features/widgets/use-widget-sync';
 import { colors } from '@/design/tokens';
 
 /** Today · League · Progress · Profile (standard tabs; the live run takes over the screen). */
 export default function TabsLayout() {
+  useWidgetSync();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Tabs

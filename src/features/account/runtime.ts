@@ -9,6 +9,8 @@ import { RecorderService } from '@/features/recording/recorder-service';
 import { setActiveRecorder } from '@/features/recording/registry';
 import type { CreditedDays } from '@/features/recording/run-draft';
 import { countBucket, createTelemetry, durationBucket, type Telemetry } from '@/features/telemetry/telemetry';
+import { AppleHealthSync, deviceHealthKit, healthRunFrom } from '@/features/health/apple-health';
+import { deviceRunActivity, LiveActivityController } from '@/features/run-activity/live-activity';
 import { CueController } from '@/features/voice/cue-controller';
 import { RunSettingsStore } from '@/features/voice/run-settings';
 import { deviceVoiceOutput } from '@/features/voice/voice-output';
@@ -26,6 +28,10 @@ export interface AccountRuntime {
   /** Voice cue and auto-pause choices for this account, kept on this phone. */
   runSettings: RunSettingsStore;
   cues: CueController;
+  /** Writes finished runs to Apple Health when the runner has switched it on. */
+  health: AppleHealthSync;
+  /** The run on the lock screen and in the Dynamic Island. */
+  liveActivity: LiveActivityController;
 }
 
 let current: AccountRuntime | null = null;
@@ -48,6 +54,15 @@ async function create(accountId: string): Promise<AccountRuntime> {
   const telemetry = createTelemetry(journal);
   const runSettings = new RunSettingsStore(journal);
   await runSettings.load();
+  const health = new AppleHealthSync({ kv: journal, port: deviceHealthKit(), enabled: () => runSettings.get().appleHealth });
+  const saveToHealth = (runId: string) =>
+    void health
+      .saveRun(runId, async () => {
+        const run = await journal.getSavedRun(runId);
+        if (!run || run.deleted) return null;
+        return healthRunFrom({ id: runId, activity: 'running', segments: run.segments, points: await journal.getRunPoints(runId) });
+      })
+      .catch(() => undefined);
   const recorder = new RecorderService({
     journal,
     location: locationDriver,
@@ -61,6 +76,7 @@ async function create(accountId: string): Promise<AccountRuntime> {
     },
     onEvent: (event) => {
       if (event.name === 'run_saved_local') {
+        saveToHealth(event.runId);
         telemetry.track('run_saved_local', {
           interrupted: event.interrupted,
           duration_bucket: durationBucket(event.activeMs),
@@ -77,9 +93,11 @@ async function create(accountId: string): Promise<AccountRuntime> {
   // Cues listen before recovery so a run resumed after a relaunch is picked up mid-way.
   const cues = new CueController(recorder, deviceVoiceOutput(), runSettings);
   cues.start();
+  const liveActivity = new LiveActivityController(recorder, deviceRunActivity(), () => runSettings.units);
+  liveActivity.start();
   await recorder.init();
   setActiveRecorder(recorder);
-  return { accountId, journal, recorder, telemetry, runSettings, cues };
+  return { accountId, journal, recorder, telemetry, runSettings, cues, health, liveActivity };
 }
 
 export async function openAccountRuntime(accountId: string): Promise<AccountRuntime> {
@@ -115,6 +133,7 @@ export async function closeAccountRuntime(): Promise<void> {
   if (!runtime) return;
   if (await runtime.journal.getSession()) throw new RunInProgressError();
   runtime.cues.stop();
+  runtime.liveActivity.stop();
   runtime.recorder.dispose();
   setActiveRecorder(null);
   current = null;
