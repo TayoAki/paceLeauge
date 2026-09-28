@@ -84,8 +84,9 @@ also show each runner's tier.
 
 ## Roadmap work after V1 (docs/ROADMAP.md)
 
-Snapshot 28 September 2026. Phase 0's age check and all of Phase 1 are built. As with V1, the
-logic and screens are proven automatically; nothing that needs an iPhone is.
+Snapshot 28 September 2026. Phase 0's age check, all of Phase 1 and all of Phase 2 are built. As
+with V1, the logic and screens are proven automatically; nothing that needs an iPhone or an Apple
+Watch is.
 
 | Item | Evidence | Still required |
 |---|---|---|
@@ -98,9 +99,19 @@ logic and screens are proven automatically; nothing that needs an iPhone is.
 | Apple Health (1.6) | `apple-health.test.ts`: written once, off or denied writes nothing, rewritten after a fix, removed on delete | P1-HEALTH |
 | Stats (1.7), badges and streak (1.8), cheers (1.9), run log (1.10) | `streaks.test.ts`, `cheers-stats.test.ts`, `export-v2.test.ts`, `phase1-client.test.ts` (every new client call against the real SQL), `stats-ranges.test.ts` | — |
 | Widget (1.11) | `live-activity.test.ts` (widget numbers); prebuild creates the extension, App Group and entitlements | P1-WIDGET |
+| Apple Health import (2.1) | `health-import.test.ts`; `health-import-sync.test.ts` through the real client and SQL: an Apple Watch run scores like a phone run, a Garmin workout without its route is history, a phone and watch copy count once; `sources.test.ts` | P2-HEALTH (background delivery, the 30-day backfill) |
+| Apple Watch app (2.2) | `watch-runs.test.ts`; `health-import-sync.test.ts`: a watch run file and its Health copy become one run, source `watch`, scored; `npx expo prebuild` with `PL_WATCH=1` generates both watch targets, embedded and entitled | First watch build; P2-WATCH (phone left at home, 60-minute run, battery) |
+| Strava export (2.3) | `strava.test.ts` (12, the SQL side) and `tests/server/strava.test.ts` (13: callback, sealed tokens, upload, duplicates, rate limits, refresh, revocation, webhook) | A Strava API application and one real upload |
+| File import (2.4) | `file-import.test.ts` (GPX, TCX, FIT), `health-import-sync.test.ts`, the sync screen in the walkthrough | Share-sheet import on a device |
+| Garmin through Terra (2.4) | `garmin.test.ts` (8) and `tests/server/garmin.test.ts` (10: signatures, linking, upload as the runner, kept over the Apple Health copy, treadmill and typed-in rules, deauthorization) | A Terra account when decision 1's trigger is met, and its terms checked |
+| Treadmill and indoor (2.5) | `indoor-run.test.ts`, `indoor-credit.test.ts` (the plausibility checks, the 5 km cap in scores and standings, late and duplicate runs), `goal_days` in `sources.test.ts` | P2-INDOOR (the step counter on a device) |
+| Sync status and diagnostics (2.6) | `diagnostics.test.ts`, the sync screen in the walkthrough | The Part A failure tests |
+| Walks, hikes and rides (2.7) | `activities.test.ts`, `by_activity` in `cheers-stats.test.ts`, `xp-state.test.ts` | — |
 
-Totals: 179 unit tests and 174 database tests passing; the browser walkthrough covers every new
-screen (62 screenshots, no browser errors; sheets 11–15 in [evidence/web](evidence/README.md)).
+Totals: 212 unit tests and 239 database and API tests passing. The browser walkthrough covers every
+Phase 1 screen (62 screenshots, no browser errors; sheets 11–15 in [evidence/web](evidence/README.md));
+the Phase 2 screens (treadmill run, Connections, activity filters, the rules page) were checked in
+the browser against the development backend.
 `npx expo prebuild` generates the widget target, the HealthKit and App Group entitlements and
 links the three local modules; the Swift and Kotlin have not been compiled here (no Xcode or
 Android SDK in this environment), so the first EAS build is their compile check. If it fails,

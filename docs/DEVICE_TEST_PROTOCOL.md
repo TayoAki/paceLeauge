@@ -60,6 +60,41 @@ Run these on a build made from the `pilot` profile. None of them can be proven i
 | P1-HEALTH | Switch on "Save runs to Apple Health" (allow, then deny on a second device); finish a run; fix it; delete it | Allow: the run appears in Fitness with its map exactly once; after the fix it shows the fixed distance; after deletion it's gone. Deny: the app explains how to allow it and saves nothing |
 | P1-WIDGET | Add the small, medium and lock-screen widgets; finish and sync a run; wait for Monday | Each widget shows active days, weekly XP and league place, updates within 15 minutes of the sync, and resets when the week turns; signing out clears it |
 
+## Phase 2 device checks (docs/ROADMAP.md)
+
+Run these on a `pilot` build; the watch cases need a build with `PL_WATCH=1` and an Apple Watch on
+watchOS 10 or later. Record each with the log template below.
+
+| Case | Steps | Pass criteria |
+|---|---|---|
+| P2-HEALTH | Switch on "Import from Apple Health" with 30 days of Apple Watch Workout runs and one Garmin workout in Health; then record a new Workout-app run with the phone locked and the app closed | The backfill brings each workout in once (Garmin as history with the "no route" reason); the new run appears and syncs without opening the app within a few minutes (background delivery) |
+| P2-WATCH | Start an outdoor run on the watch with the phone left at home, 60 minutes; pause with press-and-hold; end; bring the watch home | The pause needs the hold; the run is on the phone and synced within a minute of the watch reaching the phone; it counts once even though Apple Health also has it; battery used is recorded (Series 6 or later) |
+| P2-WATCH-LIVE | Start a watch run with the phone nearby (iOS 17) | Today shows the run in progress with its distance and time; it disappears when the run ends |
+| P2-INDOOR | Treadmill run on the phone for 20 minutes; correct the distance to the treadmill's; repeat the next day | Steps and an estimate show during the run; the saved run is history (goal and streak, no XP); the second estimate is closer to the treadmill after the correction |
+| P2-STRAVA | Connect Strava (staging credentials), record a run, then disconnect and record another | The first run appears on Strava once, with its route; the second doesn't; Strava's "My Apps" no longer lists PaceLeague |
+| P2-FILES | Import a GPX, a TCX and a FIT file from Profile › Imports and sync (the Files picker) | Each imports once as history with its route; importing the same file again says it's already there |
+
+**Part A failure tests (all must pass before Phase 2 ships).** For each, finish the run, restore
+the condition and wait for sync. Pass: the run ends *Synced* or *Needs attention* with a reason;
+no run is lost; nothing counts twice in the standings.
+
+| Case | Condition |
+|---|---|
+| A-AIRPLANE | Airplane mode for the whole run (phone, then watch) |
+| A-PHONE-HOME | Phone left at home during a watch run |
+| A-WATCH-BATTERY | Watch battery dies mid-run |
+| A-FORCE-QUIT | App force-quit on the phone mid-run, and on the watch after finishing |
+| A-RESTART | Phone restarted before sync |
+| A-ACCOUNTS | Watch paired to a phone signed in to a different PaceLeague account than the one used before |
+| A-HEALTH-OFF | Apple Health permission revoked before the import |
+| A-STORAGE | Low storage on the phone (under 200 MB free) |
+| A-TWICE | The same workout imported twice (Health and a file of it) |
+| A-BOTH | The same run recorded on the phone and the watch |
+
+Targets across the TestFlight round: zero lost runs, zero duplicates in standings, at least 99.5%
+of runs synced without action, and a median under 60 seconds from finish to synced when the
+phone is nearby.
+
 ## Log template
 
 ```

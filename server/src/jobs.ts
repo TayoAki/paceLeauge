@@ -47,8 +47,10 @@ export async function runFrequentJobs(pool: Pool, log: Logger): Promise<void> {
 export async function runHourlyJobs(pool: Pool, log: Logger): Promise<void> {
   await withLock(pool, HOURLY_LOCK, async (run) => {
     const [row] = (await run('select private.purge_expired() as result')) as { result: Record<string, number> }[];
+    // Diagnostics reports runners sent (Phase 2.6) are kept 30 days.
+    const [diagnostics] = (await run('select private.purge_diagnostics() as n')) as { n: number }[];
     await run(AUTH_CLEANUP);
-    log.info('hourly retention', row?.result ?? {});
+    log.info('hourly retention', { ...(row?.result ?? {}), diagnostic_reports: diagnostics?.n ?? 0 });
   });
 }
 

@@ -88,11 +88,12 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 | 4 | Friends, family and everyone | Leagues 2.0 with group runs, privacy zones, follow, feed, clubs, challenges, opt-in leaderboards, live location, push, teen family accounts | 23–36 weeks |
 | 5 | Maps | Route planning, offline maps and navigation, segments, heatmaps | 18–28 weeks |
 
-**Progress (28 September 2026).** Phase 0's age check and Phase 1 are built and tested in code:
-the server by 174 database tests, the app by 179 unit tests and a browser walkthrough of every
-new screen. What remains for Phase 1 is on-device: the Part C audio matrix and the other checks in
-DEVICE_TEST_PROTOCOL.md ("Phase 1 device checks"), the first native build of the new Swift and
-Kotlin code, and the recorded voice (content budget). Each item below says what was built.
+**Progress (28 September 2026).** Phase 0's age check, Phase 1 and Phase 2 are built and tested
+in code: the server by 239 database and API tests, the app by 212 unit tests and a browser
+walkthrough of the new screens. What remains is on devices: the Part C audio matrix and the Part A
+failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new Swift and Kotlin code
+(the watch app is off until then), the recorded voice, and the Strava and Terra accounts. Each
+item below says what was built.
 
 Sizes are rough engineer-weeks for one engineer working with Claude, before testing on devices.
 Sizes per epic: **S** is up to a week, **M** 1–3 weeks, **L** 3–6 weeks, **XL** more than 6.
@@ -444,6 +445,10 @@ TestFlight, and the new features are in the data export.
   - Every case in the Part A failure tests passes.
   - An Apple Watch run imports once, with its route, and scores like a phone run.
   - A Garmin workout imports as personal history with a clear explanation.
+- Built: `src/features/health/health-import.ts` (30-day backfill, background delivery, one run per
+  workout by its Health id, routes read and released), the source rules and duplicate resolution in
+  `20260929000100_run_sources.sql`, and an Imports switch in Run settings. Indoor workouts carry
+  their steps, for 2.5.
 
 **2.2 PaceLeague Apple Watch app** · XL
 - What: start a run from the watch without the phone, see pace, distance, heart rate and planned
@@ -463,6 +468,13 @@ TestFlight, and the new features are in the data export.
   - A 60-minute run with the phone left at home syncs within a minute of reaching Wi-Fi.
   - Every Part A failure test passes.
   - Battery use is recorded on a Series 6 or later.
+- Built, behind `PL_WATCH=1` until it has run on devices: `targets/watch` (watchOS 10: workout
+  session, live and route builders, press-and-hold pause, voice cues, treadmill runs, the week and
+  league on the start screen), `targets/watch-complication`, and the phone's `modules/watch-link`.
+  Runs reach the phone two ways under one run id: a queued WatchConnectivity file and the Apple
+  Health copy, so a run counts once whichever arrives first. The live run is mirrored to Today.
+  Not built yet: direct upload from the watch without the phone, and planned workout steps
+  (they come with plans in 3.1).
 
 **2.3 Strava export** · S–M
 - What: optionally post each accepted run to the runner's Strava account.
@@ -470,6 +482,11 @@ TestFlight, and the new features are in the data export.
   server-side and can be revoked from Profile. Nothing is read back from Strava into leagues;
   Strava's agreement forbids showing a runner's Strava data to others.
 - Done when: a run appears in Strava once, and disconnecting stops further posts.
+- Built: `20260930000100_strava.sql`, `server/src/strava.ts` (OAuth callback, GPX upload with
+  processing checks, token refresh, rate-limit windows, revocation, Strava's webhook), and
+  Profile › Connections. Accepted runs recorded with PaceLeague post automatically; any run with a
+  route can be posted from its detail screen. Tokens are sealed with AES-256-GCM. Off until the
+  Strava credentials are set (OPERATIONS.md).
 
 **2.4 File import and Garmin sync** · M, plus M for the aggregator
 - What: import GPX, FIT or TCX files from the share sheet as personal history. A file can be
@@ -482,6 +499,12 @@ TestFlight, and the new features are in the data export.
   - The Apple Health copy of the same Garmin workout is detected as a duplicate (Part A).
 - Done when: a FIT file shows its route and splits in the log, and a Garmin run synced through
   the aggregator scores once, even though Apple Health has it too.
+- Built: files are picked in Imports and sync (the Files picker; opening a file from the share
+  sheet is not wired up yet), parsed on the phone (`src/domain/file-import.ts`; FIT with Garmin's
+  FIT SDK), uploaded with their points, measured by the server and kept as history. Garmin sync through Terra:
+  `20260930000200_garmin.sql` and `server/src/garmin.ts` (signed webhook, a queue, and upload as
+  the runner through the normal upload path with source `garmin`). Off until Terra's credentials
+  are set, which decision 1 ties to the Garmin user-count trigger.
 
 **2.5 Treadmill and indoor runs** · M
 - What: record indoor runs. Distance comes from the phone's step counter, calibrated against the
@@ -493,16 +516,24 @@ TestFlight, and the new features are in the data export.
     plausibility checks, and at a lower daily cap than outdoor runs, since GPS can't check them.
   - A typed-in distance never earns league XP.
 - Done when: the league rules page explains indoor credit, and tests cover the cap.
+- Built: treadmill runs on the phone (`src/features/indoor`: a clock, the step counter, the
+  runner's confirmed distance, stride learned from treadmill corrections and outdoor runs), and
+  `20260929000300_indoor_credit.sql`: a watch indoor run whose pace, cadence, stride and heart rate
+  look like running earns XP for up to 5 km a day; the rules page explains it.
 
 **2.6 Sync status and repair** · S
 - What: the per-run sync states and retry described in Part A, a sync screen in Profile, and a
   one-tap *send diagnostics* for support.
 - Done when: every failure test ends in *Synced* or *Needs attention* with a reason.
+- Built: Profile › Imports and sync (each unsynced run with its state and reason, retry, the last
+  Health import, file import) and *Send diagnostics* (counts, states and error codes only).
 
 **2.7 Walks, hikes and other workouts** · S–M
 - What: walks, hikes, rides and strength workouts from Apple Health appear in the log and count
   toward training load (3.5). They never earn league XP.
 - Done when: the log filters by type and totals separate running from everything else.
+- Built: activity filters on the calendar and stats, a running-versus-everything-else card
+  (`20260929000400_activity_totals.sql`), and walks or rides shown as "saved to your log".
 
 **Phase 2 is done when** the Part A targets are met across a two-week TestFlight round with at
 least 20 Apple Watch users and at least 5 Garmin users.

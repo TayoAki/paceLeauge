@@ -240,9 +240,76 @@ The app has three native pieces beyond V1, all in this repository and switched o
 
 If a build fails in one of them, leave it out while you look into it: `PL_WIDGETS=0` or
 `PL_HEALTHKIT=0` in the build profile's `env` (the app hides what isn't built in). For local
-Xcode builds of the widget, set `APPLE_TEAM_ID`. App Store Connect's privacy questionnaire needs
-"Health & Fitness" data declared as not collected (it stays on the device), and App Review expects
-the HealthKit use to be described in the app's privacy policy (done in `legal/privacy-policy.md`).
+Xcode builds of the widget, set `APPLE_TEAM_ID`.
+
+**App Store privacy (updated for Phase 2).** Apple Health import reads workouts, their routes, heart
+rate and steps, and uploads the runs it brings in, with their provenance and heart-rate averages.
+So App Store Connect's questionnaire must now declare "Health & Fitness" and "Precise Location" as
+collected, linked to the runner, used for app functionality, and not used for tracking. App Review
+expects the HealthKit use in the privacy policy (`legal/privacy-policy.md`, "Apple Health and
+Apple Watch"). HealthKit background delivery (imports that sync without opening the app) needs
+the `com.apple.developer.healthkit.background-delivery` entitlement, which the HealthKit plugin
+adds with `background: true`.
+
+### Phase 2 native pieces
+
+- **Treadmill runs** use the step counter (`expo-sensors`), with `NSMotionUsageDescription` in
+  `app.config.ts`.
+- **Apple Watch app** (`targets/watch`, `targets/watch-complication`, `modules/watch-link`): off
+  unless the build sets `PL_WATCH=1`, until its first build has run on a watch. It adds the bundle
+  ids `<bundle id>.watchkitapp` and `<bundle id>.watchkitapp.complication`, HealthKit for the watch
+  app, and the App Group on both. EAS creates the profiles; watchOS 10 is the minimum. Test the
+  generated Xcode project early (the roadmap notes an open `@bacons/apple-targets` issue about
+  embedding watch apps); `npx expo prebuild` with `PL_WATCH=1` already produces both targets.
+- **Connections** use `expo-web-browser`'s sign-in sheet and return to `paceleague://strava` or
+  `paceleague://garmin`.
+
+## Integrations (Phase 2)
+
+Both are off until their variables are set on the `api` service. Nothing about them is in the app.
+
+### Strava export (2.3)
+
+1. Create an API application at <https://www.strava.com/settings/api>. Set the *Authorization
+   Callback Domain* to the API's domain (for example `api.paceleague.app`, no scheme or path).
+2. Set, as sealed variables:
+
+| Variable | Value |
+|---|---|
+| `STRAVA_CLIENT_ID` | The application's client id (a number) |
+| `STRAVA_CLIENT_SECRET` | Its client secret |
+| `STRAVA_TOKEN_KEY` | `openssl rand -base64 32`. Encrypts runners' tokens in the database; changing it disconnects everyone |
+| `PUBLIC_URL` | The API's public URL, `https://…`. Strava sends runners to `${PUBLIC_URL}/integrations/strava/callback` |
+| `STRAVA_WEBHOOK_VERIFY_TOKEN` | Any random string, for the webhook subscription below |
+| `APP_RETURN_URLS` | Optional; defaults to `paceleague://`. Where the callback may send runners back (the web app's origins from `CORS_ORIGINS` are added) |
+
+3. Subscribe to Strava's webhook once per environment, so a runner who revokes PaceLeague on
+   Strava is disconnected:
+   `curl -X POST https://www.strava.com/api/v3/push_subscriptions -F client_id=… -F client_secret=… -F callback_url=${PUBLIC_URL}/integrations/strava/webhook -F verify_token=…`
+4. New applications may upload only for their own athlete until Strava reviews them; request a
+   higher athlete capacity before the beta. Strava's limits are 200 requests per 15 minutes and
+   2,000 a day by default; uploads wait for the next window when limited.
+
+The service posts accepted runs recorded with PaceLeague (phone or watch) once a minute, and
+revokes grants after a disconnect or account deletion (`oauth/revoke`). Logs: `strava jobs`,
+`strava connect`, `strava upload retry`, `strava grant revoked`.
+
+### Garmin through Terra (2.4)
+
+Switch on when decision 1's trigger is met (about 50 active runners, or 15% of weekly active
+runners, use Garmin), after confirming the Terra plan includes GPS samples and its terms allow
+league scoring.
+
+1. In Terra's dashboard, enable Garmin, and add a webhook destination
+   `${PUBLIC_URL}/integrations/garmin/webhook` for the auth, deauth and activity events.
+2. Set, as sealed variables: `TERRA_DEV_ID`, `TERRA_API_KEY` and `TERRA_WEBHOOK_SECRET` (the
+   destination's signing secret). All three are required together.
+
+Terra signs each event (`terra-signature`); unsigned, forged or older-than-five-minute events get
+401. Activities are queued and uploaded as the runner once a minute with source `garmin`, through
+the same validation as a phone run; the Apple Health copy of the same workout becomes a duplicate.
+A disconnect or account deletion deauthorizes the Terra user. Logs: `garmin jobs`, `garmin
+connect`, `garmin activity refused`, `garmin deauth retry`.
 
 ## Flags
 
@@ -271,6 +338,8 @@ there are (`RUN_JOBS=false` opts an instance out).
 | Job | Schedule | Does |
 |---|---|---|
 | `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts) and applies pending scoring. Logs `frequent jobs` when it did something |
+| Strava uploads and revocations | every minute, when Strava is configured | Queues accepted runs of connected runners, uploads them, follows processing, refreshes tokens, confirms webhook deauthorizations, revokes ended grants. Logs `strava jobs` |
+| Garmin events | every minute, when Terra is configured | Uploads queued Garmin activities as their runners, deauthorizes ended links, keeps processed events a week. Logs `garmin jobs` |
 | `private.purge_expired()` + sign-in cleanup | hourly, and 5 s after each start | Removes uploads never finalized after 7 days (the phone keeps its copy), expired exports, operational events after 14 days, rate-limit windows after 2 days, resolved reports after 90 days, dead invites after 30 days, completed deletion records after 30 days, expired sign-in codes, and revoked sessions after 30 days. Logs `hourly retention` |
 
 A failure logs `job failed` with the job name, and the job runs again on its next tick.

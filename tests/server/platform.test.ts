@@ -119,7 +119,14 @@ describe('scheduled jobs and secrets', () => {
 
       await runFrequentJobs(pool, silentLogger);
       expect((await db.sql('select 1 from auth.users where id = $1', [runner.id])).length).toBe(0);
+
+      // The hourly job keeps diagnostics reports for 30 days.
+      const sender = await db.createRunner('Reporter');
+      await db.rpc(sender, 'submit_diagnostics', { p_report: { app_version: 'test' } });
+      await db.rpc(sender, 'submit_diagnostics', { p_report: { app_version: 'old' } });
+      await db.sql(`update private.diagnostic_reports set created_at = now() - interval '31 days' where report ->> 'app_version' = 'old'`);
       await expect(runHourlyJobs(pool, silentLogger)).resolves.toBeUndefined();
+      expect(await db.sql(`select report ->> 'app_version' as v from private.diagnostic_reports where user_id = $1`, [sender.id])).toEqual([{ v: 'test' }]);
     } finally {
       await pool.end();
     }

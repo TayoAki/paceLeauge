@@ -34,6 +34,8 @@ const DATA_HANDLING = [
   'Run summaries and routes stay until you delete them or delete your account.',
   'Deleting your account hides you from your league right away and removes your primary data within 7 days.',
   'App analytics never include your routes, locations, email or run titles.',
+  'Runs you bring in from Apple Health, a file, Garmin or the Apple Watch app are stored the same way, with the app and device that recorded them and, when they have it, heart rate and steps.',
+  'If you connect Strava, the runs you post there include their routes and follow your Strava settings.',
 ];
 
 function runDate(ms: number | null): string | undefined {
@@ -123,7 +125,7 @@ export default function PrivacyScreen() {
       </View>
 
       <RowGroup>
-        <Row icon={Route} label="Routes" value="Only you" hint="Routes never appear in leagues or share images." />
+        <Row icon={Route} label="Routes" value="Only you" hint="Routes never appear in leagues or share images. Runs you post to Strava are the one exception you control." />
         <Row icon={Users} label="League profile" value="Members only" hint="Your league sees your runner name, tier and weekly XP." />
         <Row icon={Bell} label="Notifications" value="Manage" onPress={() => router.push('/profile/notifications')} last />
       </RowGroup>

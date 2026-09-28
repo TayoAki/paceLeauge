@@ -8,7 +8,7 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 
 ## The short version
 
-- Your routes — the map of where you ran — are visible only to you. They never appear in leagues or in share images.
+- Your routes — the map of where you ran — are visible only to you. They never appear in leagues or in share images. If you choose to connect Strava, the runs you post there include their routes, under your Strava settings.
 - Your league sees your runner name, tier and weekly XP. Not your email address, and not your routes.
 - We don't sell your data, show ads, or use third-party advertising or analytics tools.
 - You can export your data and delete your account from inside the app, at any time.
@@ -28,6 +28,14 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 - What we calculate from a run: distance, time, pace, splits, XP, which competition days it counts toward, your fastest times for set distances (personal records), badges and your weekly streak.
 - The titles, activity types and private notes you give your runs, and the shoes you track (their names, the distance you set for a replacement reminder, and which runs you wore them for).
 - If you fix a run (trim it, cut out a stop, change its activity or merge two runs), we keep the run as it was first saved, so you can restore it.
+- Where a run came from: this phone, the PaceLeague Apple Watch app, Apple Health, a file you imported, Garmin, or a treadmill run. For runs from elsewhere we also keep the app and device that recorded it, whether it was typed in by hand, the distance that source reported, and, when the source has them, the average and maximum heart rate and the number of steps.
+
+### Runs from your watch and other apps
+
+- **Apple Watch app:** while you record a run on the watch, it uses the watch's precise location, heart rate and steps. When you finish, it saves the run to Apple Health and sends it to your phone, which uploads it like a run recorded on the phone.
+- **Treadmill runs:** while you record one on your phone, PaceLeague reads your step count from the phone's motion sensor to estimate the distance. The distance you confirm and the step count are uploaded with the run. The stride length PaceLeague learns from your runs stays on your phone.
+- **Files:** when you import a GPX, TCX or FIT file, the route, times, distance and heart rate in it are uploaded as a run.
+- **Garmin:** only if you connect Garmin. The connection goes through Terra, a service that connects fitness devices: you sign in to Garmin in Terra's page, Terra receives your Garmin activities under its own terms and privacy policy, and sends each one to us with its route, heart rate, steps and device. We keep Terra's identifier for your connection, and turn the connection off with Terra when you disconnect or delete your account.
 
 ### Leagues and safety
 
@@ -39,6 +47,7 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 
 - A small set of app events, such as whether a run synced or whether you granted a permission. They use broad categories (for example, that a run lasted between 30 and 60 minutes) and never include coordinates, routes, email addresses or run titles.
 - IP addresses, used to limit repeated attempts (such as password guesses) and to protect the service. Most are stored only as one-way hashes. Our hosting provider also keeps standard request logs for a limited time.
+- If you tap Send diagnostics in Imports and sync: a report of how many runs are waiting and where they came from, their sync states, error codes and retry counts, when Apple Health last imported, the app version, and the phone's operating system and its version. It never includes locations, routes, run titles or notes.
 
 ### On your phone
 
@@ -48,7 +57,16 @@ While you run, your distance, time and pace are shown on your lock screen and in
 
 ### Apple Health
 
-Only if you turn on "Save runs to Apple Health": when you finish a run, PaceLeague saves it to Apple Health as a workout with its time, distance and route. If you delete or fix the run in PaceLeague, we delete or update that workout. PaceLeague never reads your Health data, and what we write to Health stays in Health on your device (and in iCloud if you use it); it isn't sent to us. We don't use Health information for advertising or share it with anyone. You can stop it at any time in Run settings or in the Health app.
+PaceLeague works with Apple Health in two ways, each only if you turn it on in Run settings:
+
+- **Save runs to Apple Health:** when you finish a run, PaceLeague saves it to Apple Health as a workout with its time, distance and route. If you delete or fix the run in PaceLeague, we delete or update that workout. What we write to Health stays in Health on your device (and in iCloud if you use it).
+- **Import from Apple Health:** PaceLeague reads your running, walking, hiking, cycling and strength workouts from the last 30 days and new ones as they arrive, with their routes, heart rate, and step counts for indoor workouts, and uploads each as a run, with the details listed under "Your runs". Runs from the PaceLeague Apple Watch app arrive this way too.
+
+We use Health information only to provide PaceLeague: to bring in your runs, measure them and check them for your league. We don't use it for advertising or marketing, don't sell it, and don't share it with anyone except as described in this policy (for example, a run you post to Strava). You can stop either at any time in Run settings, or remove PaceLeague's access in the Health app.
+
+### Strava
+
+Only if you connect Strava in Profile → Connections. We keep your Strava athlete identifier and name, and the keys Strava gives us to post for you, encrypted. After a run is accepted we send it to Strava — its route, times and title — and keep whether it was posted and Strava's identifier for it. Once on Strava, a run follows Strava's settings and privacy policy, and stays there if you disconnect. We don't read anything back from Strava. Disconnecting (or deleting your account) stops posting and withdraws PaceLeague's access with Strava.
 
 ## How we use it
 
@@ -65,6 +83,7 @@ We don't use your information for advertising, and we don't sell it or share it 
 - Your league sees your runner name, tier and weekly XP, and how many cheers you received this week. Nothing about where you ran. Your notes, shoes, records, badges and streak are visible only to you.
 - If you use Share, the image shows only distance, time and pace, with no map or location, and you choose where it goes.
 - Moderators working for us see reports and what they need to decide them. Routes are never part of moderation.
+- If you connect Strava or Garmin, the runs described above go to Strava or come from Terra, each under its own terms.
 - Service providers process data on our behalf to run PaceLeague: Railway hosts the service and its database in the United States. Apple provides Sign in with Apple if you use it, draws the maps in the app with Apple Maps (so the map areas you view are requested from Apple), and distributes the app through TestFlight and the App Store under Apple's own privacy policy.
 - If we start sending email (for example, to reset passwords), an email delivery provider will process your email address for that purpose. We will update this policy before that happens.
 - We may disclose information if the law requires it, or to protect the rights, property or safety of our users, the public or us.
@@ -75,6 +94,7 @@ We don't use your information for advertising, and we don't sell it or share it 
 - Your account, profile, runs and routes: until you delete them or your account. The same goes for notes, shoes, records, badges, streak weeks, cheers and the saved original of a fixed run (until you restore it, delete the run or delete your account).
 - Deleting a run removes its route and details right away. A small placeholder with no location stays so your devices stay in sync.
 - Deleting your account hides you from your league immediately and removes your data within 7 days (usually within minutes). Copies may remain in backups for up to 30 days before they are overwritten.
+- Your Strava connection and Garmin link: until you disconnect or delete your account. Garmin activities waiting for us to process them: 7 days after they are processed. Diagnostics reports you send: 30 days.
 - App events: 14 days. Rate-limit records: 2 days. Resolved reports: 90 days after they are resolved. Expired invites: 30 days. Export files: 24 hours. Uploads that were never finished: 7 days. A record that an account deletion was completed, without your data: 30 days.
 
 ## Your choices and rights
@@ -83,6 +103,8 @@ We don't use your information for advertising, and we don't sell it or share it 
 - **Correct:** edit your profile or rename your runs at any time.
 - **Delete:** delete individual runs, or your whole account under Profile → Privacy → Delete account.
 - **Location:** you control location permission in iOS Settings. Recording a run needs it; everything else works without it.
+- **Health and motion:** you control Apple Health access in the Health app, and motion access (for treadmill runs) in iOS Settings.
+- **Connections:** connect or disconnect Strava and Garmin at any time in Profile → Connections.
 - **Reminders:** optional, and you can turn them off at any time. They are scheduled on your phone; we don't send push notifications.
 
 Depending on where you live, for example in California, you may have rights to know, access, correct or delete your personal information, and not to be discriminated against for using them. We honor these requests for everyone. Contact us at [Contact email]; we may need to confirm it's you first.
