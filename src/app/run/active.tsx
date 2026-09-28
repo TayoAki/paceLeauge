@@ -7,6 +7,7 @@ import { BackHandler, StyleSheet, View } from 'react-native';
 import { GpsStatus, MetricBlock, RecordingControls, TouchLockOverlay, useAnnounce } from '@/components/run/run-components';
 import { routeLines } from '@/components/run/route-lines';
 import { RouteMap } from '@/components/run/route-map';
+import { WorkoutPanel } from '@/components/run/workout-panel';
 import { IconButton, PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { InlineStatus } from '@/components/ui/elements';
@@ -235,6 +236,7 @@ export default function ActiveRunScreen() {
           />
         ) : null}
 
+        <WorkoutPanel units={units} onSkip={() => runtime.workout.skip(units)} />
         {metricsBlock}
 
         {recording && metrics.quality === 'weak' ? <InlineStatus tone="warning" title="GPS is weak. Distance may be incomplete." /> : null}

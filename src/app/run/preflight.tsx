@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { Info, Lock, MapPin, Satellite } from 'lucide-react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { CalendarCheck, Info, Lock, MapPin, Satellite } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 
@@ -12,6 +12,8 @@ import { NavHeader, Screen } from '@/components/ui/layout';
 import { RECORDER_V1 } from '@/domain/config';
 import { useAccountServices } from '@/features/account/account-provider';
 import { locationDriver } from '@/features/recording/location-driver';
+import { formatMinutes } from '@/features/plans/plan-client';
+import { usePlanState } from '@/features/plans/use-plan';
 import { blocker, blockerCopy, signalLevel, type PermissionStatus, type PreflightState } from '@/features/recording/preflight';
 import { ActiveRunExistsError } from '@/features/recording/recorder-service';
 import { Text } from '@/design/text';
@@ -49,6 +51,26 @@ export default function PreflightScreen() {
   useEffect(() => {
     if (runtime.indoor.current) router.replace('/run/indoor');
   }, [runtime, router]);
+
+  // A planned session to follow (docs/ROADMAP.md 3.1): ready for the run to start, and let go
+  // if the runner leaves without starting.
+  const { session: sessionId } = useLocalSearchParams<{ session?: string }>();
+  const { state: plan } = usePlanState();
+  const planned = sessionId && plan?.server.status === 'active' ? (plan.server.sessions.find((s) => s.id === sessionId) ?? null) : null;
+  const planId = plan?.server.id ?? null;
+  const zones = plan?.plan?.zones ?? null;
+  useEffect(() => {
+    if (!planned || !planId) return;
+    runtime.workout.prepare({
+      source: { kind: 'plan', planId, sessionId: planned.id },
+      title: planned.title,
+      blocks: planned.blocks,
+      zones,
+    });
+    return () => {
+      if (!runtime.recorder.getSnapshot().session) runtime.workout.cancel();
+    };
+  }, [runtime, planned, planId, zones]);
 
   const refresh = useCallback(async () => {
     const services = await Location.hasServicesEnabledAsync().catch(() => true);
@@ -232,6 +254,11 @@ export default function PreflightScreen() {
         </>
       }>
       <NavHeader title="Ready to run?" />
+      {planned ? (
+        <RowGroup>
+          <Row icon={CalendarCheck} label={planned.title} value={formatMinutes(planned.duration_s)} hint="Today’s workout. Steps are spoken as you go." last />
+        </RowGroup>
+      ) : null}
       <RouteMap
         lines={[]}
         height={230}

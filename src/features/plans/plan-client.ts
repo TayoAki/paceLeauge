@@ -357,6 +357,14 @@ export function formatMinutes(durationS: number): string {
   return m === 0 ? `${h} h` : `${h} h ${m} min`;
 }
 
+/** A step's length: "3 min", "90 s", "2:30 min". */
+export function formatStepLength(durationS: number): string {
+  const s = Math.round(durationS);
+  if (s % 60 === 0) return formatMinutes(s);
+  if (s < 120) return `${s} s`;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} min`;
+}
+
 /** h:mm:ss or m:ss for race times. */
 export function formatRaceTime(s: number): string {
   const total = Math.round(s);
@@ -379,7 +387,7 @@ export function parseRaceTime(text: string): number | null {
 /** One line per step, repeats folded: "4 × 3 min hard, 2 min easy". */
 export function describeBlocks(blocks: WorkoutBlock[]): string[] {
   const step = (st: WorkoutBlock['steps'][number]) => {
-    const amount = st.distanceM ? `${(st.distanceM / 1000).toFixed(st.distanceM % 1000 === 0 ? 0 : 1)} km` : formatMinutes(st.durationS ?? 0);
+    const amount = st.distanceM ? `${(st.distanceM / 1000).toFixed(st.distanceM % 1000 === 0 ? 0 : 1)} km` : formatStepLength(st.durationS ?? 0);
     const what =
       st.kind === 'warmup' ? 'warm-up' : st.kind === 'cooldown' ? 'cool-down' : st.kind === 'recover' ? 'recovery' : st.kind === 'walk' ? 'walk' : '';
     const effort = st.effort === 'walk' ? (st.kind === 'walk' ? '' : 'walking') : EFFORT_NAMES[st.effort].toLowerCase();

@@ -167,6 +167,8 @@ describe('words', () => {
     const plan = generatePlan(input);
     const intervals = plan.weeks.flatMap((w) => w.sessions).find((s) => s.kind === 'intervals')!;
     expect(describeBlocks(intervals.blocks)).toEqual(['12 min easy warm-up', '3 × 4 min hard, 2 min easy recovery', '5 min easy cool-down']);
+    const runWalk = generatePlan({ ...input, type: 'start_running', level: 'beginner', daysPerWeek: 3 }).weeks[1]!.sessions[0]!;
+    expect(describeBlocks(runWalk.blocks)).toEqual(['5 min walking warm-up', '7 × 90 s easy, 90 s walk', '5 min walking cool-down']);
     expect(formatPaceRange({ fastSPerKm: 300, slowSPerKm: 330 }, 'metric')).toBe('5:00–5:30 /km');
     expect(formatPaceRange({ fastSPerKm: 300, slowSPerKm: 330 }, 'imperial')).toBe('8:03–8:51 /mi');
   });

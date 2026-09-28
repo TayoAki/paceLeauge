@@ -22,6 +22,7 @@ import { deviceRunActivity, LiveActivityController } from '@/features/run-activi
 import { CueController } from '@/features/voice/cue-controller';
 import { RunSettingsStore } from '@/features/voice/run-settings';
 import { deviceVoiceOutput } from '@/features/voice/voice-output';
+import { WorkoutController } from '@/features/workout/workout-controller';
 
 /**
  * One open journal + recorder per account per process, shared by the UI and by the
@@ -36,6 +37,8 @@ export interface AccountRuntime {
   /** Voice cue and auto-pause choices for this account, kept on this phone. */
   runSettings: RunSettingsStore;
   cues: CueController;
+  /** The plan session or guided run the current run follows. */
+  workout: WorkoutController;
   /** Writes finished runs to Apple Health when the runner has switched it on. */
   health: AppleHealthSync;
   /** The run on the lock screen and in the Dynamic Island. */
@@ -114,8 +117,11 @@ async function create(accountId: string): Promise<AccountRuntime> {
       // Pause and resume events drive voice cues only; they are not telemetry.
     },
   });
-  // Cues listen before recovery so a run resumed after a relaunch is picked up mid-way.
-  const cues = new CueController(recorder, deviceVoiceOutput(), runSettings);
+  // Cues listen before recovery so a run resumed after a relaunch is picked up mid-way, with the
+  // workout it was following.
+  const workout = new WorkoutController(journal);
+  await workout.restore();
+  const cues = new CueController(recorder, deviceVoiceOutput(), runSettings, workout);
   cues.start();
   const liveActivity = new LiveActivityController(recorder, deviceRunActivity(), () => runSettings.units);
   liveActivity.start();
@@ -129,7 +135,7 @@ async function create(accountId: string): Promise<AccountRuntime> {
   });
   await indoor.restore();
   const watchRuns = new WatchRunInbox({ journal, link: deviceWatchLink() });
-  return { accountId, journal, recorder, telemetry, runSettings, cues, health, liveActivity, healthImport, indoor, watchRuns };
+  return { accountId, journal, recorder, telemetry, runSettings, cues, workout, health, liveActivity, healthImport, indoor, watchRuns };
 }
 
 export async function openAccountRuntime(accountId: string): Promise<AccountRuntime> {
