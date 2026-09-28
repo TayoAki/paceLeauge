@@ -75,6 +75,12 @@ export const REPORT_REASONS: Record<ReportKind, { value: ContentReportReason; la
     { value: 'impersonation', label: 'Pretending to be someone else' },
     { value: 'other', label: 'Something else' },
   ],
+  segment: [
+    { value: 'cheating', label: 'Not a real run (car, bike or made up)' },
+    { value: 'offensive_name', label: 'Offensive name' },
+    { value: 'impersonation', label: 'Pretending to be someone else' },
+    { value: 'other', label: 'Something else' },
+  ],
   challenge: [
     { value: 'offensive_name', label: 'Offensive name' },
     { value: 'harassment', label: 'Aimed at someone' },

@@ -5,7 +5,7 @@ import { competitionWeekAt } from '../../src/domain/calendar';
 import { destinationPoint } from '../../src/domain/geo';
 import { chunk, encodeChunk } from '../../src/domain/route-codec';
 import { deriveCues, toRoutePoint, type RoutePoint } from '../../src/domain/routes';
-import { CHICAGO_LAKEFRONT, steadyRun } from '../../src/domain/synthetic';
+import { buildSyntheticRun, CHICAGO_LAKEFRONT, steadyRun, type SyntheticRun } from '../../src/domain/synthetic';
 
 import { hashPassword } from '../../server/src/auth/passwords';
 import { callRpc, type Claims } from '../../server/src/rpc';
@@ -169,10 +169,15 @@ async function ensureRunner(pool: pg.Pool, member: Member): Promise<Claims> {
   return claims;
 }
 
-async function upload(pool: pg.Pool, claims: Claims, [dayOffset, distanceM, activeS, title]: DemoRun, weekStart: number): Promise<boolean> {
+async function upload(pool: pg.Pool, claims: Claims, [dayOffset, distanceM, activeS, title]: DemoRun, weekStart: number): Promise<string | null> {
   const startAt = weekStart + dayOffset * DAY_MS + 7 * 3_600_000 + Math.round((distanceM % 997) * 1000);
-  const run = steadyRun(startAt, distanceM, activeS);
-  if (run.endedAt > Date.now()) return false;
+  return uploadRun(pool, claims, steadyRun(startAt, distanceM, activeS), activeS, title);
+}
+
+/** Uploads a synthetic run through the real protocol; null when it would end in the future. */
+async function uploadRun(pool: pg.Pool, claims: Claims, run: SyntheticRun, activeS: number, title?: string): Promise<string | null> {
+  const startAt = run.startedAt;
+  if (run.endedAt > Date.now()) return null;
   const clientRunId = randomUUID();
   const chunks = chunk(run.points).map((points, seq) => {
     const body = encodeChunk(points);
@@ -212,7 +217,7 @@ async function upload(pool: pg.Pool, claims: Claims, [dayOffset, distanceM, acti
     p_expected_version: start.version,
     p_manifest: chunks.map((c) => ({ seq: c.seq, checksum: c.checksum })),
   });
-  return true;
+  return start.run_id;
 }
 
 export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; viewerAlias?: string }): Promise<void> {
@@ -394,7 +399,75 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
     p_ascent_m: null,
   });
 
+  await seedSegments(pool, weekStart);
+
   console.log(
     `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends and a family league, with a club and challenges; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,
   );
+}
+
+/** Runners on the segment boards, outside the viewer's league: [day offset from this week's Monday, speed in m/s]. */
+const SEGMENT_RUNNERS: (Member & { runs: [number, number][] })[] = [
+  // The local regular: the most different days.
+  { alias: 'Priya', email: 'priya@demo.paceleague.test', runs: [[-12, 3.4], [-9, 3.5], [-6, 3.5], [-2, 3.6]] },
+  // The quickest.
+  { alias: 'Marco', email: 'marco@demo.paceleague.test', runs: [[-8, 4.4], [-3, 4.5]] },
+  { alias: 'Lena', email: 'lena@demo.paceleague.test', runs: [[-5, 3.8]] },
+];
+
+/**
+ * Segments (docs/ROADMAP.md 5.3): a moderator (Rowan, staff@demo.paceleague.test) made two
+ * segments from routes along the demo runs' line east of the lakefront start. Three runners
+ * outside the viewer's league joined the boards and share their runs with everyone, maps
+ * included; one of Zed's times was faster than a runner could go, so it waits in the
+ * moderation queue. The viewer hasn't joined.
+ */
+async function seedSegments(pool: pg.Pool, weekStart: number): Promise<void> {
+  const staff = await ensureRunner(pool, { alias: 'Rowan', email: 'staff@demo.paceleague.test' });
+  await pool.query(`select private.grant_staff_role($1, 'moderator', 'Development seed', 'dev-seed')`, [staff.sub]);
+  const east = (m: number) => toRoutePoint(destinationPoint(CHICAGO_LAKEFRONT, 90, m));
+  for (const [name, from, to] of [
+    ['Park straight', 500, 1500],
+    ['Harbor stretch', 1700, 2500],
+  ] as const) {
+    const route = await rpc<{ id: string }>(pool, staff, 'save_route', {
+      p_route_id: null,
+      p_name: name,
+      p_kind: 'drawn',
+      p_points: [east(from), east(to)],
+      p_cues: [],
+      p_ascent_m: null,
+    });
+    await rpc(pool, staff, 'mod_create_segment', { p_route_id: route.id, p_name: name, p_surface: 'path' });
+  }
+
+  const share = async (claims: Claims, runId: string | null) => {
+    if (runId) await rpc(pool, claims, 'set_run_sharing', { p_run_id: runId, p_visibility: 'everyone', p_map_shared: true });
+  };
+  for (const runner of SEGMENT_RUNNERS) {
+    const claims = await ensureRunner(pool, runner);
+    await rpc(pool, claims, 'join_segments');
+    for (const [dayOffset, speed] of runner.runs) {
+      const activeS = Math.round(3000 / speed);
+      await share(claims, await upload(pool, claims, [dayOffset, 3000, activeS, 'Morning run'], weekStart));
+    }
+  }
+  // Zed: an easy run with the first segment at 7.5 m/s, held for a moderator.
+  const zed = await ensureRunner(pool, { alias: 'Zed', email: 'zed@demo.paceleague.test' });
+  await rpc(pool, zed, 'join_segments');
+  const startAt = weekStart - 4 * DAY_MS + 18 * 3_600_000;
+  const legs = [
+    { kind: 'run' as const, durationS: 150, speedMps: 3 },
+    { kind: 'run' as const, durationS: 150, speedMps: 7.5 },
+    { kind: 'run' as const, durationS: 500, speedMps: 3 },
+  ];
+  // One stretch: the legs join up without a pause (each leg's first fix repeats the last one).
+  const built = buildSyntheticRun({ startAt, legs });
+  const run: SyntheticRun = {
+    ...built,
+    segments: [{ index: 0, startAt: built.startedAt, endAt: built.endedAt }],
+    points: built.points.filter((p, i, all) => i === 0 || p.t > all[i - 1]!.t).map((p, seq) => ({ ...p, seq, segmentIndex: 0 })),
+  };
+  await share(zed, await uploadRun(pool, zed, run, 800, 'Evening run'));
+  await pool.query('select private.process_segment_matches(1000)');
 }

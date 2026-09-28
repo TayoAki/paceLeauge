@@ -93,9 +93,9 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and moderation
 (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5), challenges (4.6),
 opt-in leaderboards (4.7), live location (4.8) and teen accounts in family leagues (4.10,
-switched off until counsel's review). Phase 5 (maps) is under way: route planning (5.1) and
-offline maps and navigation (5.2) are built. The server is tested by 343
-database and API tests, the app by 355 unit tests and browser walkthroughs of the new screens.
+switched off until counsel's review). Phase 5 (maps) is under way: route planning (5.1),
+offline maps and navigation (5.2) and segments (5.3) are built. The server is tested by 354
+database and API tests, the app by 358 unit tests and browser walkthroughs of the new screens.
 What remains is on devices and with people: the Part C audio matrix and the Part A failure
 tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new Swift and Kotlin code (the
 watch app is off until then), the recorded voice and guided runs, the coach's review of plans
@@ -954,6 +954,24 @@ is where other people start seeing more than a name and a number.
   - Needs PostGIS or a separate geo service; confirm Railway's Postgres supports it.
 - Done when: matching agrees with hand-checked results on a golden set and ignores
   opposite-direction passes.
+- Built: League › Segments lists the segments, each with its best times (a runner's best, the top
+  50 and the runner), its local regular (who ran it on the most different days in the last 90)
+  and the runner's own times; a run's page lists the segments it went through, marking bests.
+  Staff make a segment from a route they planned along a path, trail, track or park, and can
+  retire it; both go in the moderation log. Runners join and leave the boards; teens can't join.
+  Only accepted runs shared with everyone, map included, are matched, and only on what a shared
+  map shows (not the first or last 200 m, nothing inside a privacy zone), so the validator's
+  vehicle and e-bike checks apply first. A time needs the whole segment in its direction, in one
+  stretch: near the start line, along the line (within 30 m, a few GPS slips allowed, never back
+  more than 30 m) and out near the end, timed between the two lines. Faster than 7 m/s is held
+  for a moderator (release, remove the time, or take the runner off the boards); faster than
+  11 m/s isn't counted. Railway's standard Postgres has no PostGIS (its PostGIS template is a
+  separate, unmanaged database), so matching is plain SQL and PL/pgSQL, run by the minute job.
+  The golden set (`tests/backend/segments.test.ts`) checks runs whose times are known by
+  construction: through the segment (within 1 s of the true time), the other way (no time),
+  leaving or joining it part way, a 100 m detour (no time) against 10 m of GPS noise (timed within
+  3 s), two laps (two times), a pause, a start on the start line, a privacy zone halfway, and the
+  sharing rules.
 
 **5.4 Heatmaps and route discovery** · L
 - What: a map of popular running paths and suggested routes nearby.

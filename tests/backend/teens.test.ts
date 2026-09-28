@@ -121,7 +121,7 @@ describe('teen accounts', () => {
       // Connections they can't make (the database refuses a teen's Strava link, and Garmin under 16).
       'get_strava_status', 'get_strava_upload', 'disconnect_strava', 'post_run_to_strava', 'get_garmin_status', 'disconnect_garmin',
     ]);
-    const staff = new Set(['mod_list_reports', 'mod_queue_health', 'mod_resolve_report']);
+    const staff = new Set(['mod_list_reports', 'mod_queue_health', 'mod_resolve_report', 'mod_create_segment', 'mod_retire_segment']);
     const refused: string[] = [];
     for (const f of functions) {
       if (personal.has(f.name) || staff.has(f.name)) continue;

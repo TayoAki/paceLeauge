@@ -35,6 +35,9 @@ or wrong: a path may be closed, private, unlit or unsafe to run. Check a route b
 follow what's on the ground and local signs over the app, and keep to places where running is
 allowed.
 
+Segments are timed stretches of path. A time on a board is never worth a risk: on shared paths,
+give way to others, keep to the speed that's safe there, and stop for crossings and traffic.
+
 ## Fair play
 
 - XP, tiers and standings follow the scoring rules shown in the app under How scoring works. To keep leagues fair, we may check, hold for review, adjust or remove runs and scores — for example, runs at impossible speeds or runs that weren't made on foot.
@@ -58,7 +61,8 @@ allowed.
 - Challenges and their badges are for fun: they never change your XP, and a badge goes away if the runs behind it are deleted or don't count.
 - Live location is a convenience for people you choose. It isn't an emergency service: it can be late or wrong without a signal, and it stops when your run ends. In an emergency, contact local emergency services.
 - Leaderboards are opt-in and for real runs only. Results are provisional until checked; we may hold or remove a result, or take a runner off the leaderboards, when runs look like a vehicle, a copied or replayed route, or a typed-in run. You can leave the leaderboards at any time.
-- You can report runners, runs, comments, clubs, group runs, challenges and leaderboard results, and block other runners. We aim to act on reports within 24 hours. We may remove comments, stop a run from being shared, reset names, remove members from leagues or close accounts.
+- Segments are opt-in and for real runs only. We may hold or remove a time, or take a runner off the segment boards, when a time looks like a vehicle, a bike or a made-up run, and we may retire a segment, for example when a path closes. You can leave the segment boards at any time.
+- You can report runners, runs, comments, clubs, group runs, challenges, leaderboard results and segment times, and block other runners. We aim to act on reports within 24 hours. We may remove comments, stop a run from being shared, reset names, remove members from leagues or close accounts.
 
 ## Your content
 

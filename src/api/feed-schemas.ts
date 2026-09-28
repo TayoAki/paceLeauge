@@ -39,7 +39,7 @@ export const commentsSchema = z.array(commentSchema);
 
 export const contentReportReasonSchema = z.enum(['harassment', 'offensive_content', 'spam', 'impersonation', 'cheating', 'private_info', 'offensive_name', 'other']);
 export type ContentReportReason = z.infer<typeof contentReportReasonSchema>;
-export type ReportKind = 'runner' | 'run' | 'comment' | 'club' | 'group_run' | 'challenge' | 'leaderboard';
+export type ReportKind = 'runner' | 'run' | 'comment' | 'club' | 'group_run' | 'challenge' | 'leaderboard' | 'segment';
 
 export const contentReportResultSchema = z.object({ report_id: z.string(), status: z.string(), due_at_ms: z.number() });
 export type ContentReportResult = z.infer<typeof contentReportResultSchema>;
@@ -76,12 +76,15 @@ export const modActionSchema = z.enum([
   'release_result',
   'remove_result',
   'remove_from_leaderboards',
+  'release_effort',
+  'remove_effort',
+  'remove_from_segments',
 ]);
 export type ModAction = z.infer<typeof modActionSchema>;
 
 export const modReportSchema = z.object({
   report_id: z.string(),
-  target_kind: z.enum(['member', 'league', 'runner', 'run', 'comment', 'club', 'group_run', 'challenge', 'leaderboard']),
+  target_kind: z.enum(['member', 'league', 'runner', 'run', 'comment', 'club', 'group_run', 'challenge', 'leaderboard', 'segment']),
   reason_code: z.string(),
   content_snapshot: z.record(z.string(), z.unknown()),
   status: z.enum(['open', 'actioned', 'dismissed']),

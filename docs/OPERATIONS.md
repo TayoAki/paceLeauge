@@ -551,7 +551,7 @@ there are (`RUN_JOBS=false` opts an instance out).
 
 | Job | Schedule | Does |
 |---|---|---|
-| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push (several leagues' results arrive as one), settles the season that just ended (its champions, once, a day after its last week), queues group-run reminders an hour before the start, and works out the leaderboards (this week's and last week's results for everyone who joined, the checks on the top ten of every board, and last week made final 48 hours after it closed, Wednesday 00:00 Chicago), and stops live-location links whose time ran out, wiping their last position (stopped links go after 7 days). Logs `frequent jobs` when it did something |
+| `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts), applies pending scoring, once a league week is final (Tuesday 00:00 Chicago) queues each member's week-results push (several leagues' results arrive as one), settles the season that just ended (its champions, once, a day after its last week), queues group-run reminders an hour before the start, and works out the leaderboards (this week's and last week's results for everyone who joined, the checks on the top ten of every board, and last week made final 48 hours after it closed, Wednesday 00:00 Chicago), and stops live-location links whose time ran out, wiping their last position (stopped links go after 7 days), and matches up to 200 queued runs to the segments (new, edited, shared or unshared runs, and runs of runners who joined or changed a privacy zone). Logs `frequent jobs` when it did something |
 | Strava uploads and revocations | every minute, when Strava is configured | Queues accepted runs of connected runners, uploads them, follows processing, refreshes tokens, confirms webhook deauthorizations, revokes ended grants. Logs `strava jobs` |
 | Garmin events | every minute, when Terra is configured | Uploads queued Garmin activities as their runners, deauthorizes ended links, keeps processed events a week. Logs `garmin jobs` |
 | Pro billing | hourly | Sends trial reminders (production), and removes store events older than 60 days. Logs `billing jobs` |
@@ -604,11 +604,16 @@ reason and target in `private.moderation_actions`.
 | Group run | `dismiss`, `remove_group_run`, `reset_alias` (its host) |
 | Challenge (a league's or club's) | `dismiss`, `reset_challenge_name` (back to the name made from its goal and month; entries and badges stay), `remove_challenge` (with its badges), `reset_alias` (who set it) |
 | Leaderboard result | `dismiss` (a held result stays held), `release_result` (on the board, and not held again unless the score changes), `remove_result` (that week), `remove_from_leaderboards` (every result, and the runner can't join again), `reset_alias` |
+| Segment time | `dismiss` (a held time stays held), `release_effort` (on the board, and it stays released if the run is matched again), `remove_effort` (that time, for good), `remove_from_segments` (every time, and the runner can't join again), `reset_alias` |
 
 Leaderboard results the automatic checks hold arrive in the same queue as a report with no
 reporter, reason "Not a real run", and the checks that failed: the same GPS points as another run
 at another time (a replayed or copied route), under 3:00/km over 5 km, or a run held for its speed
 that week. Until a moderator releases it, the result stays off the board, provisional or final.
+
+Segment times faster than 7 m/s arrive the same way (no reporter, "Not a real run", with the time
+and its speed) and stay off the segment's board until released; faster than 11 m/s isn't counted
+at all.
 
 Removing a comment, hiding a run or taking down a club, group run or challenge closes every open
 report about it. Club owners and admins moderate their own clubs too: removing a member
@@ -711,6 +716,36 @@ Android). Profile › Offline maps lists what's kept and removes it; signing out
 account's areas. The app turns Mapbox's own telemetry off. Before switching it on: check Mapbox's
 current pricing for mobile map loads and offline downloads against the expected runners, and its
 terms for offline use (the SDK enforces a tile limit per phone). Test with P5-OFFLINE-MAP.
+
+## Segments (5.3)
+
+Segments are curated: only staff with the moderator role make them, from their own saved routes.
+
+1. Plan the segment as a route (Train › Routes › Plan a route) along a path, trail, track or
+   through a park, never along a road (a safety call), drawn in the direction it's timed: from its
+   first point to its last. 200 m to 20 km, at most 1,000 points. A route drawn point to point
+   follows the line exactly; use *Follow paths* for a path's bends.
+2. On the route's page, *Make a segment (staff)*: give it a name and the surface. It's live for
+   everyone at once, the recent runs (90 days) of runners on the boards are matched to it by the
+   next minute's job, and `segment_created` goes in `private.moderation_actions`.
+3. To take one down (a path closed, a segment made by mistake), open it in League › Segments and
+   *Retire segment* with a reason (`segment_retired`). It leaves the list and nothing more is
+   matched to it; its times stay in the database for the runners' exports until their accounts go.
+
+Matching runs in the database, in plain SQL and PL/pgSQL: Railway's standard Postgres has no
+PostGIS (its PostGIS template is a separate, unmanaged database), and segments are found by their
+bounding boxes, so none is needed. A runner is timed only after joining (League › Segments), only
+on accepted runs they share with everyone with the map, and only on what a shared map shows (not
+the first or last 200 m, nothing inside their privacy zones). A time needs the whole segment in
+its direction: within 25 m of the start and end lines, within 30 m of the line along the way (a
+few GPS slips of up to 60 m allowed), never back more than 30 m, in one stretch without a pause.
+The boards show each runner's best time (the top 50, and the viewer), the runner name and the
+date, never a route; blocked runners don't see each other. The local regular is whoever ran it on
+the most different days in the last 90. Teens can't join. Leaving takes every time off at once.
+
+To see what the job is doing: `select count(*) from private.segment_match_queue;` (should drain
+within a minute or two), and to match one run again by hand,
+`insert into private.segment_match_queue (run_id) values ('<run uuid>') on conflict do nothing;`.
 
 ## Push notifications (4.9)
 

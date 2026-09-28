@@ -12,6 +12,7 @@ import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { formatDistance } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
 import { dayLabel, monthLabel } from '@/features/challenges/challenge-text';
+import { formatElapsed } from '@/features/segments/segment-text';
 import { useCachedQuery, useMe } from '@/features/data/hooks';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
@@ -28,6 +29,7 @@ const KIND: Record<ModReport['target_kind'], string> = {
   group_run: 'Group run',
   challenge: 'Challenge',
   leaderboard: 'Leaderboard result',
+  segment: 'Segment time',
 };
 
 const REASON: Record<string, string> = {
@@ -64,6 +66,13 @@ const ACTION: Record<ModAction, { label: string; body: string; destructive: bool
     body: 'All their results come off the boards and they can’t join again. Their runs, XP and leagues stay.',
     destructive: true,
   },
+  release_effort: { label: 'Release time', body: 'The time goes (back) on the segment’s board, and stays there if the run is matched again.', destructive: false },
+  remove_effort: { label: 'Remove time', body: 'This time comes off the segment’s board for good. The runner keeps the run.', destructive: true },
+  remove_from_segments: {
+    label: 'Remove from segments',
+    body: 'All their segment times come off the boards and they can’t join again. Their runs, XP and leagues stay.',
+    destructive: true,
+  },
 };
 
 const TITLE: Partial<Record<ModReport['target_kind'], string>> = { group_run: 'Group run', challenge: 'Challenge' };
@@ -82,6 +91,7 @@ function fields(kind: ModReport['target_kind']): [string, string][] {
     ['league_name', 'League'],
     ['club_name', 'Club'],
     ['group', 'Group'],
+    ['segment', 'Segment'],
     ['title', TITLE[kind] ?? 'Run'],
     ['run_title', 'On the run'],
     ['body', 'Comment'],
@@ -109,6 +119,11 @@ function Snapshot({ report }: { report: ModReport }) {
     lines.push(['Week', `${dayLabel(s.week_start)} · ${s.score} (${String(s.tier ?? '')}, ${String(s.country ?? '')})`]);
   }
   if (Array.isArray(s.flags) && s.flags.length > 0) lines.push(['Checks', s.flags.map((f) => FLAG[String(f)] ?? String(f)).join(', ')]);
+  if (typeof s.elapsed_ms === 'number') {
+    const speed = typeof s.distance_m === 'number' && s.elapsed_ms > 0 ? ` (${(s.distance_m / (s.elapsed_ms / 1000)).toFixed(1)} m/s)` : '';
+    lines.push(['Time', `${formatElapsed(s.elapsed_ms)}${speed}`]);
+  }
+  if (s.automatic === true) lines.push(['Held', 'automatically, for going faster than 7 m/s']);
   if (typeof s.metric === 'string' && typeof s.target === 'number') {
     const month = typeof s.starts_on === 'string' ? ` in ${monthLabel(s.starts_on)}` : '';
     lines.push(['Goal', `${s.target} ${s.metric === 'active_days' ? 'days' : 'points'}${month}`]);
@@ -250,6 +265,10 @@ export default function ModerationScreen() {
           ) : report.target_state.held === true ? (
             <Text variant="caption" tone="secondary">
               Held after reports: only its author sees it.
+            </Text>
+          ) : report.target_state.effort_status === 'held' ? (
+            <Text variant="caption" tone="secondary">
+              Held: off the board until it’s released.
             </Text>
           ) : null}
           {report.status === 'open' ? (

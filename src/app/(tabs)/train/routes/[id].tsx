@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { OfflineMapCard } from '@/components/routes/offline-map-card';
+import { MakeSegmentCard } from '@/components/segments/make-segment-card';
 import { RouteMap } from '@/components/run/route-map';
 import { PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
@@ -35,7 +36,8 @@ export default function RouteScreen() {
   const [removing, setRemoving] = useState(false);
   const query = useRoute(typeof id === 'string' && !removing ? id : null);
   const route = query.data?.data;
-  const units = useMe().data?.data.profile?.units ?? 'metric';
+  const me = useMe().data?.data;
+  const units = me?.profile?.units ?? 'metric';
   const actions = useRouteActions();
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState('');
@@ -151,6 +153,8 @@ export default function RouteScreen() {
               ) : null}
             </Card>
           ) : null}
+
+          {me?.is_staff ? <MakeSegmentCard route={route} /> : null}
 
           <Card style={styles.card}>
             {renaming ? (

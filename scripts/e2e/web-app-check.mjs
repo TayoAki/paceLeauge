@@ -43,6 +43,7 @@ const SCREENS = [
   { path: '/feed', wait: 'Maya', name: 'feed' },
   { path: '/league/challenges', wait: 'For everyone', name: 'challenges' },
   { path: '/league/leaderboards', wait: 'best three days', name: 'leaderboards' },
+  { path: '/league/segments', wait: 'Park straight', name: 'segments' },
   { path: `/live/${'0'.repeat(64)}`, wait: 'This live run has ended.', name: 'live-ended' },
   { path: '/train', wait: 'Train', name: 'train' },
   { path: '/train/routes/plan', wait: 'Distance', name: 'route-planner' },
