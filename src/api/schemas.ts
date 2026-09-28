@@ -370,3 +370,55 @@ export const garminStatusSchema = z.object({
   last_activity_at_ms: z.number().nullable(),
 });
 export type GarminStatus = z.infer<typeof garminStatusSchema>;
+
+// Training plans (Phase 3.1). `input` and `adjustments` are the app's own JSON, read with
+// src/features/plans/plan-codec.ts.
+const workoutStepSchema = z.object({
+  kind: z.enum(['warmup', 'run', 'walk', 'work', 'recover', 'cooldown']),
+  effort: z.enum(['easy', 'steady', 'tempo', 'interval', 'race', 'walk']),
+  durationS: z.number().optional(),
+  distanceM: z.number().optional(),
+});
+export const workoutBlockSchema = z.object({ repeat: z.number().int().min(1), steps: z.array(workoutStepSchema) });
+export const planFeedbackSchema = z.enum(['easy', 'about_right', 'hard', 'too_hard']);
+export type PlanFeedback = z.infer<typeof planFeedbackSchema>;
+export const serverPlanSessionSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  week: z.number(),
+  kind: z.enum(['easy', 'long', 'tempo', 'intervals', 'steady', 'run_walk', 'race']),
+  title: z.string(),
+  hard: z.boolean(),
+  duration_s: z.number(),
+  distance_m: z.number().nullable(),
+  effort: z.enum(['easy', 'steady', 'tempo', 'interval', 'race', 'walk']),
+  blocks: z.array(workoutBlockSchema),
+  edited: z.boolean(),
+  run_id: z.string().nullable(),
+  matched_by: z.enum(['auto', 'runner']).nullable(),
+  feedback: planFeedbackSchema.nullable(),
+  pain: z.boolean(),
+  run: z
+    .object({ title: z.string(), started_at_ms: z.number(), distance_m: z.number(), active_ms: z.number() })
+    .nullable(),
+});
+export type ServerPlanSession = z.infer<typeof serverPlanSessionSchema>;
+export const serverPlanSchema = z.object({
+  id: z.string(),
+  version: z.number(),
+  type: z.enum(['start_running', '5k', '10k', 'half', 'marathon', 'consistency', 'return']),
+  status: z.enum(['active', 'completed', 'ended', 'replaced']),
+  engine_version: z.number(),
+  input: z.unknown(),
+  adjustments: z.array(z.unknown()),
+  time_zone: z.string(),
+  start_date: z.string(),
+  end_date: z.string(),
+  today: z.string(),
+  created_at_ms: z.number(),
+  updated_at_ms: z.number(),
+  ended_at_ms: z.number().nullable(),
+  sessions: z.array(serverPlanSessionSchema),
+});
+export type ServerPlan = z.infer<typeof serverPlanSchema>;
+export const planResultSchema = z.object({ plan: serverPlanSchema.nullable() });

@@ -33,6 +33,8 @@ import {
   cheersSchema,
   diagnosticsResultSchema,
   garminStatusSchema,
+  planResultSchema,
+  serverPlanSchema,
   stravaConnectSchema,
   stravaStatusSchema,
   stravaUploadSchema,
@@ -56,6 +58,8 @@ import {
   type RunEfforts,
   type Shoe,
   type GarminStatus,
+  type PlanFeedback,
+  type ServerPlan,
   type Stats,
   type StravaStatus,
   type StravaUpload,
@@ -129,6 +133,19 @@ export interface RunEditInput {
   keepToMs?: number;
   cutRanges?: { fromMs: number; toMs: number }[];
   activityType?: ActivityType;
+}
+
+/** A plan version to save (src/features/plans/plan-client.ts builds it from the engine's output). */
+export interface PlanSave {
+  planId: string;
+  /** Null creates the plan; otherwise the version this one replaces. */
+  baseVersion: number | null;
+  input: unknown;
+  adjustments: unknown[];
+  sessions: Record<string, unknown>[];
+  engineVersion: number;
+  timeZone: string;
+  endDate: string;
 }
 
 export interface StatsInput {
@@ -224,6 +241,13 @@ export interface PaceApi {
   /** The aggregator's widget URL; it sends the runner back to `returnTo`. */
   startGarminConnect(returnTo: string): Promise<string>;
   disconnectGarmin(): Promise<GarminStatus>;
+  // Training plans (Phase 3.1)
+  getPlan(): Promise<ServerPlan | null>;
+  savePlan(save: PlanSave): Promise<ServerPlan>;
+  endPlan(planId: string): Promise<ServerPlan | null>;
+  setSessionFeedback(planId: string, sessionId: string, feedback: PlanFeedback | null, pain: boolean): Promise<ServerPlan>;
+  /** Which session a run was; a null run means none of the runner's runs was. */
+  matchPlanSession(planId: string, sessionId: string, runId: string | null): Promise<ServerPlan>;
 }
 
 const UPLOAD_TIMEOUT_MS = 30_000;
@@ -417,5 +441,26 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     getGarminStatus: () => call('get_garmin_status', {}, garminStatusSchema),
     startGarminConnect: async (returnTo) => (await call('start_garmin_connect', { p_return_to: returnTo }, stravaConnectSchema)).url,
     disconnectGarmin: () => call('disconnect_garmin', {}, garminStatusSchema),
+    getPlan: async () => (await call('get_plan', {}, planResultSchema)).plan,
+    savePlan: (save) =>
+      call(
+        'save_plan',
+        {
+          p_plan_id: save.planId,
+          p_base_version: save.baseVersion,
+          p_input: save.input,
+          p_adjustments: save.adjustments,
+          p_sessions: save.sessions,
+          p_engine_version: save.engineVersion,
+          p_time_zone: save.timeZone,
+          p_end_date: save.endDate,
+        },
+        serverPlanSchema,
+      ),
+    endPlan: async (planId) => (await call('end_plan', { p_plan_id: planId }, planResultSchema)).plan,
+    setSessionFeedback: (planId, sessionId, feedback, pain) =>
+      call('set_session_feedback', { p_plan_id: planId, p_session_id: sessionId, p_feedback: feedback, p_pain: pain }, serverPlanSchema),
+    matchPlanSession: (planId, sessionId, runId) =>
+      call('match_plan_session', { p_plan_id: planId, p_session_id: sessionId, p_run_id: runId }, serverPlanSchema),
   };
 }

@@ -5,7 +5,8 @@ import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Monogram } from '@/components/art/art';
 import { RunRow, TierCard, WeeklyGoal } from '@/components/progress/progress-components';
-import { PrimaryButton } from '@/components/ui/buttons';
+import { TodaysWorkoutCard } from '@/components/train/train-components';
+import { PrimaryButton, TextButton } from '@/components/ui/buttons';
 import { InlineStatus } from '@/components/ui/elements';
 import { Card, LargeHeader, Screen } from '@/components/ui/layout';
 import { formatDistance, formatDuration, ordinal } from '@/domain/format';
@@ -13,6 +14,7 @@ import { useAccount } from '@/features/account/account-provider';
 import { useIndoorSession, useLeague, useLocalRuns, useMe, useRecorder, useRunHistory, useSyncStatus, useWeek } from '@/features/data/hooks';
 import { pendingInvite } from '@/features/leagues/pending-invite';
 import { useWatchWorkout } from '@/features/watch/use-watch';
+import { useTodaysPlan } from '@/features/plans/use-plan';
 import { mergeRunViews } from '@/features/progress/run-views';
 import { useWeekGoalDays } from '@/features/progress/use-week-goal';
 import { Text } from '@/design/text';
@@ -44,6 +46,7 @@ export default function TodayScreen() {
   const sync = useSyncStatus();
   const now = useNow(60_000);
   const days = useWeekGoalDays(week.data?.data, now);
+  const workout = useTodaysPlan()?.open ?? null;
 
   useFocusEffect(
     useCallback(() => {
@@ -105,6 +108,7 @@ export default function TodayScreen() {
 
       <TierCard lifetimeXp={me.data?.data.lifetime_xp ?? 0} />
       <WeeklyGoal days={days} goalDays={me.data?.data.profile?.goal_days ?? null} now={now} />
+      <TodaysWorkoutCard />
 
       {watchRun ? (
         <InlineStatus
@@ -128,7 +132,20 @@ export default function TodayScreen() {
               Your first run starts here.
             </Text>
           ) : null}
-          <PrimaryButton label="Start run" icon={Play} size="large" onPress={() => router.push('/run/preflight')} testID="start-run" />
+          {workout ? (
+            <>
+              <PrimaryButton
+                label="Start workout"
+                icon={Play}
+                size="large"
+                onPress={() => router.push({ pathname: '/run/preflight', params: { session: workout.session.id } })}
+                testID="start-workout"
+              />
+              <TextButton label="Just run" onPress={() => router.push('/run/preflight')} testID="start-run" />
+            </>
+          ) : (
+            <PrimaryButton label="Start run" icon={Play} size="large" onPress={() => router.push('/run/preflight')} testID="start-run" />
+          )}
         </View>
       )}
 

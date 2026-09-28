@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router/js-tabs';
-import { ChartColumn, House, Trophy, User } from 'lucide-react-native';
+import { CalendarCheck, ChartColumn, House, Trophy, User } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { ActiveRunBanner } from '@/components/run/active-run-banner';
@@ -7,7 +7,7 @@ import { useWatchContextSync } from '@/features/watch/use-watch';
 import { useWidgetSync } from '@/features/widgets/use-widget-sync';
 import { colors } from '@/design/tokens';
 
-/** Today · League · Progress · Profile (standard tabs; the live run takes over the screen). */
+/** Today · Train · League · Progress · Profile (standard tabs; the live run takes over the screen). */
 export default function TabsLayout() {
   useWidgetSync();
   useWatchContextSync();
@@ -23,6 +23,7 @@ export default function TabsLayout() {
           sceneStyle: { backgroundColor: colors.background },
         }}>
         <Tabs.Screen name="index" options={{ title: 'Today', tabBarIcon: ({ color, size }) => <House color={color} size={size} /> }} />
+        <Tabs.Screen name="train" options={{ title: 'Train', tabBarIcon: ({ color, size }) => <CalendarCheck color={color} size={size} /> }} />
         <Tabs.Screen name="league" options={{ title: 'League', tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} /> }} />
         <Tabs.Screen name="progress" options={{ title: 'Progress', tabBarIcon: ({ color, size }) => <ChartColumn color={color} size={size} /> }} />
         <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
