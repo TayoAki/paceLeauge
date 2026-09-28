@@ -1,3 +1,4 @@
+import { addDays, competitionDate, startOfDay } from '@/domain/calendar';
 import { buildSyntheticRun, steadyRun } from '@/domain/synthetic';
 
 import { expectCode, TestDb, type TestUser } from './helpers/db';
@@ -13,9 +14,9 @@ afterAll(async () => {
   await db.close();
 });
 
-const DAY = 86_400_000;
 const MIN = 60_000;
-const base = Date.now() - 10 * DAY;
+// Late morning ten competition days ago, so an hour-long run never crosses midnight.
+const base = startOfDay(addDays(competitionDate(Date.now()), -10)) + 10 * 60 * MIN;
 
 async function lifetimeXp(user: TestUser): Promise<number> {
   return (await db.rpc(user, 'get_me')).lifetime_xp;
