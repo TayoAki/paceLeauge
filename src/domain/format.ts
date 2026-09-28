@@ -23,6 +23,11 @@ export function formatDistanceShort(metres: number, units: Units): FormattedDist
   return value >= 100 ? { ...full, value: String(Math.floor(value)) } : full;
 }
 
+/** "Sep 27": a day in the runner's own time zone. */
+export function formatDateShort(ms: number): string {
+  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 /** Average speed for rides: 20.6 km/h. */
 export function formatSpeed(activeMs: number, metres: number, units: Units): { value: string; unit: string; unitLong: string } {
   const perUnit = units === 'imperial' ? METRES_PER_MILE : 1000;

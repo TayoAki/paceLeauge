@@ -32,6 +32,7 @@ import {
   badgesSchema,
   cheersSchema,
   diagnosticsResultSchema,
+  garminStatusSchema,
   stravaConnectSchema,
   stravaStatusSchema,
   stravaUploadSchema,
@@ -54,6 +55,7 @@ import {
   type RunEditResult,
   type RunEfforts,
   type Shoe,
+  type GarminStatus,
   type Stats,
   type StravaStatus,
   type StravaUpload,
@@ -217,6 +219,11 @@ export interface PaceApi {
   disconnectStrava(): Promise<StravaStatus>;
   getStravaUpload(runId: string): Promise<StravaUpload>;
   postRunToStrava(runId: string): Promise<StravaUpload>;
+  // Garmin through an aggregator (Phase 2.4)
+  getGarminStatus(): Promise<GarminStatus>;
+  /** The aggregator's widget URL; it sends the runner back to `returnTo`. */
+  startGarminConnect(returnTo: string): Promise<string>;
+  disconnectGarmin(): Promise<GarminStatus>;
 }
 
 const UPLOAD_TIMEOUT_MS = 30_000;
@@ -407,5 +414,8 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     disconnectStrava: () => call('disconnect_strava', {}, stravaStatusSchema),
     getStravaUpload: (runId) => call('get_strava_upload', { p_run_id: runId }, stravaUploadSchema),
     postRunToStrava: (runId) => call('post_run_to_strava', { p_run_id: runId }, stravaUploadSchema),
+    getGarminStatus: () => call('get_garmin_status', {}, garminStatusSchema),
+    startGarminConnect: async (returnTo) => (await call('start_garmin_connect', { p_return_to: returnTo }, stravaConnectSchema)).url,
+    disconnectGarmin: () => call('disconnect_garmin', {}, garminStatusSchema),
   };
 }

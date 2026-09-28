@@ -26,6 +26,7 @@ const SOURCE_LABEL: Record<string, string> = {
   file_import: 'File',
   indoor: 'Indoor',
   watch: 'Apple Watch',
+  garmin: 'Garmin',
 };
 
 function stateLabel(run: SavedRun): string {

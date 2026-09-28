@@ -38,6 +38,17 @@ export interface ServerConfig {
   bootstrapEnableCompetition: boolean;
   /** Strava export (docs/ROADMAP.md 2.3); null when not configured. */
   strava: StravaConfig | null;
+  /** Garmin through the Terra aggregator (docs/ROADMAP.md 2.4); null when not configured. */
+  garmin: GarminConfig | null;
+}
+
+export interface GarminConfig {
+  devId: string;
+  apiKey: string;
+  /** Terra's webhook signing secret. */
+  webhookSecret: string;
+  /** Where the widget may send the runner back: the app's URL scheme and the web app. */
+  returnPrefixes: string[];
 }
 
 export interface StravaConfig {
@@ -132,7 +143,11 @@ export function loadConfig(env: Env = process.env): ServerConfig {
 
   const cors = env.CORS_ORIGINS?.trim();
   const corsOrigins = cors === '*' ? '*' : list(cors);
-  const strava = stravaConfig(env, deployed, corsOrigins);
+  // Where an integration may send the runner back: the app's scheme, plus the web app's origins
+  // (never a wildcard, since the return is a redirect).
+  const returnPrefixes = [...list(env.APP_RETURN_URLS ?? 'paceleague://'), ...(corsOrigins === '*' ? [] : corsOrigins.map((o) => `${o}/`))];
+  const strava = stravaConfig(env, deployed, returnPrefixes);
+  const garmin = garminConfig(env, returnPrefixes);
   return {
     appEnv,
     host: env.HOST ?? '::',
@@ -160,12 +175,22 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     runJobs: bool(env, 'RUN_JOBS', true),
     bootstrapEnableCompetition,
     strava,
+    garmin,
   };
+}
+
+const TERRA_KEYS = ['TERRA_DEV_ID', 'TERRA_API_KEY', 'TERRA_WEBHOOK_SECRET'] as const;
+
+function garminConfig(env: Env, returnPrefixes: string[]): GarminConfig | null {
+  const set = TERRA_KEYS.filter((k) => env[k]?.trim());
+  if (set.length === 0) return null;
+  if (set.length !== TERRA_KEYS.length) throw new ConfigError(`Garmin sync needs ${TERRA_KEYS.join(', ')} together`);
+  return { devId: env.TERRA_DEV_ID!.trim(), apiKey: env.TERRA_API_KEY!.trim(), webhookSecret: env.TERRA_WEBHOOK_SECRET!.trim(), returnPrefixes };
 }
 
 const STRAVA_KEYS = ['STRAVA_CLIENT_ID', 'STRAVA_CLIENT_SECRET', 'STRAVA_TOKEN_KEY', 'PUBLIC_URL'] as const;
 
-function stravaConfig(env: Env, deployed: boolean, corsOrigins: string[] | '*'): StravaConfig | null {
+function stravaConfig(env: Env, deployed: boolean, returnPrefixes: string[]): StravaConfig | null {
   const set = STRAVA_KEYS.filter((k) => env[k]?.trim());
   if (set.length === 0 || (set.length === 1 && set[0] === 'PUBLIC_URL')) return null;
   if (set.length !== STRAVA_KEYS.length) throw new ConfigError(`Strava needs ${STRAVA_KEYS.join(', ')} together`);
@@ -180,8 +205,6 @@ function stravaConfig(env: Env, deployed: boolean, corsOrigins: string[] | '*'):
     throw new ConfigError('PUBLIC_URL must be the API’s public URL');
   }
   if (deployed && publicUrl.protocol !== 'https:') throw new ConfigError('PUBLIC_URL must use https when deployed');
-  // The app's scheme, plus the web app's origins (never a wildcard: the return is a redirect).
-  const returnPrefixes = [...list(env.APP_RETURN_URLS ?? 'paceleague://'), ...(corsOrigins === '*' ? [] : corsOrigins.map((o) => `${o}/`))];
   return {
     clientId,
     clientSecret: env.STRAVA_CLIENT_SECRET!.trim(),

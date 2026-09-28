@@ -111,6 +111,7 @@ function RootNavigator() {
       <Stack.Screen name="invite/[code]" />
       <Stack.Screen name="legal" />
       <Stack.Screen name="strava" />
+      <Stack.Screen name="garmin" />
       <Stack.Protected guard={__DEV__}>
         <Stack.Screen name="dev/catalog" />
       </Stack.Protected>

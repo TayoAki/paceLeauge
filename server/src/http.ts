@@ -17,13 +17,14 @@ import {
   signInWithEmail,
   userJson,
 } from './auth/users';
-import type { ServerConfig, StravaConfig } from './config';
+import type { GarminConfig, ServerConfig, StravaConfig } from './config';
 import { transaction, type Pool } from './db';
 import { verifyJwt, type Claims } from './jwt';
 import type { LegalDoc } from './legal';
 import type { Logger } from './log';
 import type { Mailer } from './mailer';
 import { callRpc, type Claims as RpcClaims } from './rpc';
+import { handleTerraEvent, IngestError, startGarminConnect, verifyTerraSignature, type TerraApi } from './garmin';
 import { stravaCallback, stravaWebhookChallenge, stravaWebhookEvent, type StravaApi, type StravaHttpResult } from './strava';
 
 /**
@@ -44,6 +45,8 @@ export interface ApiDeps {
   legal?: Partial<Record<LegalDoc, string>>;
   /** Strava export (server/src/strava.ts), when configured. */
   strava?: { api: StravaApi; config: StravaConfig } | null;
+  /** Garmin through Terra (server/src/garmin.ts), when configured. */
+  garmin?: { terra: TerraApi; config: GarminConfig } | null;
 }
 
 class HttpError extends Error {
@@ -58,6 +61,8 @@ class HttpError extends Error {
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const AUTH_BODY_LIMIT = 16 * 1024;
 const RPC_BODY_LIMIT = 1024 * 1024;
+/** Terra can send a long activity's GPS samples in one event. */
+const TERRA_BODY_LIMIT = 25 * 1024 * 1024;
 const AUTH_HEADERS = { 'X-Supabase-Api-Version': '2024-01-01' };
 /** Same window as private.has_recent_auth(): changing the password needs a fresh sign-in. */
 const RECENT_SIGN_IN_S = 600;
@@ -94,6 +99,19 @@ function send(res: ServerResponse, status: number, body: unknown, headers: Recor
   }
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(body));
+}
+
+async function readRaw(req: IncomingMessage, limit: number): Promise<Buffer> {
+  const declared = Number(req.headers['content-length']);
+  if (Number.isFinite(declared) && declared > limit) throw new HttpError(413, { message: 'Payload too large' });
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    if (size > limit) throw new HttpError(413, { message: 'Payload too large' });
+    chunks.push(chunk as Buffer);
+  }
+  return Buffer.concat(chunks);
 }
 
 async function readJson(req: IncomingMessage, limit: number): Promise<Record<string, unknown>> {
@@ -366,6 +384,19 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
       claims = verified as RpcClaims;
     }
     const body = await readJson(req, RPC_BODY_LIMIT);
+    // RPCs the service answers itself, because they need a partner's credentials.
+    if (fn === 'start_garmin_connect') {
+      const fail = (message: string, status = 400) => send(res, status, { code: 'P0001', details: null, hint: null, message });
+      if (claims.role !== 'authenticated') return fail('not_authenticated', 401);
+      if (!deps.garmin) return fail('not_available');
+      try {
+        return send(res, 200, await startGarminConnect({ pool, terra: deps.garmin.terra, config: deps.garmin.config }, claims.sub as string, body.p_return_to));
+      } catch (error) {
+        if (error instanceof IngestError) return fail(error.code);
+        log.warn('garmin connect start failed', { error: error instanceof Error ? error.message : String(error) });
+        return fail('server_error', 502);
+      }
+    }
     const result = await callRpc(pool, fn, body, claims, {
       'x-forwarded-for': clientIp(req),
       'user-agent': String(req.headers['user-agent'] ?? '').slice(0, 200),
@@ -421,6 +452,24 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
         res.writeHead(result.status);
         res.end(result.body);
         return;
+      }
+      if (path === '/integrations/garmin/webhook') {
+        route = `${req.method} /integrations/garmin/webhook`;
+        if (!deps.garmin) throw new HttpError(404, { message: 'Not found' });
+        if (req.method !== 'POST') throw new HttpError(405, { message: 'Method not allowed' });
+        const raw = await readRaw(req, TERRA_BODY_LIMIT);
+        const signature = req.headers['terra-signature'];
+        if (!verifyTerraSignature(deps.garmin.config.webhookSecret, typeof signature === 'string' ? signature : undefined, raw)) {
+          throw new HttpError(401, { message: 'Invalid signature' });
+        }
+        let event: unknown;
+        try {
+          event = JSON.parse(raw.toString('utf8'));
+        } catch {
+          throw new HttpError(400, { message: 'Invalid JSON body' });
+        }
+        if (event && typeof event === 'object' && !Array.isArray(event)) await handleTerraEvent(pool, log, event as Record<string, unknown>);
+        return send(res, 200, { ok: true });
       }
       const apikey = (req.headers.apikey as string | undefined) ?? url.searchParams.get('apikey') ?? '';
       if (!safeEqual(apikey, config.publicApiKey)) throw new HttpError(401, { message: 'Invalid API key' });

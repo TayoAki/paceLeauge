@@ -360,3 +360,13 @@ export const stravaUploadSchema = z
   .nullable();
 export type StravaUpload = z.infer<typeof stravaUploadSchema>;
 export const stravaConnectSchema = z.object({ url: z.string().url() });
+
+// Garmin through an aggregator (Phase 2.4).
+export const garminStatusSchema = z.object({
+  available: z.boolean(),
+  connected: z.boolean(),
+  connected_at_ms: z.number().nullable(),
+  imported: z.number(),
+  last_activity_at_ms: z.number().nullable(),
+});
+export type GarminStatus = z.infer<typeof garminStatusSchema>;

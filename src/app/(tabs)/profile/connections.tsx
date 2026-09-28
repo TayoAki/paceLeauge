@@ -1,35 +1,38 @@
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import { RefreshCw, Unlink } from 'lucide-react-native';
+import { Link2, RefreshCw, Unlink } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet } from 'react-native';
 
 import { toApiError } from '@/api/errors';
-import type { StravaStatus } from '@/api/schemas';
-import { TextButton } from '@/components/ui/buttons';
+import type { PaceApi } from '@/api/pace-api';
+import { SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { InlineStatus, RowGroup, SwitchRow } from '@/components/ui/elements';
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
+import { formatDateShort } from '@/domain/format';
 import { useAccountServices } from '@/features/account/account-provider';
-import { useStravaStatus } from '@/features/data/hooks';
-import { STRAVA_OUTCOME, STRAVA_RETURN_PATH, stravaOutcome } from '@/features/strava/strava';
+import {
+  GARMIN_OUTCOME,
+  GARMIN_RETURN_PATH,
+  garminOutcome,
+  STRAVA_OUTCOME,
+  STRAVA_RETURN_PATH,
+  stravaOutcome,
+} from '@/features/connections/connections';
+import { useGarminStatus, useStravaStatus } from '@/features/data/hooks';
 import { Text } from '@/design/text';
 import { colors, radius, space } from '@/design/tokens';
 
 /** Strava's brand orange, for its "Connect with Strava" button only. */
 const STRAVA_ORANGE = '#FC5200';
 
-/** Connections (docs/ROADMAP.md 2.3): post runs to Strava. Nothing is read back from Strava. */
-export default function ConnectionsScreen() {
+/** One connection's busy state, error and "what just happened" line. */
+function useConnectionAction(refetch: () => unknown) {
   const { api } = useAccountServices();
-  const status = useStravaStatus();
-  const [outcome, setOutcome] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
-  const data = status.data?.data;
-
-  const run = async (task: (client: NonNullable<typeof api>) => Promise<StravaStatus | void>) => {
+  const [error, setError] = useState<string | null>(null);
+  const run = async (task: (client: PaceApi) => Promise<unknown>) => {
     if (!api) return setError('You’re signed out. Sign in again to change connections.');
     setBusy(true);
     setError(null);
@@ -40,9 +43,49 @@ export default function ConnectionsScreen() {
       setError(code === 'network' || code === 'timeout' ? 'You’re offline. Try again when you’re connected.' : 'Something went wrong. Try again.');
     } finally {
       setBusy(false);
-      void status.refetch();
+      void refetch();
     }
   };
+  return { busy, error, run };
+}
+
+/** Connections (docs/ROADMAP.md 2.3 and 2.4): post runs to Strava, bring runs in from Garmin. */
+export default function ConnectionsScreen() {
+  const strava = useStravaStatus();
+  const garmin = useGarminStatus();
+  const refreshing = (strava.isFetching && !strava.isPending) || (garmin.isFetching && !garmin.isPending);
+  return (
+    <Screen
+      edges={['top', 'bottom']}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            void strava.refetch();
+            void garmin.refetch();
+          }}
+          tintColor={colors.textSecondary}
+        />
+      }>
+      <NavHeader title="Connections" />
+      {(strava.isError && !strava.data) || (garmin.isError && !garmin.data) ? (
+        <InlineStatus tone="danger" title="Couldn’t load your connections." body="Pull to try again." />
+      ) : null}
+      <StravaCard />
+      <GarminCard />
+      <Text variant="caption" tone="secondary">
+        Strava is a trademark of Strava, Inc., and Garmin of Garmin Ltd. PaceLeague isn’t made or endorsed by either.
+      </Text>
+    </Screen>
+  );
+}
+
+function StravaCard() {
+  const status = useStravaStatus();
+  const { busy, error, run } = useConnectionAction(status.refetch);
+  const [outcome, setOutcome] = useState<string | null>(null);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const data = status.data?.data;
 
   const connect = () =>
     run(async (client) => {
@@ -54,14 +97,9 @@ export default function ConnectionsScreen() {
     });
 
   return (
-    <Screen
-      edges={['top', 'bottom']}
-      refreshControl={<RefreshControl refreshing={status.isFetching && !status.isPending} onRefresh={() => void status.refetch()} tintColor={colors.textSecondary} />}>
-      <NavHeader title="Connections" />
+    <>
       {outcome ? <InlineStatus tone={STRAVA_OUTCOME[outcome]!.tone} title={STRAVA_OUTCOME[outcome]!.title} /> : null}
       {error ? <InlineStatus tone="danger" title={error} /> : null}
-      {status.isError && !data ? <InlineStatus tone="danger" title="Couldn’t load your connections." body="Pull to try again." /> : null}
-
       <Card>
         <Text variant="section" accessibilityRole="header">
           Strava
@@ -127,10 +165,6 @@ export default function ConnectionsScreen() {
         </>
       ) : null}
 
-      <Text variant="caption" tone="secondary">
-        Strava is a trademark of Strava, Inc. PaceLeague isn’t made or endorsed by Strava.
-      </Text>
-
       <ConfirmSheet
         visible={confirmDisconnect}
         title="Disconnect Strava?"
@@ -147,7 +181,93 @@ export default function ConnectionsScreen() {
         }
         onCancel={() => setConfirmDisconnect(false)}
       />
-    </Screen>
+    </>
+  );
+}
+
+function GarminCard() {
+  const status = useGarminStatus();
+  const { busy, error, run } = useConnectionAction(status.refetch);
+  const [outcome, setOutcome] = useState<string | null>(null);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const data = status.data?.data;
+
+  const connect = () =>
+    run(async (client) => {
+      setOutcome(null);
+      const returnTo = Linking.createURL(GARMIN_RETURN_PATH);
+      const url = await client.startGarminConnect(returnTo);
+      const result = await WebBrowser.openAuthSessionAsync(url, returnTo);
+      if (result.type === 'success') setOutcome(garminOutcome(result.url));
+    });
+
+  // Until the aggregator is switched on, Garmin runs still arrive through Apple Health as history.
+  if (data && !data.available) {
+    return (
+      <Card>
+        <Text variant="section" accessibilityRole="header">
+          Garmin
+        </Text>
+        <Text variant="body" tone="secondary">
+          Garmin runs come in through Apple Health, without their routes, so they count for your weekly goal and streak but not league XP. Direct Garmin sync with routes isn’t switched on yet.
+        </Text>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      {outcome ? <InlineStatus tone={GARMIN_OUTCOME[outcome]!.tone} title={GARMIN_OUTCOME[outcome]!.title} /> : null}
+      {error ? <InlineStatus tone="danger" title={error} /> : null}
+      <Card>
+        <Text variant="section" accessibilityRole="header">
+          Garmin
+        </Text>
+        {data && !data.connected ? (
+          <>
+            <Text variant="body" tone="secondary">
+              Bring in the runs you record on your Garmin watch, with their routes, so they can earn league XP like runs recorded here.
+            </Text>
+            <Text variant="body" tone="secondary">
+              Garmin shares them through Terra, a service that connects fitness devices. If Apple Health has the same run, it counts once.
+            </Text>
+            <SecondaryButton label="Connect Garmin" icon={Link2} loading={busy} onPress={() => void connect()} testID="connect-garmin" />
+          </>
+        ) : data ? (
+          <>
+            <Text variant="body" testID="garmin-connected">
+              Connected.
+            </Text>
+            <Text variant="label" tone="secondary">
+              {data.imported} {data.imported === 1 ? 'activity' : 'activities'} brought in
+              {data.last_activity_at_ms ? ` · latest ${formatDateShort(data.last_activity_at_ms)}` : ''}
+            </Text>
+            <TextButton label="Disconnect Garmin" icon={Unlink} tone="danger" onPress={() => setConfirmDisconnect(true)} testID="disconnect-garmin" />
+          </>
+        ) : (
+          <Text variant="body" tone="secondary">
+            Loading…
+          </Text>
+        )}
+      </Card>
+
+      <ConfirmSheet
+        visible={confirmDisconnect}
+        title="Disconnect Garmin?"
+        body="Runs already brought in stay in your history. New Garmin runs stop arriving, except through Apple Health."
+        confirmLabel="Disconnect"
+        destructive
+        busy={busy}
+        onConfirm={() =>
+          void run(async (client) => {
+            await client.disconnectGarmin();
+            setConfirmDisconnect(false);
+            setOutcome(null);
+          })
+        }
+        onCancel={() => setConfirmDisconnect(false)}
+      />
+    </>
   );
 }
 

@@ -4,7 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { InlineStatus } from '@/components/ui/elements';
 import { NavHeader, Screen } from '@/components/ui/layout';
-import { STRAVA_OUTCOME } from '@/features/strava/strava';
+import { STRAVA_OUTCOME } from '@/features/connections/connections';
 
 // On the web, connecting opens Strava in a popup that ends here; this hands the result back to the
 // page that opened it and closes the popup. On a phone the sign-in sheet normally catches the

@@ -72,6 +72,8 @@ export const useRunRoute = (serverRunId: string | null) =>
 
 // Strava export (docs/ROADMAP.md 2.3)
 export const useStravaStatus = () => useCachedQuery('strava', [], (api) => api.getStravaStatus(), { staleTime: 10_000 });
+// Garmin through an aggregator (docs/ROADMAP.md 2.4)
+export const useGarminStatus = () => useCachedQuery('garmin', [], (api) => api.getGarminStatus(), { staleTime: 10_000 });
 export const useStravaUpload = (serverRunId: string | null, enabled: boolean) =>
   useCachedQuery('strava-upload', [serverRunId ?? ''], (api) => api.getStravaUpload(serverRunId ?? ''), { enabled: enabled && !!serverRunId });
 

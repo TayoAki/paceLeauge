@@ -3,8 +3,8 @@ import * as Linking from 'expo-linking';
 import type { StatusTone } from '@/components/ui/elements';
 
 /**
- * Strava export (docs/ROADMAP.md 2.3) on the phone: where the service sends the runner back after
- * Strava's screen, and what each result means.
+ * Connections on the phone (docs/ROADMAP.md 2.3 and 2.4): where the service or the aggregator sends
+ * the runner back after connecting, and what each result means.
  */
 export const STRAVA_RETURN_PATH = 'strava';
 
@@ -21,6 +21,19 @@ export const STRAVA_OUTCOME: Record<string, { tone: StatusTone; title: string }>
 export function stravaOutcome(url: string): keyof typeof STRAVA_OUTCOME {
   const value = Linking.parse(url).queryParams?.strava;
   return typeof value === 'string' && value in STRAVA_OUTCOME ? value : 'error';
+}
+
+/** Garmin (docs/ROADMAP.md 2.4): the aggregator's widget sends the runner back here. */
+export const GARMIN_RETURN_PATH = 'garmin';
+
+export const GARMIN_OUTCOME: Record<string, { tone: StatusTone; title: string }> = {
+  connected: { tone: 'success', title: 'Garmin is connected. Runs you record on your Garmin appear after it syncs with Garmin Connect.' },
+  error: { tone: 'warning', title: 'Garmin wasn’t connected. You can try again any time.' },
+};
+
+export function garminOutcome(url: string): keyof typeof GARMIN_OUTCOME {
+  const value = Linking.parse(url).queryParams?.garmin;
+  return typeof value === 'string' && value in GARMIN_OUTCOME ? value : 'error';
 }
 
 export function stravaActivityUrl(activityId: string): string {

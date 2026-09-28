@@ -1,5 +1,6 @@
 import type { Pool } from './db';
 import type { Logger } from './log';
+import type { GarminWorker } from './garmin';
 import type { StravaWorker } from './strava';
 
 /**
@@ -10,6 +11,7 @@ import type { StravaWorker } from './strava';
 const FREQUENT_LOCK = 7_340_101;
 const HOURLY_LOCK = 7_340_102;
 const STRAVA_LOCK = 7_340_103;
+const GARMIN_LOCK = 7_340_104;
 
 const AUTH_CLEANUP = `
   delete from auth.one_time_codes where expires_at < now() - interval '1 hour';
@@ -58,13 +60,22 @@ export async function runStravaJobs(pool: Pool, log: Logger, worker: StravaWorke
   });
 }
 
+/** Garmin activities from Terra and ended links (docs/ROADMAP.md 2.4), one instance at a time. */
+export async function runGarminJobs(pool: Pool, log: Logger, worker: GarminWorker): Promise<void> {
+  await withLock(pool, GARMIN_LOCK, async () => {
+    const result = await worker.runOnce();
+    if (Object.values(result).some((n) => n > 0)) log.info('garmin jobs', result);
+  });
+}
+
 export function startJobs(
   pool: Pool,
   log: Logger,
-  options: { intervals?: { frequentMs: number; hourlyMs: number }; strava?: StravaWorker | null } = {},
+  options: { intervals?: { frequentMs: number; hourlyMs: number }; strava?: StravaWorker | null; garmin?: GarminWorker | null } = {},
 ): { stop: () => Promise<void> } {
   const intervals = options.intervals ?? { frequentMs: 60_000, hourlyMs: 3_600_000 };
   const strava = options.strava ?? null;
+  const garmin = options.garmin ?? null;
   let stopped = false;
   const running = new Set<Promise<void>>();
   const schedule = (name: string, everyMs: number, job: () => Promise<void>) => {
@@ -85,6 +96,7 @@ export function startJobs(
     schedule('frequent', intervals.frequentMs, () => runFrequentJobs(pool, log)),
     schedule('hourly', intervals.hourlyMs, () => runHourlyJobs(pool, log)),
     ...(strava ? [schedule('strava', intervals.frequentMs, () => runStravaJobs(pool, log, strava))] : []),
+    ...(garmin ? [schedule('garmin', intervals.frequentMs, () => runGarminJobs(pool, log, garmin))] : []),
   ];
   return {
     async stop() {

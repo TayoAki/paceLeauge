@@ -8,6 +8,7 @@ import { legalDir, loadLegalPages } from './legal';
 import type { Logger } from './log';
 import { createMailer, loadCodeTemplate, type Mailer } from './mailer';
 import { findDbDir } from './migrate';
+import { createGarminWorker, createTerraApi, publishGarminSettings, type GarminWorker, type TerraApi } from './garmin';
 import { createStravaApi, createStravaWorker, publishStravaSettings, type StravaApi, type StravaWorker } from './strava';
 
 /**
@@ -36,7 +37,9 @@ export async function createService(options: {
   fetchImpl?: typeof fetch;
   /** Replaces Strava's API (tests). */
   stravaApi?: StravaApi;
-}): Promise<ReturnType<typeof createApi> & { strava: StravaWorker | null }> {
+  /** Replaces Terra's API (tests). */
+  terraApi?: TerraApi;
+}): Promise<ReturnType<typeof createApi> & { strava: StravaWorker | null; garmin: GarminWorker | null }> {
   const { config, pool, log } = options;
   const secret = await resolveSigningSecret(pool, config);
   let template: string | null = null;
@@ -54,6 +57,14 @@ export async function createService(options: {
   await publishStravaSettings(pool, config.strava);
   const stravaApi = config.strava ? (options.stravaApi ?? createStravaApi(config.strava, options.fetchImpl)) : null;
   const strava = config.strava && stravaApi ? { api: stravaApi, config: config.strava } : null;
-  const api = createApi({ config, pool, secret, mailer, apple, log, legal, strava });
-  return { ...api, strava: strava ? createStravaWorker({ pool, api: strava.api, config: strava.config, log }) : null };
+  // Garmin sync through Terra (docs/ROADMAP.md 2.4), likewise.
+  await publishGarminSettings(pool, config.garmin);
+  const terra = config.garmin ? (options.terraApi ?? createTerraApi(config.garmin, options.fetchImpl)) : null;
+  const garmin = config.garmin && terra ? { terra, config: config.garmin } : null;
+  const api = createApi({ config, pool, secret, mailer, apple, log, legal, strava, garmin });
+  return {
+    ...api,
+    strava: strava ? createStravaWorker({ pool, api: strava.api, config: strava.config, log }) : null,
+    garmin: garmin ? createGarminWorker({ pool, terra: garmin.terra, log }) : null,
+  };
 }

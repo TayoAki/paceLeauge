@@ -8,7 +8,7 @@ import { SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { Card } from '@/components/ui/layout';
 import { useAccountServices } from '@/features/account/account-provider';
 import { useStravaStatus, useStravaUpload } from '@/features/data/hooks';
-import { stravaActivityUrl } from '@/features/strava/strava';
+import { stravaActivityUrl } from '@/features/connections/connections';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
 
