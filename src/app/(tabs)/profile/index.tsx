@@ -1,7 +1,7 @@
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Ban, Bell, Footprints, LifeBuoy, LogIn, LogOut, ShieldCheck, Tag, UserPen } from 'lucide-react-native';
+import { Ban, Bell, CloudUpload, Footprints, LifeBuoy, LogIn, LogOut, ShieldCheck, Tag, UserPen } from 'lucide-react-native';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -158,6 +158,14 @@ export default function ProfileScreen() {
           testID="profile-run-settings"
         />
         <Row icon={Tag} label="Shoes" onPress={() => router.push('/profile/shoes')} testID="profile-shoes" />
+        <Row
+          icon={CloudUpload}
+          label="Imports and sync"
+          value={unsynced > 0 ? `${unsynced} waiting` : undefined}
+          valueTone={unsynced > 0 ? 'accent' : 'secondary'}
+          onPress={() => router.push('/profile/sync')}
+          testID="profile-sync"
+        />
         <Row
           icon={Bell}
           label="Notifications"

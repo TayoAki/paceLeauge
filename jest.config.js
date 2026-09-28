@@ -5,7 +5,7 @@
  *          migrator (run through `npm run test:db`, which provisions the database first).
  */
 const transformIgnorePatterns = [
-  '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|react-navigation|@react-navigation|lucide-react-native|standard-navigation))',
+  '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|react-navigation|@react-navigation|lucide-react-native|standard-navigation|@garmin/fitsdk))',
   '/node_modules/react-native-reanimated/plugin/',
   '/node_modules/@react-native/babel-preset/',
 ];

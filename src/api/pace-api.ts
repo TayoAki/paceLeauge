@@ -31,6 +31,7 @@ import {
   weekSummarySchema,
   badgesSchema,
   cheersSchema,
+  diagnosticsResultSchema,
   deletedSchema,
   personalRecordsSchema,
   recordHistorySchema,
@@ -201,6 +202,8 @@ export interface PaceApi {
   editRun(runId: string, expectedVersion: number, input: RunEditInput): Promise<RunEditResult>;
   mergeRuns(firstRunId: string, secondRunId: string): Promise<RunEditResult>;
   undoRunEdits(runId: string, expectedVersion: number): Promise<RunEditResult>;
+  listRunDuplicates(runId: string): Promise<ServerRun[]>;
+  submitDiagnostics(report: Record<string, unknown>): Promise<{ reportId: number }>;
 }
 
 const UPLOAD_TIMEOUT_MS = 30_000;
@@ -378,5 +381,10 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
       call('merge_runs', { p_first_run_id: firstRunId, p_second_run_id: secondRunId }, runEditResultSchema),
     undoRunEdits: (runId, expectedVersion) =>
       call('undo_run_edits', { p_run_id: runId, p_expected_version: expectedVersion }, runEditResultSchema),
+    listRunDuplicates: (runId) => call('list_run_duplicates', { p_run_id: runId }, runListSchema),
+    submitDiagnostics: async (report) => {
+      const r = await call('submit_diagnostics', { p_report: report }, diagnosticsResultSchema);
+      return { reportId: r.report_id };
+    },
   };
 }

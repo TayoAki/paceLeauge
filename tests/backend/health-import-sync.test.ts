@@ -4,6 +4,7 @@ import { createPaceApi } from '@/api/pace-api';
 import { Journal, type RawSample } from '@/db/journal';
 import { steadyRun } from '@/domain/synthetic';
 import type { TrackPoint } from '@/domain/types';
+import { importActivityFile } from '@/features/files/file-import';
 import { HealthImporter, type HealthReaderPort, type HealthWorkout } from '@/features/health/health-import';
 import { RecorderService } from '@/features/recording/recorder-service';
 import type { LocationDriver } from '@/features/recording/types';
@@ -122,5 +123,27 @@ describe('Apple Health import through sync', () => {
     const phoneServer = await d.api.getMyRun(serverRunOf((await d.journal.getSavedRun(phone.runId))!)!.id);
     expect(phoneServer).toMatchObject({ status: 'duplicate', duplicate_of: kept!.id });
     expect((await d.api.getMe()).lifetime_xp).toBe(kept!.xp_award!.total_xp);
+  });
+});
+
+describe('file import through sync', () => {
+  it('keeps a GPX file as history, once however often it is imported', async () => {
+    const runner = await db.createRunner('File Finn');
+    const d = await device(runner, []);
+    const start = inCurrentWeek(3);
+    const pts = steadyRun(start, 7_000, 2_400).points.filter((_, i) => i % 5 === 0);
+    const gpx = `<gpx creator="Old Watch"><trk><name>Tempo</name><type>running</type><trkseg>${pts
+      .map((p) => `<trkpt lat="${p.lat}" lon="${p.lon}"><time>${new Date(p.t).toISOString()}</time></trkpt>`)
+      .join('')}</trkseg></trk></gpx>`;
+    const bytes = new TextEncoder().encode(gpx);
+    const first = await importActivityFile(d.journal, { name: 'tempo.gpx', bytes });
+    expect(first.kind).toBe('imported');
+    expect((await importActivityFile(d.journal, { name: 'tempo-copy.gpx', bytes })).kind).toBe('already_imported');
+    await d.engine.run();
+    const server = serverRunOf((await d.journal.getSavedRun(first.runId))!);
+    expect(server).toMatchObject({ status: 'personal_only', reason_codes: ['file_import'], source: 'file_import', title: 'Tempo', source_app: 'Old Watch' });
+    expect(server!.distance_m).toBeCloseTo(7_000, -2);
+    expect((await d.api.getMe()).lifetime_xp).toBe(0);
+    expect((await d.api.submitDiagnostics({ app_version: 'test' })).reportId).toEqual(expect.any(Number));
   });
 });
