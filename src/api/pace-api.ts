@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 
+import type { RunOrigin } from '@/db/journal';
 import type { ActiveSegment } from '@/domain/types';
 
 import { ApiError } from './errors';
@@ -82,6 +83,8 @@ export interface StartUploadInput {
   expectedChunks: number;
   title: string;
   interrupted: boolean;
+  /** Where the run came from, for runs not recorded by the phone's GPS (Phase 2). */
+  origin?: RunOrigin | null;
 }
 
 export interface ProfileInput {
@@ -247,6 +250,21 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
           p_expected_chunks: input.expectedChunks,
           p_title: input.title,
           p_interrupted: input.interrupted,
+          // Only sent for imports, so a phone run's request is byte-for-byte what V1 sent.
+          ...(input.origin
+            ? {
+                p_source: input.origin.source,
+                p_activity_type: input.origin.activityType ?? null,
+                p_source_app: input.origin.sourceApp ?? null,
+                p_source_device: input.origin.sourceDevice ?? null,
+                p_manual_entry: input.origin.manualEntry ?? false,
+                p_external_id: input.origin.externalId ?? null,
+                p_claimed_distance_m: input.origin.claimedDistanceM ?? null,
+                p_avg_heart_rate: input.origin.avgHeartRate ?? null,
+                p_max_heart_rate: input.origin.maxHeartRate ?? null,
+                p_steps: input.origin.steps ?? null,
+              }
+            : {}),
         },
         uploadStateSchema,
       ),

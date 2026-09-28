@@ -25,6 +25,10 @@ export function xpPanelState(local: SavedRun | null, server: ServerRun | null, o
     return { kind: 'pending', estimate: null };
   }
   if (!local) return { kind: 'pending', estimate: null };
+  if (local.syncState !== 'needs_attention' && local.origin) {
+    // Imports are judged by the server under their source's rules; no local verdict or estimate.
+    return offline ? { kind: 'offline', estimate: null } : { kind: 'pending', estimate: null };
+  }
   if (local.syncState === 'needs_attention') {
     return { kind: 'needs_attention', reason: syncErrorCopy[local.syncError ?? ''] ?? 'It will need attention before it can sync.' };
   }

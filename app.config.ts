@@ -115,8 +115,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             '@kingstinct/react-native-healthkit',
             {
               NSHealthUpdateUsageDescription: 'When you turn it on, PaceLeague saves your runs to Apple Health with their distance and route.',
-              NSHealthShareUsageDescription: 'PaceLeague doesn’t read your Health data. It only saves the runs you record, when you turn that on.',
-              background: false,
+              NSHealthShareUsageDescription:
+                'When you turn on import, PaceLeague reads your workouts, their routes and heart rate so runs from your watch and other apps count.',
+              // Health wakes the app for new workouts, so imports sync without opening it (2.1).
+              background: true,
             },
           ] as [string, unknown],
         ]

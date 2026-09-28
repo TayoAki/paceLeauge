@@ -22,6 +22,8 @@ export interface RunSettings {
   speakerFallback: boolean;
   /** Write finished runs to Apple Health (iOS; asks permission when switched on). */
   appleHealth: boolean;
+  /** Bring in runs recorded elsewhere through Apple Health (iOS; asks permission when switched on). */
+  healthImport: boolean;
   /** One to three numbers under the distance on the run screen, in this order. */
   screenFields: RunScreenField[];
 }
@@ -32,6 +34,7 @@ export const DEFAULT_RUN_SETTINGS: RunSettings = {
   cueVolume: 'normal',
   speakerFallback: false,
   appleHealth: false,
+  healthImport: false,
   screenFields: ['time', 'currentPace', 'averagePace'],
 };
 
@@ -73,6 +76,7 @@ export function parseRunSettings(value: unknown): RunSettings {
     cueVolume: v.cueVolume === 'quiet' || v.cueVolume === 'normal' || v.cueVolume === 'loud' ? v.cueVolume : DEFAULT_RUN_SETTINGS.cueVolume,
     speakerFallback: typeof v.speakerFallback === 'boolean' ? v.speakerFallback : DEFAULT_RUN_SETTINGS.speakerFallback,
     appleHealth: typeof v.appleHealth === 'boolean' ? v.appleHealth : DEFAULT_RUN_SETTINGS.appleHealth,
+    healthImport: typeof v.healthImport === 'boolean' ? v.healthImport : DEFAULT_RUN_SETTINGS.healthImport,
     screenFields: parseScreenFields(v.screenFields),
   };
 }

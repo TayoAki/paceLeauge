@@ -47,6 +47,20 @@ export interface LocalValidationSummary {
   activeMs: number;
 }
 
+/** Where a run came from when it wasn't recorded by the phone's GPS (Phase 2 imports). */
+export interface RunOrigin {
+  source: 'watch' | 'health_import' | 'file_import' | 'indoor';
+  activityType?: 'run' | 'walk' | 'hike' | 'ride' | 'other';
+  sourceApp?: string | null;
+  sourceDevice?: string | null;
+  manualEntry?: boolean;
+  externalId?: string | null;
+  claimedDistanceM?: number | null;
+  avgHeartRate?: number | null;
+  maxHeartRate?: number | null;
+  steps?: number | null;
+}
+
 export interface SavedRun {
   runId: string;
   title: string;
@@ -66,6 +80,8 @@ export interface SavedRun {
   server: unknown;
   routeCached: boolean;
   deleted: boolean;
+  /** Null for runs recorded by this phone. */
+  origin: RunOrigin | null;
   createdAt: EpochMs;
   updatedAt: EpochMs;
 }
@@ -142,6 +158,7 @@ interface SavedRunRow {
   server_json: string | null;
   route_cached: number;
   deleted: number;
+  origin_json: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -208,6 +225,7 @@ function toSavedRun(row: SavedRunRow): SavedRun {
     server: row.server_json ? JSON.parse(row.server_json) : null,
     routeCached: row.route_cached === 1,
     deleted: row.deleted === 1,
+    origin: row.origin_json ? (JSON.parse(row.origin_json) as RunOrigin) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -475,6 +493,53 @@ export class Journal {
       const saved = await this.db.getFirstAsync<SavedRunRow>('select * from saved_runs where run_id = ?', [runId]);
       if (!saved) throw new Error('saved run missing after insert');
       return toSavedRun(saved);
+    });
+  }
+
+  /**
+   * Saves a run that came from somewhere other than this phone's recorder (Apple Health, a file,
+   * an indoor run) with its points and its upload in one transaction, so it syncs like any other
+   * run. Importing the same run again is a no-op.
+   */
+  saveImportedRun(runId: string, draft: SavedRunDraft, points: readonly TrackPoint[], origin: RunOrigin): Promise<{ run: SavedRun; created: boolean }> {
+    return this.write(['saved', 'points', 'outbox'], async () => {
+      const existing = await this.db.getFirstAsync<SavedRunRow>('select * from saved_runs where run_id = ?', [runId]);
+      if (existing) return { run: toSavedRun(existing), created: false };
+      const now = this.clock.now();
+      for (const p of points) {
+        await this.db.runAsync(
+          'insert into track_points (run_id, seq, segment_index, t, lat, lon, accuracy) values (?, ?, ?, ?, ?, ?, ?) on conflict do nothing',
+          [runId, p.seq, p.segmentIndex, p.t, p.lat, p.lon, p.accuracyM],
+        );
+      }
+      await this.db.runAsync(
+        `insert into saved_runs (run_id, title, started_at, ended_at, active_ms, distance_m, point_count, segments_json, interrupted,
+           validation_json, provisional_xp_json, sync_state, origin_json, created_at, updated_at)
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+        [
+          runId,
+          draft.title,
+          draft.startedAt,
+          draft.endedAt,
+          draft.activeMs,
+          draft.distanceM,
+          points.length,
+          JSON.stringify(draft.segments),
+          draft.interrupted ? 1 : 0,
+          JSON.stringify(draft.validation),
+          draft.provisionalXp ? JSON.stringify(draft.provisionalXp) : null,
+          JSON.stringify(origin),
+          now,
+          now,
+        ],
+      );
+      await this.db.runAsync(
+        `insert into outbox (kind, run_id, payload_json, state, created_at, updated_at) values ('upload_run', ?, ?, 'pending', ?, ?)`,
+        [runId, JSON.stringify({ title: draft.title }), now, now],
+      );
+      const saved = await this.db.getFirstAsync<SavedRunRow>('select * from saved_runs where run_id = ?', [runId]);
+      if (!saved) throw new Error('saved run missing after insert');
+      return { run: toSavedRun(saved), created: true };
     });
   }
 

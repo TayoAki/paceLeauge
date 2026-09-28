@@ -113,6 +113,40 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (engine && accessToken) void engine.resumeAfterAuth();
   }, [engine, accessToken]);
 
+  // Apple Health import (docs/ROADMAP.md 2.1): on open, on returning to the app and when Health
+  // wakes us for a new workout. Imported runs then sync like recorded ones.
+  const runtime = state.status === 'ready' ? state.runtime : null;
+  useEffect(() => {
+    if (!runtime || !engine) return;
+    const importer = runtime.healthImport;
+    const pass = () => void importer.importNew().catch(() => 0);
+    const offImported = importer.imported.subscribe(() => {
+      void engine.run();
+      void queryClient.invalidateQueries({ queryKey: [runtime.accountId] });
+    });
+    let stopWatching: (() => void) | null = null;
+    const syncWatch = () => {
+      const on = runtime.runSettings.get().healthImport && importer.available;
+      if (on && !stopWatching) stopWatching = runtime.healthImport.watch(pass);
+      if (!on && stopWatching) {
+        stopWatching();
+        stopWatching = null;
+      }
+    };
+    syncWatch();
+    const offSettings = runtime.runSettings.subscribe(syncWatch);
+    pass();
+    const appState = AppState.addEventListener('change', (s) => {
+      if (s === 'active') pass();
+    });
+    return () => {
+      offImported();
+      offSettings();
+      stopWatching?.();
+      appState.remove();
+    };
+  }, [runtime, engine, queryClient]);
+
   useEffect(() => {
     if (!engine || !accessToken) return;
     const network = Network.addNetworkStateListener((s) => {

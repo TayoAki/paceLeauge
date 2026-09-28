@@ -95,6 +95,10 @@ export const LOCAL_MIGRATIONS: string[] = [
     updated_at integer not null
   );
   `,
+  // 2 · Phase 2: where an imported run came from (Apple Health, a file, an indoor run…).
+  `
+  alter table saved_runs add column origin_json text;
+  `,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {

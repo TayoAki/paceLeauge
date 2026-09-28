@@ -23,6 +23,7 @@ function localRun(overrides: Partial<SavedRun> = {}): SavedRun {
     server: null,
     routeCached: true,
     deleted: false,
+    origin: null,
     createdAt: T0,
     updatedAt: T0,
     ...overrides,

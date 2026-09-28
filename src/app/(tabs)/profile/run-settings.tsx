@@ -1,4 +1,4 @@
-import { Headphones, HeartPulse, Pause, Volume2 } from 'lucide-react-native';
+import { Download, Headphones, HeartPulse, Pause, Volume2 } from 'lucide-react-native';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -64,7 +64,10 @@ export default function RunSettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [healthBlocked, setHealthBlocked] = useState(false);
+  const [importNote, setImportNote] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
   const health = runtime.health;
+  const importer = runtime.healthImport;
 
   useEffect(() => store.setUnits(units), [store, units]);
 
@@ -73,6 +76,31 @@ export default function RunSettingsScreen() {
     void store.save(next).catch(() => setError('Couldn’t save your settings. Try again.'));
   };
   const setCues = (cues: CueSettings) => save({ ...settings, cues });
+
+  const toggleImport = async (on: boolean) => {
+    setImportNote(null);
+    if (!on) {
+      save({ ...settings, healthImport: false });
+      return;
+    }
+    setImporting(true);
+    try {
+      // Asked only now. Health never says whether reading was allowed, so an empty result is
+      // explained rather than treated as an error.
+      await importer.connect();
+      await store.save({ ...store.get(), healthImport: true });
+      const added = await importer.importNew();
+      setImportNote(
+        added > 0
+          ? `Added ${added} ${added === 1 ? 'workout' : 'workouts'} from the last 30 days. They sync now.`
+          : 'Nothing new from the last 30 days. If you expected runs, check that PaceLeague can read Workouts and Workout Routes in the Health app.',
+      );
+    } catch {
+      setImportNote('Couldn’t read from Apple Health. Try again.');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const toggleHealth = async (on: boolean) => {
     setHealthBlocked(false);
@@ -253,6 +281,21 @@ export default function RunSettingsScreen() {
           />
         </RowGroup>
       ) : null}
+      {importer.available ? (
+        <RowGroup>
+          <SwitchRow
+            icon={Download}
+            label="Import runs from Apple Health"
+            hint="Runs from your Apple Watch and other apps that save to Health come in on their own. Workouts without a route count for your goals, not league XP."
+            value={settings.healthImport}
+            disabled={importing}
+            onChange={(on) => void toggleImport(on)}
+            last
+            testID="health-import-switch"
+          />
+        </RowGroup>
+      ) : null}
+      {importNote ? <InlineStatus tone="info" title={importNote} /> : null}
       {healthBlocked ? (
         <InlineStatus
           tone="warning"

@@ -1,3 +1,5 @@
+import * as Application from 'expo-application';
+
 import { Journal } from '@/db/journal';
 import { METRES_PER_MILE } from '@/domain/format';
 import { openAccountDatabase } from '@/db/open';
@@ -11,6 +13,7 @@ import { setActiveRecorder } from '@/features/recording/registry';
 import type { CreditedDays } from '@/features/recording/run-draft';
 import { countBucket, createTelemetry, durationBucket, type Telemetry } from '@/features/telemetry/telemetry';
 import { AppleHealthSync, deviceHealthKit, healthRunFrom } from '@/features/health/apple-health';
+import { deviceHealthReader, HealthImporter } from '@/features/health/health-import';
 import { deviceRunActivity, LiveActivityController } from '@/features/run-activity/live-activity';
 import { CueController } from '@/features/voice/cue-controller';
 import { RunSettingsStore } from '@/features/voice/run-settings';
@@ -33,6 +36,8 @@ export interface AccountRuntime {
   health: AppleHealthSync;
   /** The run on the lock screen and in the Dynamic Island. */
   liveActivity: LiveActivityController;
+  /** Brings in runs recorded elsewhere through Apple Health. */
+  healthImport: HealthImporter;
 }
 
 let current: AccountRuntime | null = null;
@@ -99,7 +104,13 @@ async function create(accountId: string): Promise<AccountRuntime> {
   liveActivity.start();
   await recorder.init();
   setActiveRecorder(recorder);
-  return { accountId, journal, recorder, telemetry, runSettings, cues, health, liveActivity };
+  const healthImport = new HealthImporter({
+    journal,
+    port: deviceHealthReader(),
+    enabled: () => runSettings.get().healthImport,
+    ownBundleId: Application.applicationId,
+  });
+  return { accountId, journal, recorder, telemetry, runSettings, cues, health, liveActivity, healthImport };
 }
 
 export async function openAccountRuntime(accountId: string): Promise<AccountRuntime> {

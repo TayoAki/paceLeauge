@@ -204,6 +204,7 @@ export class SyncEngine {
       expectedChunks: chunks.length,
       title,
       interrupted: run.interrupted,
+      origin: run.origin,
     });
 
     if (start.status === 'deleted') {
