@@ -111,3 +111,4 @@ docs/               Architecture, status/evidence, device protocol, operations, 
 - [OPERATIONS.md](docs/OPERATIONS.md) — the Railway runbook: deploys, variables, email, flags, jobs, backups, incidents
 - [IMPLEMENTATION_DECISIONS.md](docs/IMPLEMENTATION_DECISIONS.md) — choices and deviations from the packet, with reasons
 - [COMPATIBILITY.md](docs/COMPATIBILITY.md) — pinned versions and how they were verified
+- [ROADMAP.md](docs/ROADMAP.md) — the plan after V1: watch sync, voice cues, coaching, social and maps, in phases

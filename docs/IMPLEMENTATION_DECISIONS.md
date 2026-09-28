@@ -61,6 +61,15 @@ did is now done by the pieces below.
 | Tier bar on board 02 is illustrative | Exact 39.7 % within Stride at 897 XP | The packet: implement the numeric contract, not the raster |
 | Fictional park map on preflight | Plain dark grid on web; Apple Maps on device | No fabricated map data |
 
+## Direction after V1
+
+On 28 September 2026 the founder widened the product beyond V1: watch and Apple Health imports,
+training plans and guided runs, health data, and the social and map features the packet left out
+(follows, feed, global leaderboards, live location, segments, heatmaps). V1 is unchanged. The
+phased plan, and the packet decisions it supersedes (D-002, D-006, D-008, D-010, D-011 and the V1
+non-goals), are in [ROADMAP.md](ROADMAP.md#scope-changes-this-plan-makes). The section below still
+describes V1.
+
 ## Deferred or out of scope (by the packet)
 
 - **REQ-013 / S17 Pro purchase** — V1.1 (F10). No purchase UI, entitlement checks or simulated
