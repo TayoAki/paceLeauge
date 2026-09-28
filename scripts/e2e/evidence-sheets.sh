@@ -25,3 +25,9 @@ sheet 07-league-details "League details" 09b-invite-sheet 09c-league-rules 09d-l
 sheet 08-run-detail "Run detail" 12-run-detail 12b-run-detail-splits
 sheet 09-profile "Profile" 14-profile 14c-edit-profile 14d-notifications 14e-blocked 14f-support 14g-change-password
 sheet 10-export-and-deletion "Export and account deletion" 15-export 16-delete-account 16b-delete-confirm 16c-after-deletion
+# Phase 1 (docs/ROADMAP.md)
+sheet 11-p1-run-and-settings "Phase 1 · Live pace, voice cues, auto-pause, shoes" 05-running 20-run-settings 20b-run-settings-splits-only 21-shoes
+sheet 12-p1-records-badges "Phase 1 · Streak, records, badges" 22-progress-phase1 23-records 23b-record-history 24-badges
+sheet 13-p1-stats-calendar "Phase 1 · Stats and the run calendar" 25-stats 25b-stats-months 26-calendar 26b-calendar-day 26c-calendar-search
+sheet 14-p1-fix-a-run "Phase 1 · Notes, best efforts, fix a run and restore it" 27-run-detail-phase1 28-fix-run 28b-run-fixed 28c-run-detail-edited 28d-run-restored
+sheet 15-p1-cheers "Phase 1 · League cheers" 29-league-cheers

@@ -25,12 +25,14 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 ### Your runs
 
 - While you record a run, your phone's precise location: coordinates, times, accuracy and related readings. If you allow it, this continues while the screen is locked or the app is in the background, but only during a run you started. Before a run, the app briefly checks your location on the start screen to confirm a good GPS signal. PaceLeague does not collect your location at any other time.
-- What we calculate from a run: distance, time, pace, splits, XP, and which competition days it counts toward.
-- The titles you give your runs.
+- What we calculate from a run: distance, time, pace, splits, XP, which competition days it counts toward, your fastest times for set distances (personal records), badges and your weekly streak.
+- The titles, activity types and private notes you give your runs, and the shoes you track (their names, the distance you set for a replacement reminder, and which runs you wore them for).
+- If you fix a run (trim it, cut out a stop, change its activity or merge two runs), we keep the run as it was first saved, so you can restore it.
 
 ### Leagues and safety
 
 - The leagues you create or join, the invites you create, and weekly standings.
+- Cheers: who in your league cheered whom, and in which week.
 - Reports you send, runners you block, and moderators' decisions about reports.
 
 ### Technical information
@@ -40,7 +42,13 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 
 ### On your phone
 
-The app keeps your runs and any uploads that are waiting in an encrypted database on your phone, protected by a key in the iOS Keychain. This is what lets you record without a connection. Each account on the phone has its own database.
+The app keeps your runs and any uploads that are waiting in an encrypted database on your phone, protected by a key in the iOS Keychain. This is what lets you record without a connection. Each account on the phone has its own database. Your run settings (voice cues, auto-pause, the numbers on the run screen) are kept there too.
+
+While you run, your distance, time and pace are shown on your lock screen and in the Dynamic Island, so anyone who can see your phone can see them. You can turn this off for PaceLeague in the iPhone's Settings. If you add the PaceLeague widget, this week's active days, weekly XP and league place are stored on your phone where the widget can read them; they're removed when you sign out.
+
+### Apple Health
+
+Only if you turn on "Save runs to Apple Health": when you finish a run, PaceLeague saves it to Apple Health as a workout with its time, distance and route. If you delete or fix the run in PaceLeague, we delete or update that workout. PaceLeague never reads your Health data, and what we write to Health stays in Health on your device (and in iCloud if you use it); it isn't sent to us. We don't use Health information for advertising or share it with anyone. You can stop it at any time in Run settings or in the Health app.
 
 ## How we use it
 
@@ -54,7 +62,7 @@ We don't use your information for advertising, and we don't sell it or share it 
 ## Who can see what
 
 - You can see everything in your account, including your routes.
-- Your league sees your runner name, tier and weekly XP. Nothing about where you ran.
+- Your league sees your runner name, tier and weekly XP, and how many cheers you received this week. Nothing about where you ran. Your notes, shoes, records, badges and streak are visible only to you.
 - If you use Share, the image shows only distance, time and pace, with no map or location, and you choose where it goes.
 - Moderators working for us see reports and what they need to decide them. Routes are never part of moderation.
 - Service providers process data on our behalf to run PaceLeague: Railway hosts the service and its database in the United States. Apple provides Sign in with Apple if you use it, draws the maps in the app with Apple Maps (so the map areas you view are requested from Apple), and distributes the app through TestFlight and the App Store under Apple's own privacy policy.
@@ -64,7 +72,7 @@ We don't use your information for advertising, and we don't sell it or share it 
 
 ## How long we keep it
 
-- Your account, profile, runs and routes: until you delete them or your account.
+- Your account, profile, runs and routes: until you delete them or your account. The same goes for notes, shoes, records, badges, streak weeks, cheers and the saved original of a fixed run (until you restore it, delete the run or delete your account).
 - Deleting a run removes its route and details right away. A small placeholder with no location stays so your devices stay in sync.
 - Deleting your account hides you from your league immediately and removes your data within 7 days (usually within minutes). Copies may remain in backups for up to 30 days before they are overwritten.
 - App events: 14 days. Rate-limit records: 2 days. Resolved reports: 90 days after they are resolved. Expired invites: 30 days. Export files: 24 hours. Uploads that were never finished: 7 days. A record that an account deletion was completed, without your data: 30 days.

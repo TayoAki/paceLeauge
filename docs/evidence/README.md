@@ -19,6 +19,11 @@ side-by-side comparison.
 | `08-run-detail.jpg` | Private route, splits |
 | `09-profile.jpg` | Profile and its sub-screens |
 | `10-export-and-deletion.jpg` | Export ready, deletion consequences, confirmation, signed out afterwards |
+| `11-p1-run-and-settings.jpg` | Phase 1: the run screen with current and average pace and the voice-cue mute button, Run settings (voice cues, frequency, fields, volume, speaker fallback, run-screen numbers, auto-pause), shoes |
+| `12-p1-records-badges.jpg` | Phase 1: Progress with the weekly streak and new entries, personal records and how one improved, badges with progress |
+| `13-p1-stats-calendar.jpg` | Phase 1: stats by week and by month against a year earlier, the run calendar, one day, search |
+| `14-p1-fix-a-run.jpg` | Phase 1: best efforts and a private note on a run; fixing it (trim, preview, merge candidates), the saved fix (−3 XP), the run marked Edited, and restoring the original (+3 XP) |
+| `15-p1-cheers.jpg` | Phase 1: cheering a league-mate |
 
 Regenerate: start the backend and web app as in the README, then
 

@@ -88,6 +88,12 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 | 4 | Friends, family and everyone | Leagues 2.0 with group runs, privacy zones, follow, feed, clubs, challenges, opt-in leaderboards, live location, push, teen family accounts | 23–36 weeks |
 | 5 | Maps | Route planning, offline maps and navigation, segments, heatmaps | 18–28 weeks |
 
+**Progress (28 September 2026).** Phase 0's age check and Phase 1 are built and tested in code:
+the server by 174 database tests, the app by 179 unit tests and a browser walkthrough of every
+new screen. What remains for Phase 1 is on-device: the Part C audio matrix and the other checks in
+DEVICE_TEST_PROTOCOL.md ("Phase 1 device checks"), the first native build of the new Swift and
+Kotlin code, and the recorded voice (content budget). Each item below says what was built.
+
 Sizes are rough engineer-weeks for one engineer working with Claude, before testing on devices.
 Sizes per epic: **S** is up to a week, **M** 1–3 weeks, **L** 3–6 weeks, **XL** more than 6.
 Content work (coach-written plans, recorded guided runs) runs alongside and needs a budget.
@@ -322,6 +328,7 @@ From the gap analysis, before inviting testers:
 - What: spoken splits, pace, time and distance, designed as in Part C.
 - How: a native audio module (Expo Modules API), a cue scheduler driven by the recorder's live
   metrics, the recorded voice set, and settings under Profile.
+- Built: `modules/voice-cue` (Swift: `.playback`/`.voicePrompt` session that ducks and hands audio back with `.notifyOthersOnDeactivation`; Kotlin: transient may-duck audio focus), the cue scheduler (`src/domain/cues.ts`), the cue controller and Run settings. The best installed system voice speaks until the recorded voice exists.
 - Done when: the Part C test matrix passes on two iPhone models.
 
 **1.2 Live pace, data screens and a lock-screen Live Activity** · M
@@ -329,6 +336,7 @@ From the gap analysis, before inviting testers:
   on the run screen. The run also shows on the lock screen and Dynamic Island.
 - How: smoothing in the recorder's live metrics. Software Mansion's `expo-live-activity`
   (iOS 16.2 and later) for the lock screen.
+- Built: current pace over 20 s of credited running, lap pace and lap time, up to three chosen numbers on the run screen, and our own ActivityKit Live Activity (`modules/run-activity` + `targets/widgets`) instead of `expo-live-activity`, whose template can't show a clock counting up.
 - Done when: current pace settles within 10 seconds of a pace change on a track test, and the
   Live Activity updates with the phone locked.
 
@@ -337,6 +345,7 @@ From the gap analysis, before inviting testers:
 - How: speed thresholds with a delay (for example, under about 1 m/s for 5 seconds pauses, over
   about 1.5 m/s for 3 seconds resumes). Motion data avoids false pauses from GPS jitter.
   Scoring already uses active time.
+- Built: `src/domain/auto-pause.ts` (0.6 m/s for 8 s pauses, 1.4 m/s for 3 s resumes, straight-line displacement over 5 s so jitter doesn't count), in the recorder, on by default with a switch. Motion-sensor input is not used yet.
 - Done when: traffic-light stops pause and resume on 10 test runs without a false pause while
   running.
 
@@ -346,6 +355,7 @@ From the gap analysis, before inviting testers:
 - How: the server finds the fastest stretch of each distance inside accepted runs, measured by
   distance and interpolated between GPS points. Existing runs are backfilled once. Records don't
   affect XP.
+- Built: `20260928000300_personal_records.sql`, the Records screen with each record's history, and best efforts on the run screen.
 - Done when: the computed results match hand-checked results on a golden set of routes, and
   deleting a run removes its records.
 
@@ -355,6 +365,7 @@ From the gap analysis, before inviting testers:
 - How: the edit is sent as a new version of the run. The server re-validates and re-scores it and
   keeps an audit trail. Edits can only remove distance, never add it. Merging keeps the two runs'
   distance and adds nothing for the gap between them. So edits can't be used to cheat. Leagues show a correction note, as they already do for deletions.
+- Built: `20260928000700_run_edits.sql` and the Fix screen. The phone previews every fix with the server's rules (a DB test shows they agree to the centimetre); stops are found along the route for one-tap cuts.
 - Done when: trimming updates XP and standings the same way a deletion does, and a trimmed run
   can never score more than the original.
 
@@ -364,6 +375,7 @@ From the gap analysis, before inviting testers:
 - How: `@kingstinct/react-native-healthkit` (Expo config plugin) writes the workout and route
   when the run is saved, and removes them if the runner deletes the run. It asks for write
   permission only when the runner switches this on.
+- Built: `src/features/health/apple-health.ts` on `@kingstinct/react-native-healthkit`, a Run settings switch, rewrite after fixes and removal on delete.
 - Done when: a run saved on the phone appears in the Fitness app with its map, exactly once, and
   deleting the run removes it.
 
@@ -371,6 +383,7 @@ From the gap analysis, before inviting testers:
 - What: weekly, monthly and yearly totals, the same period last year, a custom date range,
   pace trend and personal-record history.
 - How: server aggregates over accepted runs, cached per week.
+- Built: `20260928000600_stats.sql` and the Stats screen (12 weeks, 12 months, this year, 5 years or custom; runs, walks or all; a year earlier; pace trend).
 - Done when: totals match the run log exactly for any range.
 
 **1.8 Badges and achievements** · M
@@ -383,6 +396,7 @@ From the gap analysis, before inviting testers:
   - The streak counts by each run's start date, so a late sync or import never breaks it.
   - Pausing a plan for illness or travel freezes it.
   - No "you're about to lose your streak" notifications (REQ-012).
+- Built: `20260928000400_streaks_badges.sql`, the streak card and the Badges screen. League-win badges wait for Leagues 2.0.
 - Done when: every badge rule has a test, deleting the run that earned a badge removes it, and a
   run synced days late still extends the streak for the week it was run.
 
@@ -391,17 +405,20 @@ From the gap analysis, before inviting testers:
   the league, with nothing to moderate.
 - How: a cheers table (who cheered whom, for which day), limited per day. Cheers are shown to the
   runner being cheered and to their league.
+- Built: `20260928000500_league_cheers.sql` and cheer buttons on the standings.
 - Done when: blocked runners can't cheer each other, and cheers disappear with a deleted account.
 
 **1.10 Run log extras** · S
 - What: notes on a run, shoe tracking with mileage and a replacement reminder, a calendar view,
   and search and filter. This makes the log complete, the thing Strava is praised for.
 - How: new columns and tables. Shoes are private.
+- Built: `20260928000200_run_log.sql`, notes and shoe on each run, the Shoes screen, the calendar with search, and export format 2 (`20260928000800_export_v2.sql`).
 - Done when: notes and shoes are included in the data export.
 
 **1.11 Home-screen widgets** · S–M
 - What: this week's goal progress and league rank on the home screen (Garmin reviewers ask for this).
 - How: a WidgetKit extension added with `@bacons/apple-targets`, fed from shared app-group storage.
+- Built: the "this week" widget (home screen small and medium, lock screen circular, rectangular and inline) in `targets/widgets`, fed through the App Group.
 - Done when: the widget updates within 15 minutes of a synced run.
 
 **Phase 1 is done when** it has passed the Part C audio tests and had zero lost runs during

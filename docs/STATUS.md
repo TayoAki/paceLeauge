@@ -82,6 +82,30 @@ Summary "+77 XP · 52 distance + 25 active day", the stats-only poster). Intenti
 packet instructs); the web preview draws routes on a plain grid instead of Apple Maps; League rows
 also show each runner's tier.
 
+## Roadmap work after V1 (docs/ROADMAP.md)
+
+Snapshot 28 September 2026. Phase 0's age check and all of Phase 1 are built. As with V1, the
+logic and screens are proven automatically; nothing that needs an iPhone is.
+
+| Item | Evidence | Still required |
+|---|---|---|
+| Age check at sign-up (Phase 0) | `age-check.test.ts` (21), `age.test.ts` (11): minors locked out of leagues, export and deletion still work | Declared Age Range on iOS 26 and Play Age Signals on device |
+| Voice cues (1.1) | `run-feedback.test.ts`, `voice.test.ts`: cue timing, catch-ups, no replay after a relaunch, mid-run setting changes, the speech fallback | P1-AUDIO (the Part C matrix); first native build of `modules/voice-cue`; the recorded voice |
+| Live pace, run-screen numbers, Live Activity (1.2) | `run-feedback.test.ts`, `laps.test.ts`, `live-activity.test.ts` (start, throttled updates, final numbers, discard) | P1-PACE, P1-LIVE; first native build of `modules/run-activity` and `targets/widgets` |
+| Auto-pause (1.3) | `run-feedback.test.ts`, `recorder.test.ts`: pauses dated to the stop, no flicker at a slow jog, jitter ignored, manual pause never auto-resumes | P1-AUTOPAUSE |
+| Personal records (1.4) | `records.test.ts`; screens in the walkthrough | — |
+| Fix a run (1.5) | `run-edits.test.ts` (trim, cut, type, merge, undo; edits never add distance or promote a run), `run-fix.test.ts`, and `phase1-client.test.ts` showing the phone's preview equals the server's result | — |
+| Apple Health (1.6) | `apple-health.test.ts`: written once, off or denied writes nothing, rewritten after a fix, removed on delete | P1-HEALTH |
+| Stats (1.7), badges and streak (1.8), cheers (1.9), run log (1.10) | `streaks.test.ts`, `cheers-stats.test.ts`, `export-v2.test.ts`, `phase1-client.test.ts` (every new client call against the real SQL), `stats-ranges.test.ts` | — |
+| Widget (1.11) | `live-activity.test.ts` (widget numbers); prebuild creates the extension, App Group and entitlements | P1-WIDGET |
+
+Totals: 179 unit tests and 174 database tests passing; the browser walkthrough covers every new
+screen (62 screenshots, no browser errors; sheets 11–15 in [evidence/web](evidence/README.md)).
+`npx expo prebuild` generates the widget target, the HealthKit and App Group entitlements and
+links the three local modules; the Swift and Kotlin have not been compiled here (no Xcode or
+Android SDK in this environment), so the first EAS build is their compile check. If it fails,
+`PL_WIDGETS=0` or `PL_HEALTHKIT=0` leaves that piece out (OPERATIONS.md, "Native extras").
+
 ## Known gaps before a pilot
 
 1. **F01 on two physical iPhones** — the packet's first gate. Nothing about background GPS,

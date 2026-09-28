@@ -47,6 +47,19 @@ record the failure and evaluate a native recorder before building further.
 | EV-012 | Turn reminder on/off; deny notifications; sign out; change time zone; cross a DST change | Exactly one reminder or none; denial leaves the app fully usable; sign-out cancels |
 | EV-014 | VoiceOver: start, pause, finish, find the result, initiate deletion; Larger Accessibility Sizes at the maximum on the smallest supported iPhone; Reduce Motion; bright sunlight | No unlabelled or unreachable control; no clipped primary action or overlapping metrics; values readable outdoors |
 
+## Phase 1 device checks (docs/ROADMAP.md)
+
+Run these on a build made from the `pilot` profile. None of them can be proven in the browser.
+
+| Case | Steps | Pass criteria |
+|---|---|---|
+| P1-AUDIO | The Part C matrix: Apple Music, Spotify, YouTube Music, Apple Podcasts, Overcast and Audible; AirPods, other Bluetooth headphones and the phone speaker; screen locked, Low Power Mode, an incoming call, Siri, an alarm. Cues every ½ km and "Splits only". Pull the headphones out mid-run with "Use the speaker…" off, then on | Music back to full volume within 1 s of every cue; podcasts resume after every cue; no cue longer than 4 s in "Splits only"; no cue after the run ends; with the speaker option off, no cue plays from the speaker after the headphones come out; the first word isn't clipped on Bluetooth |
+| P1-AUTOPAUSE | 10 runs with traffic-light stops; one run at a slow jog; stand still with the phone in hand for 2 minutes | Every stop pauses and resumes; no false pause while running or jogging; stopped time isn't in active time |
+| P1-PACE | Track test: laps at two different paces | Current pace settles within 10 s of each pace change; lap pace and lap time restart at each kilometre (mile for imperial) |
+| P1-LIVE | Start a run, lock the phone; pause and resume from the lock screen by opening the app; finish; discard a second run | The lock screen and Dynamic Island show distance, pace and a running clock that stops on pause; the saved numbers stay after finishing; a discarded run's activity disappears at once |
+| P1-HEALTH | Switch on "Save runs to Apple Health" (allow, then deny on a second device); finish a run; fix it; delete it | Allow: the run appears in Fitness with its map exactly once; after the fix it shows the fixed distance; after deletion it's gone. Deny: the app explains how to allow it and saves nothing |
+| P1-WIDGET | Add the small, medium and lock-screen widgets; finish and sync a run; wait for Monday | Each widget shows active days, weekly XP and league place, updates within 15 minutes of the sync, and resets when the week turns; signing out clears it |
+
 ## Log template
 
 ```

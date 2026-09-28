@@ -224,6 +224,26 @@ build for Beta App Review. The build declares no non-exempt encryption; the app 
 database with SQLCipher, so confirm that declaration against Apple's export-compliance guidance
 before external testing.
 
+### Native extras (Phase 1)
+
+The app has three native pieces beyond V1, all in this repository and switched on by default:
+
+- **Voice cues** (`modules/voice-cue`, Swift and Kotlin): speaks run cues while lowering other
+  audio. It needs the `audio` background mode, which `app.config.ts` adds.
+- **Widget extension** (`targets/widgets`, built by `@bacons/apple-targets`) with the run Live
+  Activity (`modules/run-activity`) and the "this week" widget. It adds the App Group
+  `group.<bundle id>` to the app and the extension, and an extension bundle id `<bundle id>.widgets`.
+  EAS creates its provisioning profile on the next build; if Apple asks, register the App Group
+  for both identifiers in the developer portal.
+- **Apple Health** (`@kingstinct/react-native-healthkit`): adds the HealthKit capability to the
+  app. Runners switch it on in Run settings.
+
+If a build fails in one of them, leave it out while you look into it: `PL_WIDGETS=0` or
+`PL_HEALTHKIT=0` in the build profile's `env` (the app hides what isn't built in). For local
+Xcode builds of the widget, set `APPLE_TEAM_ID`. App Store Connect's privacy questionnaire needs
+"Health & Fitness" data declared as not collected (it stays on the device), and App Review expects
+the HealthKit use to be described in the app's privacy policy (done in `legal/privacy-policy.md`).
+
 ## Flags
 
 Stored in `private.app_flags`; every change needs a reason and an actor and is audited.
