@@ -11,9 +11,16 @@ export const reasonCopy: Record<ReasonCode, string> = {
   late_upload: 'This run reached us more than 72 hours after it ended, so it’s held for review before it counts.',
 };
 
+/** Reasons only the server adds (they are not part of the shared validator). */
+const serverReasonCopy: Record<string, string> = {
+  edited: 'This run was changed after it was saved, so it’s held for a quick review before it counts.',
+};
+
 export function reasonText(codes: readonly string[]): string {
-  const first = codes[0] as ReasonCode | undefined;
-  return first && first in reasonCopy ? reasonCopy[first] : 'This run doesn’t meet the league rules.';
+  const first = codes[0];
+  if (first && first in reasonCopy) return reasonCopy[first as ReasonCode];
+  if (first && first in serverReasonCopy) return serverReasonCopy[first]!;
+  return 'This run doesn’t meet the league rules.';
 }
 
 export const syncErrorCopy: Record<string, string> = {

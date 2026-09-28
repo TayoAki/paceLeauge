@@ -2,8 +2,8 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 import { ApiError, toApiError } from '@/api/errors';
-import type { PaceApi } from '@/api/pace-api';
-import type { HistoryPage, ServerRun } from '@/api/schemas';
+import type { PaceApi, StatsInput } from '@/api/pace-api';
+import type { ActivityType, EffortKey, HistoryPage, ServerRun } from '@/api/schemas';
 import type { JournalChange, SavedRun } from '@/db/journal';
 import { useAccount } from '@/features/account/account-provider';
 import { EMPTY_METRICS, type RecorderSnapshot } from '@/features/recording/types';
@@ -68,6 +68,22 @@ export const useServerRun = (serverRunId: string | null) =>
   useCachedQuery('run', [serverRunId ?? ''], (api) => api.getMyRun(serverRunId ?? ''), { enabled: !!serverRunId });
 export const useRunRoute = (serverRunId: string | null) =>
   useCachedQuery('route', [serverRunId ?? ''], (api) => api.getMyRunRoute(serverRunId ?? ''), { enabled: !!serverRunId, staleTime: Infinity });
+
+// Phase 1 (docs/ROADMAP.md 1.4–1.10)
+export const useStreak = () => useCachedQuery('streak', [], (api) => api.getStreak());
+export const useBadges = () => useCachedQuery('badges', [], (api) => api.getBadges());
+export const usePersonalRecords = () => useCachedQuery('records', [], (api) => api.getPersonalRecords());
+export const useRecordHistory = (effort: EffortKey | null) =>
+  useCachedQuery('record-history', [effort ?? ''], (api) => api.getRecordHistory(effort ?? '5k'), { enabled: effort !== null });
+export const useRunEfforts = (serverRunId: string | null) =>
+  useCachedQuery('efforts', [serverRunId ?? ''], (api) => api.getRunEfforts(serverRunId ?? ''), { enabled: !!serverRunId });
+export const useShoes = () => useCachedQuery('shoes', [], (api) => api.listShoes(), { staleTime: 0 });
+export const useStats = (input: StatsInput) =>
+  useCachedQuery('stats', [input.from, input.to, input.bucket, input.activity ?? 'run'], (api) => api.getStats(input));
+export const useRunsBetween = (fromMs: number, toMs: number, activity: ActivityType | null, enabled = true) =>
+  useCachedQuery('runs-between', [fromMs, toMs, activity ?? 'all'], (api) => api.listMyRunsBetween(fromMs, toMs, activity), { enabled });
+export const useLeagueCheers = (weekOffset: 0 | -1 = 0) =>
+  useCachedQuery('cheers', [weekOffset], (api) => api.getLeagueCheers(weekOffset), { staleTime: 10_000 });
 
 export function useRunHistory() {
   const { state, api } = useAccount();

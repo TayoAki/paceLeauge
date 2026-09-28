@@ -1,11 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query';
 import * as Network from 'expo-network';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pencil, Share2, ShieldCheck, Trash2 } from 'lucide-react-native';
+import { Pencil, Scissors, Share2, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
+
+import type { ServerRun } from '@/api/schemas';
 import { StyleSheet, View } from 'react-native';
 
 import { toApiError } from '@/api/errors';
+import { RunDetailsCard, RunEffortsCard } from '@/components/progress/run-extras';
 import { MetricBlock, XpPanel } from '@/components/run/run-components';
 import { routeLines } from '@/components/run/route-lines';
 import { RouteMap } from '@/components/run/route-map';
@@ -20,12 +23,14 @@ import { computeSplits } from '@/domain/splits';
 import type { TrackPoint } from '@/domain/types';
 import { validateRun } from '@/domain/validator';
 import { useAccountServices } from '@/features/account/account-provider';
-import { useLocalRun, useMe, useRunHistory, useRunRoute } from '@/features/data/hooks';
+import { useLocalRun, useMe, useRunHistory, useRunRoute, useServerRun } from '@/features/data/hooks';
 import { useRunPoints } from '@/features/recording/use-run-points';
 import { xpPanelState } from '@/features/recording/xp-state';
 import { serverRunOf } from '@/features/sync/sync-engine';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
+
+const ACTIVITY_LABEL = { run: 'Run', walk: 'Walk', hike: 'Hike', ride: 'Ride', other: 'Other' } as const;
 
 function when(t: number): string {
   return new Date(t).toLocaleString('en-US', {
@@ -55,17 +60,29 @@ export default function RunDetailScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const serverFromHistory = history.data?.pages.flatMap((p) => p.runs).find((r) => r.client_run_id === id) ?? null;
-  const server = (local ? serverRunOf(local) : null) ?? serverFromHistory;
+  const [saved, setSaved] = useState<ServerRun | null>(null);
+  const serverFromHistory = history.data?.pages.flatMap((p) => p.runs).find((r) => r.client_run_id === id || r.id === id) ?? null;
+  const fetched = useServerRun(serverParam || null);
+  // The freshest copy wins. Fixes and renames raise the version; notes and shoes don't, so on a tie
+  // the later source wins: what was just saved here, then the network, then the phone's copy.
+  const server =
+    [local ? serverRunOf(local) : null, serverFromHistory, fetched.data?.data ?? null, saved]
+      .filter((r): r is ServerRun => r !== null)
+      .reduce<ServerRun | null>((best, r) => (!best || r.version >= best.version ? r : best), null);
   const serverRunId = server?.id ?? (serverParam || null);
-  const localPoints = useRunPoints(local?.routeCached ? (id ?? null) : null);
+  // After a fix the route on this phone is the old one, so the server's copy is shown instead.
+  const edited = !!server?.edited_at_ms;
+  const localPoints = useRunPoints(local?.routeCached && !edited ? (id ?? null) : null);
   const remoteRoute = useRunRoute(localPoints.length === 0 && serverRunId ? serverRunId : null);
 
   const points: TrackPoint[] = useMemo(
     () => (localPoints.length > 0 ? localPoints : (remoteRoute.data?.data.points.map(fromCompact) ?? [])),
     [localPoints, remoteRoute.data],
   );
-  const segments = useMemo(() => local?.segments ?? remoteRoute.data?.data.segments ?? [], [local?.segments, remoteRoute.data]);
+  const segments = useMemo(
+    () => (localPoints.length > 0 && local ? local.segments : (remoteRoute.data?.data.segments ?? [])),
+    [local, localPoints.length, remoteRoute.data],
+  );
   const lines = useMemo(() => routeLines(points), [points]);
   const splits = useMemo(() => {
     if (points.length < 2 || segments.length === 0) return [];
@@ -84,7 +101,7 @@ export default function RunDetailScreen() {
     );
   }, [points, segments, units]);
 
-  if (local === undefined && !server) return <View style={styles.blank} />;
+  if ((local === undefined || fetched.isLoading) && !server) return <View style={styles.blank} />;
   if (!local && !server) {
     return (
       <Screen edges={['top', 'bottom']}>
@@ -162,8 +179,10 @@ export default function RunDetailScreen() {
           <View style={{ flex: 1 }}>
             <Text variant="title">{title}</Text>
             <Text variant="label" tone="secondary">
+              {server?.activity_type && server.activity_type !== 'run' ? `${ACTIVITY_LABEL[server.activity_type]} · ` : ''}
               {when(startedAt)}
               {local?.interrupted || server?.interrupted ? ' · Interrupted' : ''}
+              {edited ? ' · Edited' : ''}
             </Text>
           </View>
           <IconButton icon={Pencil} label="Rename run" onPress={() => setRenaming(title)} />
@@ -259,7 +278,19 @@ export default function RunDetailScreen() {
         </Card>
       ) : null}
 
+      {server && server.status !== 'uploading' ? <RunEffortsCard serverRunId={server.id} /> : null}
+      {server && server.status !== 'uploading' ? <RunDetailsCard run={server} onSaved={setSaved} /> : null}
+
       {error && renaming === null ? <InlineStatus tone="danger" title={error} /> : null}
+      {server && server.status !== 'uploading' ? (
+        <SecondaryButton
+          label="Fix this run"
+          icon={Scissors}
+          accessibilityHint="Trim the start or end, cut out a stop, change the activity or merge a split run"
+          onPress={() => router.push({ pathname: '/progress/runs/fix/[id]', params: { id: server.id, local: local?.runId ?? '' } })}
+          testID="fix-run"
+        />
+      ) : null}
       <DangerButton label="Delete run" icon={Trash2} onPress={() => setConfirmDelete(true)} />
       <ConfirmSheet
         visible={confirmDelete}

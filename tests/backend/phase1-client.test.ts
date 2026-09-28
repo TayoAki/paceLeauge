@@ -1,5 +1,7 @@
 import { ApiError } from '@/api/errors';
 import { createPaceApi } from '@/api/pace-api';
+import { fromCompact } from '@/domain/route-codec';
+import { findStops, previewEdit } from '@/domain/run-fix';
 import { buildSyntheticRun, steadyRun } from '@/domain/synthetic';
 
 import { sqlTransport } from '../support/sql-transport';
@@ -96,6 +98,34 @@ describe('Phase 1 client methods', () => {
     expect(merged.run.distance_m).toBeCloseTo(run.distance_m + 2_700, -1);
 
     await expect(api.undoRunEdits(first.runId, merged.run.version)).rejects.toMatchObject({ code: 'cannot_undo_merge' });
+  });
+
+  it('previews a fix on the phone exactly as the server scores it', async () => {
+    const me = await db.createRunner('Client Preview');
+    const api = createPaceApi(sqlTransport(db, me));
+    const start = Date.now() - 3 * DAY;
+    const built = buildSyntheticRun({
+      startAt: start,
+      legs: [
+        { kind: 'run', durationS: 900, speedMps: 3 },
+        { kind: 'run', durationS: 180, speedMps: 0 },
+        { kind: 'run', durationS: 900, speedMps: 3.2 },
+      ],
+    });
+    // One segment with a three-minute stop in it, as a runner who forgot to pause would record.
+    const oneSegment = { ...built, segments: [{ index: 0, startAt: built.startedAt, endAt: built.endedAt }], points: built.points.map((p) => ({ ...p, segmentIndex: 0 })) };
+    const uploaded = await uploadRun(db, me, oneSegment);
+    const run = await api.getMyRun(uploaded.runId);
+    const route = await api.getMyRunRoute(uploaded.runId);
+    const points = route.points.map(fromCompact);
+
+    const stops = findStops(route.segments, points);
+    expect(stops).toHaveLength(1);
+    const edit = { keepFromMs: start + 30_000, cutRanges: stops.map((s) => ({ fromMs: s.fromMs, toMs: s.toMs })) };
+    const preview = previewEdit(route.segments, points, edit);
+    const saved = await api.editRun(uploaded.runId, run.version, edit);
+    expect(saved.run.distance_m).toBeCloseTo(preview!.distanceCm / 100, 2);
+    expect(saved.run.active_ms).toBe(preview!.activeMs);
   });
 
   it('cheers a league-mate', async () => {

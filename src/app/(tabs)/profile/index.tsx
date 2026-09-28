@@ -1,7 +1,7 @@
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Ban, Bell, Footprints, LifeBuoy, LogIn, LogOut, ShieldCheck, UserPen } from 'lucide-react-native';
+import { Ban, Bell, Footprints, LifeBuoy, LogIn, LogOut, ShieldCheck, Tag, UserPen } from 'lucide-react-native';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -157,6 +157,7 @@ export default function ProfileScreen() {
           onPress={() => router.push('/profile/run-settings')}
           testID="profile-run-settings"
         />
+        <Row icon={Tag} label="Shoes" onPress={() => router.push('/profile/shoes')} testID="profile-shoes" />
         <Row
           icon={Bell}
           label="Notifications"

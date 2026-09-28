@@ -171,6 +171,7 @@ export function IconButton({
   label,
   style,
   tone = 'surface',
+  disabled,
   ...rest
 }: Omit<BaseButtonProps, 'icon'> & {
   icon: IconComponent;
@@ -180,8 +181,10 @@ export function IconButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
       hitSlop={6}
-      style={({ pressed }) => [styles.icon, tone === 'surface' && styles.iconSurface, pressed && { opacity: 0.7 }, style]}
+      style={({ pressed }) => [styles.icon, tone === 'surface' && styles.iconSurface, pressed && { opacity: 0.7 }, disabled && { opacity: 0.35 }, style]}
       {...rest}>
       <Icon size={22} color={colors.textPrimary} strokeWidth={2.2} />
     </Pressable>

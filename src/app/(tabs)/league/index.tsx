@@ -9,7 +9,8 @@ import { IconButton, PrimaryButton, SecondaryButton, TextButton } from '@/compon
 import { EmptyState, InlineStatus, Pill, SegmentedControl } from '@/components/ui/elements';
 import { Card, LargeHeader, Screen } from '@/components/ui/layout';
 import { formatXp, ordinal } from '@/domain/format';
-import { useLeague } from '@/features/data/hooks';
+import { useLeague, useLeagueCheers } from '@/features/data/hooks';
+import { useAccount } from '@/features/account/account-provider';
 import { InviteSheet, MemberSheet } from '@/features/leagues/league-sheets';
 import { deviceTimeZone, weekStateLine } from '@/features/leagues/week-copy';
 import { Text } from '@/design/text';
@@ -20,11 +21,36 @@ export default function LeagueScreen() {
   const router = useRouter();
   const [weekOffset, setWeekOffset] = useState<0 | -1>(0);
   const league = useLeague(weekOffset);
+  const cheers = useLeagueCheers(weekOffset);
+  const { api } = useAccount();
+  const [cheerError, setCheerError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [member, setMember] = useState<Standing | null>(null);
   const view = league.data?.data;
   const refreshing = league.isFetching && !league.isPending;
-  const refresh = <RefreshControl refreshing={refreshing} onRefresh={() => void league.refetch()} tintColor={colors.textSecondary} />;
+  const refresh = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={() => {
+        void league.refetch();
+        void cheers.refetch();
+      }}
+      tintColor={colors.textSecondary}
+    />
+  );
+  const cheerData = cheers.data?.data;
+  const received = new Map((cheerData?.received ?? []).map((c) => [c.member_id, c.count]));
+  const mine = new Set(cheerData?.mine ?? []);
+  const cheer = async (memberId: string) => {
+    if (!api) return;
+    setCheerError(null);
+    try {
+      await api.cheerMember(memberId);
+      await cheers.refetch();
+    } catch {
+      setCheerError('Couldn’t send your cheer. Try again.');
+    }
+  };
 
   if (league.isPending) {
     return (
@@ -110,8 +136,21 @@ export default function LeagueScreen() {
       </Card>
 
       <View style={{ gap: space.sm }}>
+        {weekOffset === 0 && cheerData && cheerData.cheered_me.length > 0 ? (
+          <Text variant="label" tone="secondary" accessibilityLiveRegion="polite">
+            Cheered this week by {cheerData.cheered_me.join(', ')}.
+          </Text>
+        ) : null}
+        {cheerError ? <InlineStatus tone="danger" title={cheerError} /> : null}
         {standings.map((s) => (
-          <LeagueRow key={s.member_id} standing={s} onPress={s.is_me ? undefined : () => setMember(s)} />
+          <LeagueRow
+            key={s.member_id}
+            standing={s}
+            onPress={s.is_me ? undefined : () => setMember(s)}
+            cheers={received.get(s.member_id) ?? 0}
+            cheered={mine.has(s.member_id)}
+            onCheer={weekOffset === 0 && !s.is_me && !s.hidden ? () => void cheer(s.member_id) : undefined}
+          />
         ))}
       </View>
 

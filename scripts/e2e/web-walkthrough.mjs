@@ -461,6 +461,116 @@ try {
     await page.goBack();
   });
 
+  // ---------------------------------------------------------------- Phase 1 (docs/ROADMAP.md)
+  await step(page, 'P1 run settings: voice cues and auto-pause', async () => {
+    await page.getByTestId('profile-run-settings').click();
+    await page.getByTestId('voice-cues-switch').waitFor();
+    await visible(page, 'How often');
+    await shot(page, '20-run-settings');
+    await page.getByRole('radio', { name: 'Splits only' }).click();
+    await visible(page, 'the shortest cues');
+    await shot(page, '20b-run-settings-splits-only');
+    await page.getByRole('radio', { name: /^Every kilometer$/ }).click();
+    await page.goBack();
+  });
+
+  await step(page, 'P1 shoes', async () => {
+    await page.getByTestId('profile-shoes').click();
+    await page.getByTestId('add-shoe').click();
+    await page.getByLabel('Name', { exact: true }).fill('Daily trainers');
+    await page.getByLabel(/Remind me at/).fill('700');
+    await page.getByText('Save', { exact: true }).last().click();
+    await visible(page, 'Daily trainers');
+    await visible(page, 'Default');
+    await shot(page, '21-shoes');
+    await page.goBack();
+  });
+
+  await step(page, 'P1 progress: streak, records, badges', async () => {
+    await tab(page, 'Progress').click();
+    await visible(page, 'Weekly streak');
+    await page.getByTestId('progress-records').waitFor();
+    await shot(page, '22-progress-phase1');
+    await page.getByTestId('progress-records').click();
+    await visible(page, 'Longest run');
+    await visible(page, '5K');
+    await shot(page, '23-records');
+    await page.getByRole('button', { name: /^5 kilometers record/ }).click();
+    await visible(page, 'Each time this record improved');
+    await shot(page, '23b-record-history');
+    await page.goBack();
+    await page.getByTestId('progress-badges').click();
+    await visible(page, 'First run');
+    await visible(page, 'First 5K');
+    await shot(page, '24-badges');
+    await page.goBack();
+  });
+
+  await step(page, 'P1 stats and calendar', async () => {
+    await page.getByTestId('progress-stats').click();
+    await visible(page, 'Distance by week');
+    await shot(page, '25-stats');
+    await page.getByRole('radio', { name: '12 months' }).click();
+    await visible(page, 'Distance by month');
+    await shot(page, '25b-stats-months');
+    await page.goBack();
+    await page.getByTestId('progress-calendar').click();
+    await visible(page, 'September 2026');
+    await shot(page, '26-calendar');
+    await page.getByRole('button', { name: /^25 September 2026, 3 activities/ }).click();
+    await visible(page, 'Activities on 25 September 2026');
+    await shot(page, '26b-calendar-day');
+    await page.getByLabel('Search runs', { exact: true }).fill('friday');
+    await visible(page, 'Results for');
+    await shot(page, '26c-calendar-search');
+    await page.goBack();
+  });
+
+  await step(page, 'P1 run detail: best efforts, note and shoe', async () => {
+    // Three runs share the title "Friday morning"; open the 5.24 km one.
+    await page.getByRole('button', { name: /^Friday morning\. 5\.2\d kilometers/ }).filter({ visible: true }).first().click();
+    await visible(page, 'Best efforts', { timeout: 30_000 });
+    await page.getByText('Add a note', { exact: true }).first().click();
+    await page.getByLabel('Note', { exact: true }).fill('Easy loop by the lake. Felt strong.');
+    await page.getByText('Save note', { exact: true }).first().click();
+    // "Edit note" appears only once the saved note is what the card shows.
+    await visible(page, 'Edit note');
+    await visible(page, 'Easy loop by the lake');
+    await page.getByTestId('fix-run').scrollIntoViewIfNeeded();
+    await shot(page, '27-run-detail-phase1');
+  });
+
+  await step(page, 'P1 fix a run: trim, save, then restore', async () => {
+    await page.getByTestId('fix-run').click();
+    await visible(page, 'Fixes can only take distance away');
+    await page.getByRole('button', { name: 'End earlier by 1 minute' }).click();
+    await page.getByRole('button', { name: 'End earlier by 1 minute' }).click();
+    await visible(page, 'After');
+    await shot(page, '28-fix-run');
+    await page.getByTestId('save-fix').click();
+    await page.getByRole('button', { name: 'Save fix' }).last().click();
+    await visible(page, 'Run fixed', { timeout: 30_000 });
+    await shot(page, '28b-run-fixed');
+    await page.getByText('Done', { exact: true }).last().click();
+    await visible(page, 'Edited', { timeout: 30_000 });
+    await shot(page, '28c-run-detail-edited');
+    await page.getByTestId('fix-run').click();
+    await page.getByTestId('undo-fix').click();
+    await page.getByRole('button', { name: 'Restore' }).last().click();
+    await visible(page, 'Run fixed', { timeout: 30_000 });
+    await shot(page, '28d-run-restored');
+    await page.getByText('Done', { exact: true }).last().click();
+    await page.goBack();
+  });
+
+  await step(page, 'P1 league cheers', async () => {
+    await tab(page, 'League').click();
+    await visible(page, 'Friday Crew');
+    await page.getByRole('button', { name: 'Cheer Maya' }).click();
+    await page.getByRole('button', { name: 'You cheered Maya this week' }).waitFor({ timeout: 20_000 });
+    await shot(page, '29-league-cheers');
+  });
+
   // ---------------------------------------------------------------- newcomer
   const newcomer = await newPage(browser);
   const p2 = newcomer.page;
