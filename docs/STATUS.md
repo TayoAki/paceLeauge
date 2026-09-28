@@ -1,6 +1,6 @@
 # Status and evidence
 
-Snapshot: 26 September 2026 · rule version 1 · validator version 1.
+Snapshot: 28 September 2026 · rule version 1 · validator version 1.
 
 **Summary.** Every V1 requirement is implemented (the Pro purchase, REQ-013, arrived with roadmap 3.6), and
 every screen S01–S16 exists and has been exercised in a browser against the real SQL backend. The
@@ -16,8 +16,8 @@ Those checks are specified in [DEVICE_TEST_PROTOCOL.md](DEVICE_TEST_PROTOCOL.md)
 
 | Source | How to run | What it proves | Last result |
 |---|---|---|---|
-| Unit tests | `npm test` | Domain rules (golden fixtures, validator, calendar/DST, allocation, splits, formatting), recorder service and state machine against a real SQLite journal, XP-panel states (saved ≠ synced ≠ accepted), API error mapping and backoff, preflight readiness, reminders, design tokens and contrast, export packaging | 16 suites, 113 tests passing |
-| Backend + API | `npm run test:db` | The database built by the production migrator; RLS and grants across the whole catalog; upload protocol, idempotency and concurrency; scoring in SQL; leagues; export/deletion/moderation lifecycle; TypeScript ↔ SQL validator parity on 40 adversarial routes; the real client recorder + sync engine against real SQL; the API service — password accounts (scrypt hashes, rules, attempt limits, change with recent sign-in, reclaim by a proven address, operator reset), sign-in codes (hashed, single use, expiry, guess limit, cooldown, per-IP limits), refresh rotation and reuse detection, logout scopes, Sign in with Apple checks, forged and `none`-algorithm tokens, RPC limits, the migrator, jobs, email providers and the legal pages | 9 suites, 122 tests passing on PostgreSQL 18 and 16 (strict platform) and 16 with Supabase-style permissive grants; CI runs 18 strict and 16 permissive plus a build-and-boot test of the API image |
+| Unit tests | `npm test` | Domain rules (golden fixtures, validator, calendar/DST, allocation, splits, formatting), recorder service and state machine against a real SQLite journal, XP-panel states (saved ≠ synced ≠ accepted), API error mapping and backoff, preflight readiness, reminders, design tokens and contrast, export packaging | 44 suites, 326 tests passing on 28 Sep 2026 (V1 alone was 16 suites, 113 tests) |
+| Backend + API | `npm run test:db` | The database built by the production migrator; RLS and grants across the whole catalog; upload protocol, idempotency and concurrency; scoring in SQL; leagues; export/deletion/moderation lifecycle; TypeScript ↔ SQL validator parity on 40 adversarial routes; the real client recorder + sync engine against real SQL; the API service — password accounts (scrypt hashes, rules, attempt limits, change with recent sign-in, reclaim by a proven address, operator reset), sign-in codes (hashed, single use, expiry, guess limit, cooldown, per-IP limits), refresh rotation and reuse detection, logout scopes, Sign in with Apple checks, forged and `none`-algorithm tokens, RPC limits, the migrator, jobs, email providers and the legal pages | 35 suites, 327 tests passing on 28 Sep 2026 (V1 alone was 9 suites, 122 tests) on PostgreSQL 18 and 16 (strict platform) and 16 with Supabase-style permissive grants; CI runs 18 strict and 16 permissive plus a build-and-boot test of the API image |
 | Browser walkthrough | `npm run e2e:web` | The real app (web build) against the development backend: account creation and password sign-in (a wrong password refused), preflight with a scripted GPS feed, a 31:28 recording with pause, finish, sync and the server's +77 XP, offline finish synced later (+4 XP as a same-day delta), a too-short personal-only run, share poster, league standings, invite preview and explicit join by a second identity, a password change, export, and account deletion | All steps passing (44 screenshots; the only console errors are the expected network failures during the deliberate offline step) — contact sheets in [evidence/web](evidence/README.md) |
 | Staging smoke test | `npm run smoke:api` ([OPERATIONS.md](OPERATIONS.md#smoke-test)) | The deployed API on Railway over HTTPS, through the app's own client: health and HSTS, wrong key and forged token refused, the legal pages, password sign-up with wrong-password, duplicate and weak-password refusals and a password change, profile save, a full run upload (+77 XP), neither account can read the other's run, private functions hidden, refresh rotation, logout, and account deletion carried out by the job loop | 15 of 15 checks passing on 26 Sep 2026 against `api-staging-753f.up.railway.app` after the password deploy (the earlier emailed-code run passed 12 of 12); the job loop deleted both test accounts within a minute |
 | Physical iPhone | [DEVICE_TEST_PROTOCOL.md](DEVICE_TEST_PROTOCOL.md) | Background location, accuracy, battery, encryption at rest, Apple sign-in, notifications, share sheet, accessibility | **Not run** — no device available to this build |
@@ -84,10 +84,11 @@ also show each runner's tier.
 
 ## Roadmap work after V1 (docs/ROADMAP.md)
 
-Snapshot 28 September 2026. Phase 0's age check, all of Phases 1, 2 and 3, and the platform track
-(Android and the web app) are built. As with
-V1, the logic and screens are proven automatically; nothing that needs an iPhone or an Apple Watch
-is, and Phase 3's content (plans, notes, guided runs) is a draft until the coach reviews it.
+Snapshot 28 September 2026. Phase 0's age check, all of Phases 1 to 4, and the platform track
+(Android and the web app) are built, and Phase 5 (maps) is under way. As with V1, the logic and
+screens are proven automatically; nothing that needs an iPhone or an Apple Watch is, Phase 3's
+content (plans, notes, guided runs) is a draft until the coach reviews it, and Phase 4's teen
+accounts stay switched off until counsel's review.
 
 | Item | Evidence | Still required |
 |---|---|---|

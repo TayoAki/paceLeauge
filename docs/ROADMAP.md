@@ -88,18 +88,22 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 | 4 | Friends, family and everyone | Leagues 2.0 with group runs, privacy zones, follow, feed, clubs, challenges, opt-in leaderboards, live location, push, teen family accounts | 23–36 weeks |
 | 5 | Maps | Route planning, offline maps and navigation, segments, heatmaps | 18–28 weeks |
 
-**Progress (28 September 2026).** Phase 0's age check, Phases 1, 2 and 3, and the platform track
-(the Android app and the web app) are built and tested in code, and Phase 4 is under way: privacy
-zones and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and
-moderation (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5),
-challenges (4.6), opt-in leaderboards (4.7), live location (4.8) and teen accounts in family
-leagues (4.10, switched off until counsel's review) are built. The server is tested by 327
-database and API tests, the app by 326 unit tests and browser
-walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
-matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
-Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
-coach's review of plans and notes, the 30-runner pilot, counsel's review of health data, and the
-Strava, Terra, App Store and RevenueCat accounts. Each item below says what was built.
+**Progress (28 September 2026).** Phase 0's age check, Phases 1 to 4 and the platform track
+(the Android app and the web app) are built and tested in code. Phase 4 brought privacy zones
+and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and moderation
+(4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5), challenges (4.6),
+opt-in leaderboards (4.7), live location (4.8) and teen accounts in family leagues (4.10,
+switched off until counsel's review). Phase 5 (maps) is under way. The server is tested by 327
+database and API tests, the app by 326 unit tests and browser walkthroughs of the new screens.
+What remains is on devices and with people: the Part C audio matrix and the Part A failure
+tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new Swift and Kotlin code (the
+watch app is off until then), the recorded voice and guided runs, the coach's review of plans
+and notes, the 30-runner pilot, counsel's review of health data, and the Strava, Terra, App
+Store and RevenueCat accounts. Phase 4 adds the APNs and FCM push credentials (push stays off
+until `PUSH_ENABLED` is set), its device cases (P4-LEAGUES to P4-TEEN, including the one-hour
+live-location battery test), counsel's review of teen accounts
+(`docs/legal-drafts/teen-accounts.md`), a named moderation rota, and real crews, clubs and
+boards in the pilot. Each item below says what was built.
 
 Sizes are rough engineer-weeks for one engineer working with Claude, before testing on devices.
 Sizes per epic: **S** is up to a week, **M** 1–3 weeks, **L** 3–6 weeks, **XL** more than 6.
