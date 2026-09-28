@@ -15,8 +15,24 @@ export interface CodeEmail {
   ttlMinutes: number;
 }
 
+/** A plain account notice, such as a trial reminder. */
+export interface NoticeEmail {
+  to: string;
+  subject: string;
+  text: string;
+}
+
 export interface Mailer {
   sendCode(message: CodeEmail): Promise<void>;
+  sendNotice(message: NoticeEmail): Promise<void>;
+}
+
+function noticeHtml(text: string): string {
+  const escape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return text
+    .split('\n\n')
+    .map((p) => `<p>${escape(p).replace(/(https:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')}</p>`)
+    .join('');
 }
 
 export class MailError extends Error {
@@ -70,11 +86,13 @@ async function post(fetchImpl: Fetch, url: string, headers: Record<string, strin
 
 export interface MemoryMailer extends Mailer {
   sent: CodeEmail[];
+  notices: NoticeEmail[];
 }
 
 export function createMemoryMailer(): MemoryMailer {
   const sent: CodeEmail[] = [];
-  return { sent, sendCode: async (message) => void sent.push(message) };
+  const notices: NoticeEmail[] = [];
+  return { sent, notices, sendCode: async (message) => void sent.push(message), sendNotice: async (message) => void notices.push(message) };
 }
 
 export function createMailer(config: Pick<ServerConfig, 'email'>, log: Logger, template: string | null, fetchImpl: Fetch = fetch): Mailer {
@@ -88,6 +106,14 @@ export function createMailer(config: Pick<ServerConfig, 'email'>, log: Logger, t
             'https://api.resend.com/emails',
             { authorization: `Bearer ${apiKey}` },
             { from, to: [message.to], subject: SUBJECT, html: htmlBody(template, message), text: textBody(message), ...(replyTo ? { reply_to: replyTo } : {}) },
+            'Resend',
+          ),
+        sendNotice: (message) =>
+          post(
+            fetchImpl,
+            'https://api.resend.com/emails',
+            { authorization: `Bearer ${apiKey}` },
+            { from, to: [message.to], subject: message.subject, html: noticeHtml(message.text), text: message.text, ...(replyTo ? { reply_to: replyTo } : {}) },
             'Resend',
           ),
       };
@@ -109,6 +135,22 @@ export function createMailer(config: Pick<ServerConfig, 'email'>, log: Logger, t
             },
             'Postmark',
           ),
+        sendNotice: (message) =>
+          post(
+            fetchImpl,
+            'https://api.postmarkapp.com/email',
+            { 'x-postmark-server-token': apiKey ?? '' },
+            {
+              From: from,
+              To: message.to,
+              Subject: message.subject,
+              HtmlBody: noticeHtml(message.text),
+              TextBody: message.text,
+              MessageStream: 'outbound',
+              ...(replyTo ? { ReplyTo: replyTo } : {}),
+            },
+            'Postmark',
+          ),
       };
     case 'memory':
       return createMemoryMailer();
@@ -116,6 +158,9 @@ export function createMailer(config: Pick<ServerConfig, 'email'>, log: Logger, t
       return {
         sendCode: async (message) => {
           log.warn('sign-in code (EMAIL_PROVIDER=log: written to logs, not emailed)', { to: maskEmail(message.to), code: message.code });
+        },
+        sendNotice: async (message) => {
+          log.info('notice (EMAIL_PROVIDER=log: not emailed)', { to: maskEmail(message.to), subject: message.subject });
         },
       };
   }

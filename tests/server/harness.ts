@@ -10,6 +10,7 @@ import { silentLogger } from '../../server/src/log';
 import { createMemoryMailer, type MemoryMailer } from '../../server/src/mailer';
 import { createService } from '../../server/src/service';
 import type { GarminWorker, TerraApi } from '../../server/src/garmin';
+import type { BillingWorker, RevenueCatApi } from '../../server/src/revenuecat';
 import type { StravaApi, StravaWorker } from '../../server/src/strava';
 import { TestDb } from '../backend/helpers/db';
 
@@ -36,10 +37,15 @@ export interface TestApi {
   strava: StravaWorker | null;
   /** The Garmin worker, when the environment configures Terra. */
   garmin: GarminWorker | null;
+  /** Pro trial reminders. */
+  billing: BillingWorker;
   close(): Promise<void>;
 }
 
-export async function startTestApi(env: Record<string, string> = {}, options: { stravaApi?: StravaApi; terraApi?: TerraApi } = {}): Promise<TestApi> {
+export async function startTestApi(
+  env: Record<string, string> = {},
+  options: { stravaApi?: StravaApi; terraApi?: TerraApi; revenuecatApi?: RevenueCatApi | null } = {},
+): Promise<TestApi> {
   const db = await TestDb.create();
   const config = loadConfig({
     APP_ENV: 'test',
@@ -63,7 +69,7 @@ export async function startTestApi(env: Record<string, string> = {}, options: { 
     return new Response(JSON.stringify({ keys: [jwk] }), { status: 200, headers: { 'content-type': 'application/json' } });
   }) as typeof fetch;
 
-  const { server, strava, garmin } = await createService({
+  const { server, strava, garmin, billing } = await createService({
     config,
     pool,
     log: silentLogger,
@@ -71,6 +77,7 @@ export async function startTestApi(env: Record<string, string> = {}, options: { 
     apple: createAppleVerifier(config.appleAudiences, fakeFetch),
     stravaApi: options.stravaApi,
     terraApi: options.terraApi,
+    revenuecatApi: options.revenuecatApi,
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -103,6 +110,7 @@ export async function startTestApi(env: Record<string, string> = {}, options: { 
     appleKeyFetches: () => fetches,
     strava,
     garmin,
+    billing,
     async close() {
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));

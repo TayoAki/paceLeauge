@@ -17,7 +17,7 @@ import {
   signInWithEmail,
   userJson,
 } from './auth/users';
-import type { GarminConfig, ServerConfig, StravaConfig } from './config';
+import type { GarminConfig, RevenueCatConfig, ServerConfig, StravaConfig } from './config';
 import { transaction, type Pool } from './db';
 import { verifyJwt, type Claims } from './jwt';
 import type { LegalDoc } from './legal';
@@ -25,6 +25,7 @@ import type { Logger } from './log';
 import type { Mailer } from './mailer';
 import { callRpc, type Claims as RpcClaims } from './rpc';
 import { handleTerraEvent, IngestError, startGarminConnect, verifyTerraSignature, type TerraApi } from './garmin';
+import { handleRevenueCatEvent, webhookAuthorized, type RevenueCatApi } from './revenuecat';
 import { stravaCallback, stravaWebhookChallenge, stravaWebhookEvent, type StravaApi, type StravaHttpResult } from './strava';
 
 /**
@@ -47,6 +48,8 @@ export interface ApiDeps {
   strava?: { api: StravaApi; config: StravaConfig } | null;
   /** Garmin through Terra (server/src/garmin.ts), when configured. */
   garmin?: { terra: TerraApi; config: GarminConfig } | null;
+  /** Pro through RevenueCat (server/src/revenuecat.ts), when configured. */
+  revenuecat?: { config: RevenueCatConfig; api: RevenueCatApi | null } | null;
 }
 
 class HttpError extends Error {
@@ -469,6 +472,20 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
           throw new HttpError(400, { message: 'Invalid JSON body' });
         }
         if (event && typeof event === 'object' && !Array.isArray(event)) await handleTerraEvent(pool, log, event as Record<string, unknown>);
+        return send(res, 200, { ok: true });
+      }
+      // RevenueCat reports Pro purchases, renewals, refunds and expiries (docs/ROADMAP.md 3.6),
+      // with the shared Authorization value set in its dashboard.
+      if (path === '/integrations/revenuecat/webhook') {
+        route = `${req.method} /integrations/revenuecat/webhook`;
+        if (!deps.revenuecat) throw new HttpError(404, { message: 'Not found' });
+        if (req.method !== 'POST') throw new HttpError(405, { message: 'Method not allowed' });
+        await limit(`revenuecat:ip:${hashKey(clientIp(req))}`, 3_600, 3600);
+        const authorization = req.headers.authorization;
+        if (!webhookAuthorized(deps.revenuecat.config, typeof authorization === 'string' ? authorization : undefined)) {
+          throw new HttpError(401, { message: 'Unauthorized' });
+        }
+        await handleRevenueCatEvent({ pool, log, config: deps.revenuecat.config, api: deps.revenuecat.api }, await readJson(req, AUTH_BODY_LIMIT * 4));
         return send(res, 200, { ok: true });
       }
       const apikey = (req.headers.apikey as string | undefined) ?? url.searchParams.get('apikey') ?? '';

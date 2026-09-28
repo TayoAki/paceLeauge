@@ -40,6 +40,17 @@ export interface ServerConfig {
   strava: StravaConfig | null;
   /** Garmin through the Terra aggregator (docs/ROADMAP.md 2.4); null when not configured. */
   garmin: GarminConfig | null;
+  /** Pro through RevenueCat (docs/ROADMAP.md 3.6); null when not configured. */
+  revenuecat: RevenueCatConfig | null;
+}
+
+export interface RevenueCatConfig {
+  /** The Authorization header value RevenueCat sends with every webhook (set in its dashboard). */
+  webhookAuth: string;
+  /** Secret API key, to read a subscriber's current state after an event. Optional. */
+  secretKey: string | null;
+  /** The entitlement that unlocks Pro. */
+  entitlement: string;
 }
 
 export interface GarminConfig {
@@ -148,6 +159,7 @@ export function loadConfig(env: Env = process.env): ServerConfig {
   const returnPrefixes = [...list(env.APP_RETURN_URLS ?? 'paceleague://'), ...(corsOrigins === '*' ? [] : corsOrigins.map((o) => `${o}/`))];
   const strava = stravaConfig(env, deployed, returnPrefixes);
   const garmin = garminConfig(env, returnPrefixes);
+  const revenuecat = revenuecatConfig(env);
   return {
     appEnv,
     host: env.HOST ?? '::',
@@ -176,7 +188,22 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     bootstrapEnableCompetition,
     strava,
     garmin,
+    revenuecat,
   };
+}
+
+function revenuecatConfig(env: Env): RevenueCatConfig | null {
+  const webhookAuth = env.REVENUECAT_WEBHOOK_AUTH?.trim();
+  const secretKey = env.REVENUECAT_SECRET_KEY?.trim() || null;
+  if (!webhookAuth) {
+    if (secretKey) throw new ConfigError('REVENUECAT_SECRET_KEY needs REVENUECAT_WEBHOOK_AUTH');
+    return null;
+  }
+  if (webhookAuth.length < 24) throw new ConfigError('REVENUECAT_WEBHOOK_AUTH must be at least 24 characters (openssl rand -base64 32)');
+  if (secretKey && !secretKey.startsWith('sk_')) throw new ConfigError('REVENUECAT_SECRET_KEY must be a secret API key (sk_…)');
+  const entitlement = env.REVENUECAT_ENTITLEMENT?.trim() || 'pro';
+  if (!/^[A-Za-z0-9_.-]{1,64}$/.test(entitlement)) throw new ConfigError('REVENUECAT_ENTITLEMENT is not a valid identifier');
+  return { webhookAuth, secretKey, entitlement };
 }
 
 const TERRA_KEYS = ['TERRA_DEV_ID', 'TERRA_API_KEY', 'TERRA_WEBHOOK_SECRET'] as const;

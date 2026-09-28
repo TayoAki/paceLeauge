@@ -9,6 +9,7 @@ import type { Logger } from './log';
 import { createMailer, loadCodeTemplate, type Mailer } from './mailer';
 import { findDbDir } from './migrate';
 import { createGarminWorker, createTerraApi, publishGarminSettings, type GarminWorker, type TerraApi } from './garmin';
+import { createBillingWorker, createRevenueCatApi, type BillingWorker, type RevenueCatApi } from './revenuecat';
 import { createStravaApi, createStravaWorker, publishStravaSettings, type StravaApi, type StravaWorker } from './strava';
 
 /**
@@ -39,7 +40,9 @@ export async function createService(options: {
   stravaApi?: StravaApi;
   /** Replaces Terra's API (tests). */
   terraApi?: TerraApi;
-}): Promise<ReturnType<typeof createApi> & { strava: StravaWorker | null; garmin: GarminWorker | null }> {
+  /** Replaces RevenueCat's API (tests). */
+  revenuecatApi?: RevenueCatApi | null;
+}): Promise<ReturnType<typeof createApi> & { strava: StravaWorker | null; garmin: GarminWorker | null; billing: BillingWorker }> {
   const { config, pool, log } = options;
   const secret = await resolveSigningSecret(pool, config);
   let template: string | null = null;
@@ -61,10 +64,16 @@ export async function createService(options: {
   await publishGarminSettings(pool, config.garmin);
   const terra = config.garmin ? (options.terraApi ?? createTerraApi(config.garmin, options.fetchImpl)) : null;
   const garmin = config.garmin && terra ? { terra, config: config.garmin } : null;
-  const api = createApi({ config, pool, secret, mailer, apple, log, legal, strava, garmin });
+  // Pro through RevenueCat (docs/ROADMAP.md 3.6), likewise.
+  const revenuecat = config.revenuecat
+    ? { config: config.revenuecat, api: options.revenuecatApi !== undefined ? options.revenuecatApi : createRevenueCatApi(config.revenuecat, options.fetchImpl) }
+    : null;
+  const api = createApi({ config, pool, secret, mailer, apple, log, legal, strava, garmin, revenuecat });
   return {
     ...api,
     strava: strava ? createStravaWorker({ pool, api: strava.api, config: strava.config, log }) : null,
     garmin: garmin ? createGarminWorker({ pool, terra: garmin.terra, log }) : null,
+    // Trial reminders go out whether or not RevenueCat is configured here (grants have none).
+    billing: createBillingWorker({ pool, mailer, log }),
   };
 }

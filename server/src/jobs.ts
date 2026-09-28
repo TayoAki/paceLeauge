@@ -1,6 +1,7 @@
 import type { Pool } from './db';
 import type { Logger } from './log';
 import type { GarminWorker } from './garmin';
+import type { BillingWorker } from './revenuecat';
 import type { StravaWorker } from './strava';
 
 /**
@@ -12,6 +13,7 @@ const FREQUENT_LOCK = 7_340_101;
 const HOURLY_LOCK = 7_340_102;
 const STRAVA_LOCK = 7_340_103;
 const GARMIN_LOCK = 7_340_104;
+const BILLING_LOCK = 7_340_105;
 
 const AUTH_CLEANUP = `
   delete from auth.one_time_codes where expires_at < now() - interval '1 hour';
@@ -70,14 +72,28 @@ export async function runGarminJobs(pool: Pool, log: Logger, worker: GarminWorke
   });
 }
 
+/** Pro trial reminders and old store events (docs/ROADMAP.md 3.6), one instance at a time. */
+export async function runBillingJobs(pool: Pool, log: Logger, worker: BillingWorker): Promise<void> {
+  await withLock(pool, BILLING_LOCK, async () => {
+    const result = await worker.runOnce();
+    if (Object.values(result).some((n) => n > 0)) log.info('billing jobs', result);
+  });
+}
+
 export function startJobs(
   pool: Pool,
   log: Logger,
-  options: { intervals?: { frequentMs: number; hourlyMs: number }; strava?: StravaWorker | null; garmin?: GarminWorker | null } = {},
+  options: {
+    intervals?: { frequentMs: number; hourlyMs: number };
+    strava?: StravaWorker | null;
+    garmin?: GarminWorker | null;
+    billing?: BillingWorker | null;
+  } = {},
 ): { stop: () => Promise<void> } {
   const intervals = options.intervals ?? { frequentMs: 60_000, hourlyMs: 3_600_000 };
   const strava = options.strava ?? null;
   const garmin = options.garmin ?? null;
+  const billing = options.billing ?? null;
   let stopped = false;
   const running = new Set<Promise<void>>();
   const schedule = (name: string, everyMs: number, job: () => Promise<void>) => {
@@ -99,6 +115,7 @@ export function startJobs(
     schedule('hourly', intervals.hourlyMs, () => runHourlyJobs(pool, log)),
     ...(strava ? [schedule('strava', intervals.frequentMs, () => runStravaJobs(pool, log, strava))] : []),
     ...(garmin ? [schedule('garmin', intervals.frequentMs, () => runGarminJobs(pool, log, garmin))] : []),
+    ...(billing ? [schedule('billing', intervals.hourlyMs, () => runBillingJobs(pool, log, billing))] : []),
   ];
   return {
     async stop() {
