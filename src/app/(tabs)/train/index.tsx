@@ -3,10 +3,11 @@ import { CalendarCheck, HeartPulse, Play, Settings2 } from 'lucide-react-native'
 import { useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 
+import { GuidedList } from '@/components/train/guided-list';
 import { dayLabel, Stat, warningText, WeekCard } from '@/components/train/train-components';
 import { PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
-import { InlineStatus, Row, RowGroup } from '@/components/ui/elements';
+import { InlineStatus, Row, RowGroup, SegmentedControl } from '@/components/ui/elements';
 import { Card, LargeHeader, Screen } from '@/components/ui/layout';
 import { checkInAdjustments, coachPrompts } from '@/domain/plans/adapt';
 import { PLAN_TYPES } from '@/domain/plans/templates';
@@ -27,13 +28,31 @@ import { usePlanActions, usePlanState } from '@/features/plans/use-plan';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
-/** Train (docs/ROADMAP.md 3.1): the runner's plan, or a choice of plans. */
+/** Train (docs/ROADMAP.md 3.1 and 3.4): the runner's plan, or a choice of plans, and guided runs. */
 export default function TrainScreen() {
   const { state, query, offline } = usePlanState();
+  const [section, setSection] = useState<'plan' | 'guided'>('plan');
   const refreshing = query.isFetching && !query.isPending;
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void query.refetch()} tintColor={colors.textSecondary} />}>
       <LargeHeader title="Train" subtitle={state?.server.status === 'active' ? PLAN_NAMES[state.server.type] : undefined} />
+      <SegmentedControl
+        options={[
+          { value: 'plan', label: 'Plan' },
+          { value: 'guided', label: 'Guided runs' },
+        ]}
+        value={section}
+        onChange={setSection}
+        label="Train"
+      />
+      {section === 'guided' ? <GuidedList /> : <PlanSection state={state} query={query} offline={offline} />}
+    </Screen>
+  );
+}
+
+function PlanSection({ state, query, offline }: ReturnType<typeof usePlanState>) {
+  return (
+    <>
       {offline ? <InlineStatus title="Showing your plan from earlier." body="You’re offline. Changes need a connection." /> : null}
       {query.isError && !query.data ? <InlineStatus tone="danger" title="Couldn’t load your plan." body="Pull to try again." /> : null}
       {query.isPending ? null : state && state.server.status === 'active' ? (
@@ -44,7 +63,7 @@ export default function TrainScreen() {
           <PlanChooser />
         </>
       )}
-    </Screen>
+    </>
   );
 }
 

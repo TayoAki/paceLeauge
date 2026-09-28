@@ -422,3 +422,15 @@ export const serverPlanSchema = z.object({
 });
 export type ServerPlan = z.infer<typeof serverPlanSchema>;
 export const planResultSchema = z.object({ plan: serverPlanSchema.nullable() });
+
+// Pro (Phase 3.6).
+export const entitlementsSchema = z.object({
+  pro: z.boolean(),
+  period: z.enum(['trial', 'intro', 'normal', 'promotional']).nullable(),
+  source: z.enum(['revenuecat', 'grant']).nullable(),
+  store: z.string().nullable(),
+  expires_at_ms: z.number().nullable(),
+  will_renew: z.boolean(),
+  billing_issue: z.boolean(),
+});
+export type Entitlements = z.infer<typeof entitlementsSchema>;

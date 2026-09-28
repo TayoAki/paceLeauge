@@ -107,6 +107,7 @@ function RootNavigator() {
         <Stack.Screen name="run" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="share/[id]" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="reauth" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
       </Stack.Protected>
       <Stack.Screen name="invite/[code]" />
       <Stack.Screen name="legal" />

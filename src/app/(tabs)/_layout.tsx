@@ -3,6 +3,7 @@ import { CalendarCheck, ChartColumn, House, Trophy, User } from 'lucide-react-na
 import { View } from 'react-native';
 
 import { ActiveRunBanner } from '@/components/run/active-run-banner';
+import { usePurchasesSetup } from '@/features/pro/use-pro';
 import { useWatchContextSync } from '@/features/watch/use-watch';
 import { useWidgetSync } from '@/features/widgets/use-widget-sync';
 import { colors } from '@/design/tokens';
@@ -11,6 +12,7 @@ import { colors } from '@/design/tokens';
 export default function TabsLayout() {
   useWidgetSync();
   useWatchContextSync();
+  usePurchasesSetup();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Tabs

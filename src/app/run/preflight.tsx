@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CalendarCheck, Info, Lock, MapPin, Satellite } from 'lucide-react-native';
+import { CalendarCheck, Headphones, Info, Lock, MapPin, Satellite } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 
@@ -12,7 +12,9 @@ import { NavHeader, Screen } from '@/components/ui/layout';
 import { RECORDER_V1 } from '@/domain/config';
 import { useAccountServices } from '@/features/account/account-provider';
 import { locationDriver } from '@/features/recording/location-driver';
+import { guidedLines, guidedMinutes, guidedRun } from '@/features/guided/catalog';
 import { formatMinutes } from '@/features/plans/plan-client';
+import { usePro } from '@/features/pro/use-pro';
 import { usePlanState } from '@/features/plans/use-plan';
 import { blocker, blockerCopy, signalLevel, type PermissionStatus, type PreflightState } from '@/features/recording/preflight';
 import { ActiveRunExistsError } from '@/features/recording/recorder-service';
@@ -54,23 +56,27 @@ export default function PreflightScreen() {
 
   // A planned session to follow (docs/ROADMAP.md 3.1): ready for the run to start, and let go
   // if the runner leaves without starting.
-  const { session: sessionId } = useLocalSearchParams<{ session?: string }>();
+  const { session: sessionId, guided: guidedId } = useLocalSearchParams<{ session?: string; guided?: string }>();
   const { state: plan } = usePlanState();
   const planned = sessionId && plan?.server.status === 'active' ? (plan.server.sessions.find((s) => s.id === sessionId) ?? null) : null;
   const planId = plan?.server.id ?? null;
   const zones = plan?.plan?.zones ?? null;
+  // Or a guided run (3.4), its coaching placed on the workout's timeline.
+  const { pro } = usePro();
+  const found = guidedId ? guidedRun(guidedId) : null;
+  const guided = found && (found.free || pro) ? found : null;
   useEffect(() => {
-    if (!planned || !planId) return;
-    runtime.workout.prepare({
-      source: { kind: 'plan', planId, sessionId: planned.id },
-      title: planned.title,
-      blocks: planned.blocks,
-      zones,
-    });
+    if (guided) {
+      runtime.workout.prepare({ source: { kind: 'guided', guidedId: guided.id }, title: guided.title, blocks: guided.blocks, zones, lines: guidedLines(guided) });
+    } else if (planned && planId) {
+      runtime.workout.prepare({ source: { kind: 'plan', planId, sessionId: planned.id }, title: planned.title, blocks: planned.blocks, zones });
+    } else {
+      return;
+    }
     return () => {
       if (!runtime.recorder.getSnapshot().session) runtime.workout.cancel();
     };
-  }, [runtime, planned, planId, zones]);
+  }, [runtime, planned, planId, zones, guided]);
 
   const refresh = useCallback(async () => {
     const services = await Location.hasServicesEnabledAsync().catch(() => true);
@@ -254,9 +260,15 @@ export default function PreflightScreen() {
         </>
       }>
       <NavHeader title="Ready to run?" />
-      {planned ? (
+      {planned || guided ? (
         <RowGroup>
-          <Row icon={CalendarCheck} label={planned.title} value={formatMinutes(planned.duration_s)} hint="Today’s workout. Steps are spoken as you go." last />
+          <Row
+            icon={guided ? Headphones : CalendarCheck}
+            label={guided ? guided.title : planned!.title}
+            value={guided ? `${guidedMinutes(guided)} min` : formatMinutes(planned!.duration_s)}
+            hint={guided ? 'Guided run. Your coach talks over your music.' : 'Today’s workout. Steps are spoken as you go.'}
+            last
+          />
         </RowGroup>
       ) : null}
       <RouteMap

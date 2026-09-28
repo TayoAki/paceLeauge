@@ -32,6 +32,7 @@ import {
   badgesSchema,
   cheersSchema,
   diagnosticsResultSchema,
+  entitlementsSchema,
   garminStatusSchema,
   planResultSchema,
   serverPlanSchema,
@@ -57,6 +58,7 @@ import {
   type RunEditResult,
   type RunEfforts,
   type Shoe,
+  type Entitlements,
   type GarminStatus,
   type PlanFeedback,
   type ServerPlan,
@@ -248,6 +250,8 @@ export interface PaceApi {
   setSessionFeedback(planId: string, sessionId: string, feedback: PlanFeedback | null, pain: boolean): Promise<ServerPlan>;
   /** Which session a run was; a null run means none of the runner's runs was. */
   matchPlanSession(planId: string, sessionId: string, runId: string | null): Promise<ServerPlan>;
+  // Pro (Phase 3.6)
+  getEntitlements(): Promise<Entitlements>;
 }
 
 const UPLOAD_TIMEOUT_MS = 30_000;
@@ -462,5 +466,6 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
       call('set_session_feedback', { p_plan_id: planId, p_session_id: sessionId, p_feedback: feedback, p_pain: pain }, serverPlanSchema),
     matchPlanSession: (planId, sessionId, runId) =>
       call('match_plan_session', { p_plan_id: planId, p_session_id: sessionId, p_run_id: runId }, serverPlanSchema),
+    getEntitlements: () => call('get_entitlements', {}, entitlementsSchema),
   };
 }

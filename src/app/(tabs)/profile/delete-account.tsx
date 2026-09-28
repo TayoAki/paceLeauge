@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -14,6 +15,8 @@ import { useAuth } from '@/features/account/auth-provider';
 import { RunInProgressError } from '@/features/account/runtime';
 import { useLocalRuns, useMe, useRecorder } from '@/features/data/hooks';
 import { clearExportFiles } from '@/features/privacy/export-data';
+import { MANAGE_SUBSCRIPTIONS_URL } from '@/features/pro/purchases';
+import { useEntitlements } from '@/features/pro/use-pro';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
@@ -74,6 +77,7 @@ export default function DeleteAccountScreen() {
   const auth = useAuth();
   const { state, api, signOut } = useAccount();
   const me = useMe();
+  const entitlements = useEntitlements().data?.data ?? null;
   const { session } = useRecorder();
   const local = useLocalRuns();
   const [confirming, setConfirming] = useState(false);
@@ -193,7 +197,15 @@ export default function DeleteAccountScreen() {
         ]}
       />
 
-      {/* The pilot sells nothing. When a subscription exists (F10), add the store-billing notice here (S16). */}
+      {/* Deletion never waits on a subscription (REQ-010), but the store keeps billing until it's cancelled there (S16). */}
+      {entitlements?.pro && entitlements.source === 'revenuecat' ? (
+        <InlineStatus
+          tone="warning"
+          title="Deleting your account doesn’t cancel Pro."
+          body="The App Store keeps billing until you cancel the subscription there. You can delete your account either way."
+          action={<TextButton label="Manage subscription" onPress={() => void WebBrowser.openBrowserAsync(MANAGE_SUBSCRIPTIONS_URL)} />}
+        />
+      ) : null}
       <TextButton label="Export my data first" tone="primary" onPress={() => router.dismissTo('/profile/privacy')} style={styles.inlineAction} />
 
       {session && !status ? <InlineStatus tone={RUN_IN_PROGRESS.tone} title={RUN_IN_PROGRESS.title} body={RUN_IN_PROGRESS.body} /> : null}

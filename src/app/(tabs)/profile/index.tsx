@@ -1,22 +1,25 @@
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Ban, Bell, CloudUpload, Footprints, LifeBuoy, Link2, LogIn, LogOut, ShieldCheck, Tag, UserPen } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { Ban, Bell, CloudUpload, CreditCard, Footprints, LifeBuoy, Link2, LogIn, LogOut, ShieldCheck, Sparkles, Tag, UserPen } from 'lucide-react-native';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { Profile } from '@/api/schemas';
+import type { Entitlements, Profile } from '@/api/schemas';
 import { SecondaryButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { Avatar, InlineStatus, Row, RowGroup } from '@/components/ui/elements';
 import { Card, LargeHeader, Screen } from '@/components/ui/layout';
 import { RULE_VERSION, VALIDATOR_VERSION } from '@/domain/config';
-import { formatXp } from '@/domain/format';
+import { formatDateShort, formatXp } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
 import { useAuth } from '@/features/account/auth-provider';
 import { RunInProgressError } from '@/features/account/runtime';
 import { useLocalRuns, useMe, useRecorder, useStravaStatus } from '@/features/data/hooks';
 import { clearExportFiles } from '@/features/privacy/export-data';
+import { MANAGE_SUBSCRIPTIONS_URL } from '@/features/pro/purchases';
+import { useEntitlements } from '@/features/pro/use-pro';
 import { notificationsAllowed, parseReminderSettings, REMINDER_KEY } from '@/features/reminders/reminders';
 import type { RunSettings } from '@/features/voice/run-settings';
 import { Text } from '@/design/text';
@@ -32,6 +35,12 @@ function profileSummary(profile: Profile | null): string | undefined {
 }
 
 const noopSubscribe = () => () => undefined;
+
+function proSummary(e: Entitlements | null): string {
+  if (!e?.pro) return 'Free';
+  if (e.period === 'trial' && e.expires_at_ms) return `Trial until ${formatDateShort(e.expires_at_ms)}`;
+  return 'Pro';
+}
 
 function runSettingsSummary(settings: RunSettings | null): string | undefined {
   if (!settings) return undefined;
@@ -51,6 +60,7 @@ export default function ProfileScreen() {
   const { state, signOut, sessionLapsed } = useAccount();
   const me = useMe();
   const strava = useStravaStatus().data?.data;
+  const entitlements = useEntitlements().data?.data ?? null;
   const { session } = useRecorder();
   const local = useLocalRuns();
   const journal = state.status === 'ready' ? state.runtime.journal : null;
@@ -183,6 +193,21 @@ export default function ProfileScreen() {
         <Row icon={ShieldCheck} label="Privacy" value="Routes: only you" onPress={() => router.push('/profile/privacy')} testID="profile-privacy" />
         <Row icon={Ban} label="Blocked runners" onPress={() => router.push('/profile/blocked')} />
         <Row icon={LifeBuoy} label="Support & legal" onPress={() => router.push('/profile/support')} last />
+      </RowGroup>
+
+      <RowGroup>
+        <Row
+          icon={Sparkles}
+          label="PaceLeague Pro"
+          value={proSummary(entitlements)}
+          valueTone={entitlements?.pro ? 'accent' : 'secondary'}
+          onPress={() => router.push('/pro')}
+          testID="profile-pro"
+          last={!(entitlements?.pro && entitlements.source === 'revenuecat')}
+        />
+        {entitlements?.pro && entitlements.source === 'revenuecat' ? (
+          <Row icon={CreditCard} label="Manage subscription" onPress={() => void WebBrowser.openBrowserAsync(MANAGE_SUBSCRIPTIONS_URL)} last />
+        ) : null}
       </RowGroup>
 
       {signOutError ? <InlineStatus tone="warning" title={signOutError} /> : null}

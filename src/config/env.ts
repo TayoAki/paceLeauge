@@ -19,6 +19,9 @@ export const env = {
   privacyUrl: process.env.EXPO_PUBLIC_PRIVACY_URL ?? '',
   /** Email sign-in: a password (the beta default), or an emailed one-time `code`. */
   emailSignIn: process.env.EXPO_PUBLIC_EMAIL_SIGN_IN === 'code' ? 'code' : 'password',
+  /** RevenueCat's public SDK keys for Pro (appl_…, goog_…). Public by design; empty hides purchases. */
+  revenuecatIosKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '',
+  revenuecatAndroidKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '',
 } as const;
 
 export const isBackendConfigured = env.apiUrl.length > 0 && env.apiKey.length > 0;
