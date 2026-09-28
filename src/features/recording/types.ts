@@ -11,6 +11,8 @@ export interface LiveMetrics {
   lastAccuracyM: number | null;
   quality: GpsQuality;
   pointLimitReached: boolean;
+  /** Pace of the last ~20 s of credited running (seconds per km); null when stopped or unknown. */
+  currentPaceSPerKm: number | null;
 }
 
 export interface RecorderSnapshot {
@@ -18,6 +20,8 @@ export interface RecorderSnapshot {
   metrics: LiveMetrics;
   /** The run saved most recently in this process (drives the summary screen). */
   lastSaved: SavedRun | null;
+  /** The run is paused because the runner stopped (it resumes when they move). */
+  autoPaused: boolean;
 }
 
 export type SampleSink = (samples: RawSample[]) => void;
@@ -42,4 +46,5 @@ export const EMPTY_METRICS: LiveMetrics = {
   lastAccuracyM: null,
   quality: 'searching',
   pointLimitReached: false,
+  currentPaceSPerKm: null,
 };

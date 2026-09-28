@@ -46,7 +46,7 @@ function samples(points: TrackPoint[]): RawSample[] {
   return points.map((p) => ({ timestamp: p.t, latitude: p.lat, longitude: p.lon, accuracy: p.accuracyM }));
 }
 
-async function setup(options: { maxPoints?: number } = {}) {
+async function setup(options: { maxPoints?: number; autoPause?: boolean } = {}) {
   const db = new NodeSqliteDatabase();
   const clock = new FakeClock(T0);
   const journal = await Journal.open(db, clock);
@@ -61,6 +61,7 @@ async function setup(options: { maxPoints?: number } = {}) {
       newRunId: () => `00000000-0000-4000-8000-00000000000${ids++}`,
       onEvent: (e) => events.push(e),
       maxPoints: options.maxPoints,
+      autoPause: () => options.autoPause ?? false,
     });
   return { db, clock, journal, driver, events, recorder: make(), make };
 }
@@ -114,7 +115,7 @@ describe('recorder service', () => {
     expect(driver.running).toBe(false);
     expect(await journal.getSession()).toBeNull();
     expect((await journal.openOutbox()).map((o) => [o.kind, o.runId])).toEqual([['upload_run', saved.runId]]);
-    expect(events.map((e) => e.name)).toEqual(['run_started', 'run_saved_local']);
+    expect(events.map((e) => e.name)).toEqual(['run_started', 'paused', 'resumed', 'paused', 'run_saved_local']);
   });
 
   it('saves the 5.24 km fixture run with a provisional +77 XP estimate', async () => {
@@ -287,3 +288,66 @@ describe('recorder service', () => {
     expect(recorder.getSnapshot().metrics.quality).toBe('weak');
   });
 });
+
+describe('auto-pause in the recorder', () => {
+  /** Stands still: the same spot, one fix a second (with the clock advancing). */
+  function standing(from: number, seconds: number, lat: number, lon: number): TrackPoint[] {
+    return Array.from({ length: seconds }, (_, i) => ({ seq: 0, segmentIndex: 0, t: from + (i + 1) * 1000, lat, lon, accuracyM: 5 }));
+  }
+
+  it('pauses when the runner stops, excludes the standing time, and resumes when they move', async () => {
+    const { recorder, clock, events } = await setup({ autoPause: true });
+    await recorder.init();
+    await recorder.start();
+    const out = steadyRun(T0, 600, 200).points; // 3 m/s for 200 s
+    await stream(recorder, clock, out, 1);
+    const last = out[out.length - 1] as TrackPoint;
+    await stream(recorder, clock, standing(last.t, 40, last.lat, last.lon), 1);
+    const paused = recorder.getSnapshot();
+    expect(paused.session?.status).toBe('paused');
+    expect(paused.autoPaused).toBe(true);
+    const closed = paused.session?.segments[0];
+    // The segment closes when the runner stopped (within a few seconds), not 40 s later.
+    expect(closed!.endAt).toBeLessThanOrEqual(last.t + 3_000);
+
+    const back = steadyRun(clock.wall + 1000, 300, 100).points;
+    await stream(recorder, clock, back, 1);
+    const resumed = recorder.getSnapshot();
+    expect(resumed.session?.status).toBe('recording');
+    expect(resumed.autoPaused).toBe(false);
+    expect(events.map((e) => e.name)).toEqual(['run_started', 'auto_paused', 'auto_resumed']);
+
+    await recorder.pause();
+    const saved = await recorder.finish();
+    expect(saved.segments).toHaveLength(2);
+    expect(saved.activeMs).toBeLessThan(200_000 + 100_000);
+  });
+
+  it('never auto-resumes after a manual pause, and stays off when disabled', async () => {
+    const { recorder, clock } = await setup({ autoPause: true });
+    await recorder.init();
+    await recorder.start();
+    await stream(recorder, clock, steadyRun(T0, 300, 100).points, 1);
+    await recorder.pause();
+    await recorder.ingest(samples(steadyRun(clock.wall + 1000, 100, 30).points));
+    expect(recorder.getSnapshot().session?.status).toBe('paused');
+
+    const off = await setup({ autoPause: false });
+    await off.recorder.init();
+    await off.recorder.start();
+    const points = steadyRun(T0, 300, 100).points;
+    await stream(off.recorder, off.clock, points, 1);
+    const last = points[points.length - 1] as TrackPoint;
+    await stream(off.recorder, off.clock, standing(last.t, 40, last.lat, last.lon), 1);
+    expect(off.recorder.getSnapshot().session?.status).toBe('recording');
+  });
+
+  it('publishes the current pace while running', async () => {
+    const { recorder, clock } = await setup();
+    await recorder.init();
+    await recorder.start();
+    await stream(recorder, clock, steadyRun(T0, 400, 100).points, 1); // 4 m/s = 250 s/km
+    expect(recorder.getSnapshot().metrics.currentPaceSPerKm).toBeCloseTo(250, 0);
+  });
+});
+

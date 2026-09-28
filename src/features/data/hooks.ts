@@ -139,7 +139,7 @@ export function useLocalRun(runId: string | null): SavedRun | null | undefined {
   );
 }
 
-const IDLE_SNAPSHOT: RecorderSnapshot = { session: null, metrics: EMPTY_METRICS, lastSaved: null };
+const IDLE_SNAPSHOT: RecorderSnapshot = { session: null, metrics: EMPTY_METRICS, lastSaved: null, autoPaused: false };
 const noopSubscribe = () => () => undefined;
 
 export function useRecorder(): RecorderSnapshot {

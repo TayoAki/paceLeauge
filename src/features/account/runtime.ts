@@ -59,9 +59,10 @@ async function create(accountId: string): Promise<AccountRuntime> {
         });
       } else if (event.name === 'recorder_interrupted') {
         telemetry.track('recorder_interrupted', { reason: event.reason });
-      } else {
-        telemetry.track(event.name);
+      } else if (event.name === 'run_started') {
+        telemetry.track('run_started');
       }
+      // Pause and resume events drive voice cues only; they are not telemetry.
     },
   });
   await recorder.init();

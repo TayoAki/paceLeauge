@@ -1,5 +1,7 @@
 import type { Journal, RawSample, SavedRun, StoredSession } from '@/db/journal';
+import { AutoPauseDetector } from '@/domain/auto-pause';
 import { RECORDER_V1 } from '@/domain/config';
+import { currentPaceSPerKm } from '@/domain/live-pace';
 import { activeElapsedMs } from '@/domain/recorder-machine';
 import type { EpochMs } from '@/domain/types';
 import { SegmentTrack } from '@/domain/validator';
@@ -25,6 +27,10 @@ export class NoActiveRunError extends Error {
 
 export type RecorderEvent =
   | { name: 'run_started' }
+  | { name: 'auto_paused' }
+  | { name: 'auto_resumed' }
+  | { name: 'paused' }
+  | { name: 'resumed' }
   | { name: 'run_saved_local'; interrupted: boolean; activeMs: number; points: number }
   | { name: 'recorder_interrupted'; reason: 'process' | 'permission' };
 
@@ -40,6 +46,8 @@ export interface RecorderDeps {
   onEvent?: (event: RecorderEvent) => void;
   heartbeatMs?: number;
   maxPoints?: number;
+  /** Whether auto-pause is on (read at each sample, so the setting applies mid-run). */
+  autoPause?: () => boolean;
 }
 
 function gpsQuality(now: EpochMs, lastFixAt: EpochMs | null, accuracy: number | null, recordingSince: EpochMs | null): GpsQuality {
@@ -58,7 +66,9 @@ function gpsQuality(now: EpochMs, lastFixAt: EpochMs | null, accuracy: number | 
 export class RecorderService {
   private readonly clock: Clock;
   private readonly emitter = new Emitter<void>();
-  private snapshot: RecorderSnapshot = { session: null, metrics: EMPTY_METRICS, lastSaved: null };
+  private snapshot: RecorderSnapshot = { session: null, metrics: EMPTY_METRICS, lastSaved: null, autoPaused: false };
+  private readonly autoPauser = new AutoPauseDetector();
+  private autoPaused = false;
   private closedDistanceM = 0;
   private openTrack: SegmentTrack | null = null;
   /** Monotonic reference for the open segment, when it was opened in this process. */
@@ -72,7 +82,16 @@ export class RecorderService {
     this.clock = deps.clock ?? systemClock;
   }
 
+  private readonly events = new Emitter<RecorderEvent>();
+
   subscribe = (listener: () => void): (() => void) => this.emitter.subscribe(listener);
+  /** Recording events (start, pause, resume, save…) for voice cues and the run screen. */
+  subscribeEvents = (listener: (event: RecorderEvent) => void): (() => void) => this.events.subscribe(listener);
+
+  private emitEvent(event: RecorderEvent): void {
+    this.deps.onEvent?.(event);
+    this.events.emit(event);
+  }
   getSnapshot = (): RecorderSnapshot => this.snapshot;
 
   /**
@@ -94,7 +113,7 @@ export class RecorderService {
       await this.deps.journal.command({ type: 'interrupt', at: now, lastEvidenceAt: session.lastCheckpointAt, reason: 'process' });
       await this.deps.location.stop().catch(() => undefined);
       this.stopHeartbeat();
-      this.deps.onEvent?.({ name: 'recorder_interrupted', reason: 'process' });
+      this.emitEvent({ name: 'recorder_interrupted', reason: 'process' });
       return false;
     }
     this.verifiedRunId = session.runId;
@@ -127,9 +146,11 @@ export class RecorderService {
     this.openTrack = new SegmentTrack(session.startedAt);
     this.lastFix = null;
     this.limitReached = false;
+    this.autoPaused = false;
+    this.autoPauser.reset(false);
     this.startHeartbeat();
     await this.deps.onRecordingChange?.(true);
-    this.deps.onEvent?.({ name: 'run_started' });
+    this.emitEvent({ name: 'run_started' });
     this.publish(session);
     return session;
   }
@@ -148,13 +169,25 @@ export class RecorderService {
     const session = await this.requireSession();
     const updated = await this.deps.journal.command({ type: 'pause', at: this.openSegmentNow(session) });
     this.mono = null;
+    // A manual pause stays paused until the runner resumes it.
+    this.autoPaused = false;
+    this.autoPauser.reset(true);
+    this.emitEvent({ name: 'paused' });
     await this.rebuild();
     return updated;
   }
 
   async resume(): Promise<StoredSession> {
+    const updated = await this.resumeAt(this.clock.now());
+    this.emitEvent({ name: 'resumed' });
+    return updated;
+  }
+
+  private async resumeAt(at: EpochMs): Promise<StoredSession> {
     await this.requireSession();
-    const updated = await this.deps.journal.command({ type: 'resume', at: this.clock.now() });
+    this.autoPaused = false;
+    this.autoPauser.reset(false);
+    const updated = await this.deps.journal.command({ type: 'resume', at });
     if (updated.openSegment) {
       this.mono = { segmentIndex: updated.openSegment.index, monoAt: this.clock.monotonic() };
     }
@@ -181,7 +214,7 @@ export class RecorderService {
     this.mono = null;
     this.stopHeartbeat();
     await this.deps.location.stop().catch(() => undefined);
-    this.deps.onEvent?.({ name: 'recorder_interrupted', reason: 'permission' });
+    this.emitEvent({ name: 'recorder_interrupted', reason: 'permission' });
     await this.rebuild();
   }
 
@@ -204,7 +237,7 @@ export class RecorderService {
     this.mono = null;
     this.verifiedRunId = null;
     this.snapshot = { ...this.snapshot, lastSaved: saved };
-    this.deps.onEvent?.({ name: 'run_saved_local', interrupted: saved.interrupted, activeMs: saved.activeMs, points: saved.pointCount });
+    this.emitEvent({ name: 'run_saved_local', interrupted: saved.interrupted, activeMs: saved.activeMs, points: saved.pointCount });
     await this.rebuild();
     return saved;
   }
@@ -224,6 +257,10 @@ export class RecorderService {
   async ingest(samples: RawSample[]): Promise<void> {
     if (samples.length === 0) return;
     const session = await this.deps.journal.getSession();
+    if (session?.status === 'paused' && this.autoPaused) {
+      await this.watchForMovement(samples);
+      return;
+    }
     if (!session || session.status !== 'recording') return;
     if (this.verifiedRunId !== session.runId) {
       // First delivery in this process (e.g. relaunched in the background).
@@ -239,6 +276,34 @@ export class RecorderService {
     this.limitReached = result.limitReached;
     for (const point of result.accepted) this.openTrack?.push(point);
     this.publish(result.session);
+    await this.watchForStop(samples, result.session);
+  }
+
+  /** Auto-pause: pause at the moment the runner stopped, so standing time is never credited. */
+  private async watchForStop(samples: RawSample[], session: StoredSession | null): Promise<void> {
+    if (!this.deps.autoPause?.() || session?.status !== 'recording' || !session.openSegment) return;
+    for (const s of [...samples].sort((a, b) => a.timestamp - b.timestamp)) {
+      const decision = this.autoPauser.push({ t: s.timestamp, lat: s.latitude, lon: s.longitude, accuracyM: s.accuracy });
+      if (decision?.type !== 'pause') continue;
+      const at = Math.min(this.openSegmentNow(session), Math.max(session.openSegment.startAt, decision.at));
+      await this.deps.journal.command({ type: 'pause', at });
+      this.mono = null;
+      this.autoPaused = true;
+      this.emitEvent({ name: 'auto_paused' });
+      await this.rebuild();
+      return;
+    }
+  }
+
+  /** While auto-paused, samples only decide when to resume; they are not recorded. */
+  private async watchForMovement(samples: RawSample[]): Promise<void> {
+    for (const s of [...samples].sort((a, b) => a.timestamp - b.timestamp)) {
+      const decision = this.autoPauser.push({ t: s.timestamp, lat: s.latitude, lon: s.longitude, accuracyM: s.accuracy });
+      if (decision?.type !== 'resume') continue;
+      await this.resumeAt(this.clock.now());
+      this.emitEvent({ name: 'auto_resumed' });
+      return;
+    }
   }
 
   /** Heartbeat: refresh elapsed time and record liveness while recording. */
@@ -303,9 +368,10 @@ export class RecorderService {
           lastAccuracyM: this.lastFix?.accuracy ?? null,
           quality: gpsQuality(now, this.lastFix?.at ?? null, this.lastFix?.accuracy ?? null, session.openSegment?.startAt ?? null),
           pointLimitReached: this.limitReached,
+          currentPaceSPerKm: session.openSegment && this.openTrack ? currentPaceSPerKm(this.openTrack.credited, now) : null,
         }
       : EMPTY_METRICS;
-    this.snapshot = { ...this.snapshot, session, metrics };
+    this.snapshot = { ...this.snapshot, session, metrics, autoPaused: session?.status === 'paused' && this.autoPaused };
     this.emitter.emit();
   }
 }
