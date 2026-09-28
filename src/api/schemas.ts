@@ -54,6 +54,9 @@ export const serverRunSchema = z.object({
   steps: z.number().nullable().optional(),
   indoor: z.boolean().optional(),
   duplicate_of: z.string().nullable().optional(),
+  // Who else may see the run, and whether its (trimmed) map is shared (Phase 4.2).
+  visibility: z.enum(['only_me', 'leagues', 'followers', 'everyone']).optional(),
+  map_shared: z.boolean().optional(),
 });
 export type ServerRun = z.infer<typeof serverRunSchema>;
 export const runSourceSchema = z.enum(['phone_gps', 'watch', 'health_import', 'file_import', 'garmin', 'indoor']);

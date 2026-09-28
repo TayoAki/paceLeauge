@@ -17,6 +17,8 @@ export const env = {
   supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '',
   termsUrl: process.env.EXPO_PUBLIC_TERMS_URL ?? '',
   privacyUrl: process.env.EXPO_PUBLIC_PRIVACY_URL ?? '',
+  /** The web app (P.2), for links people open anywhere: follow links, live runs. Empty uses app links. */
+  webUrl: process.env.EXPO_PUBLIC_WEB_URL ?? '',
   /** Email sign-in: a password (the beta default), or an emailed one-time `code`. */
   emailSignIn: process.env.EXPO_PUBLIC_EMAIL_SIGN_IN === 'code' ? 'code' : 'password',
   /** RevenueCat's public SDK keys for Pro (appl_…, goog_…). Public by design; empty hides purchases. */

@@ -2,7 +2,7 @@ import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Ban, Bell, CloudUpload, CreditCard, Footprints, LifeBuoy, Link2, LogIn, LogOut, ShieldCheck, Sparkles, Tag, UserPen } from 'lucide-react-native';
+import { Ban, Bell, CloudUpload, CreditCard, Footprints, LifeBuoy, Link2, LogIn, LogOut, MapPinOff, ShieldCheck, Sparkles, Tag, UserPen, Users } from 'lucide-react-native';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -190,7 +190,9 @@ export default function ProfileScreen() {
           value={reminderOn === null ? undefined : reminderOn ? 'On' : 'Off'}
           onPress={() => router.push('/profile/notifications')}
         />
-        <Row icon={ShieldCheck} label="Privacy" value="Routes: only you" onPress={() => router.push('/profile/privacy')} testID="profile-privacy" />
+        <Row icon={Users} label="People" onPress={() => router.push('/profile/people')} testID="profile-people" />
+        <Row icon={MapPinOff} label="Sharing and privacy zones" onPress={() => router.push('/profile/sharing')} testID="profile-sharing" />
+        <Row icon={ShieldCheck} label="Privacy" onPress={() => router.push('/profile/privacy')} testID="profile-privacy" />
         <Row icon={Ban} label="Blocked runners" onPress={() => router.push('/profile/blocked')} />
         <Row icon={LifeBuoy} label="Support & legal" onPress={() => router.push('/profile/support')} last />
       </RowGroup>

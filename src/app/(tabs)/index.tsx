@@ -13,6 +13,7 @@ import { formatDistance, formatDuration, ordinal } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
 import { useIndoorSession, useLeague, useLocalRuns, useMe, useRecorder, useRunHistory, useSyncStatus, useWeek } from '@/features/data/hooks';
 import { pendingInvite } from '@/features/leagues/pending-invite';
+import { pendingFollow } from '@/features/social/pending-follow';
 import { useWatchWorkout } from '@/features/watch/use-watch';
 import { useTodaysPlan } from '@/features/plans/use-plan';
 import { mergeRunViews } from '@/features/progress/run-views';
@@ -52,6 +53,10 @@ export default function TodayScreen() {
     useCallback(() => {
       void pendingInvite.get().then((code) => {
         if (code) router.push({ pathname: '/invite/[code]', params: { code } });
+      });
+      // A follow link opened before sign-in (4.3).
+      void pendingFollow.get().then((code) => {
+        if (code) router.push({ pathname: '/follow/[code]', params: { code } });
       });
     }, [router]),
   );

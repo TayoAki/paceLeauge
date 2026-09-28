@@ -32,7 +32,7 @@ type ExportState =
 
 const DATA_HANDLING = [
   'Your runs, routes and scores are stored in the cloud so they sync and stay safe. That data is processed by the operator of PaceLeague and its service providers under access controls. It isn’t end-to-end encrypted.',
-  'Your league sees your runner name, tier and weekly XP — never your routes or your email.',
+  'Your league sees your runner name, tier and weekly XP, never your email. Runs and their maps stay yours unless you share them (Profile › Sharing), and shared maps leave out your privacy zones and the first and last 200 m.',
   'Run summaries and routes stay until you delete them or delete your account.',
   'Deleting your account hides you from your league right away and removes your primary data within 7 days.',
   'App analytics never include your routes, locations, email or run titles.',
