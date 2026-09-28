@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppMessage, LaunchSplash } from '@/components/ui/app-states';
 import { isBackendConfigured } from '@/config/env';
 import { AccountProvider, useAccount } from '@/features/account/account-provider';
+import { AgeNeededScreen, AgeRestrictedScreen, useExistingAgeCheck } from '@/features/account/age-gate';
 import { AuthProvider, useAuth } from '@/features/account/auth-provider';
 import { useMe } from '@/features/data/hooks';
 import { colors } from '@/design/tokens';
@@ -58,6 +59,7 @@ function RootNavigator() {
   const ready = state.status === 'ready';
   const profile = me.data?.data.profile ?? null;
   const loading = auth.status === 'loading' || (signedIn && (state.status === 'opening' || (ready && me.isPending)));
+  const ageGate = useExistingAgeCheck(signedIn && ready ? profile : null);
 
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync().catch(() => undefined);
@@ -87,6 +89,8 @@ function RootNavigator() {
   }
 
   const onboarded = signedIn && ready && profile !== null;
+  if (onboarded && profile.age_signal === 'minor') return <AgeRestrictedScreen />;
+  if (onboarded && ageGate.needsAge) return <AgeNeededScreen check={ageGate.needsAge} onRetry={ageGate.retry} />;
   const inApp = onboarded || (sessionLapsed && ready);
 
   return (

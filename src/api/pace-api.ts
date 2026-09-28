@@ -67,6 +67,9 @@ export interface ProfileInput {
   goalDays: number | null;
   notificationTz: string | null;
   ackEligibility: boolean;
+  /** What the App Store / Google Play age check said (features/account/age-check.ts). */
+  ageSignal?: 'adult' | 'not_required';
+  ageSource?: string;
 }
 
 export type ReportReason = 'offensive_name' | 'harassment' | 'impersonation' | 'cheating' | 'spam' | 'other';
@@ -84,6 +87,8 @@ export interface PaceApi {
   getMe(): Promise<Me>;
   checkAlias(alias: string): Promise<{ available: boolean; problem: 'invalid' | 'not_allowed' | 'taken' | null }>;
   saveProfile(input: ProfileInput): Promise<Me>;
+  /** Records an age check for an existing profile; a minor answer locks the account. */
+  recordAgeSignal(signal: 'adult' | 'not_required' | 'minor', source: string | null): Promise<Me>;
 
   startRunUpload(input: StartUploadInput): Promise<UploadState>;
   putRouteChunk(runId: string, seq: number, body: string, checksum: string): Promise<void>;
@@ -148,9 +153,12 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
           p_goal_days: input.goalDays,
           p_notification_tz: input.notificationTz,
           p_ack_eligibility: input.ackEligibility,
+          ...(input.ageSignal ? { p_age_signal: input.ageSignal, p_age_source: input.ageSource ?? null } : {}),
         },
         meSchema,
       ),
+
+    recordAgeSignal: (signal, source) => call('record_age_signal', { p_signal: signal, p_source: source }, meSchema),
 
     startRunUpload: (input) =>
       call(

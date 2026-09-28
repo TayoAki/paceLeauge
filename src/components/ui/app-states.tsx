@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,7 +17,20 @@ export function LaunchSplash() {
 }
 
 /** Whole-screen message for configuration, locked-journal and first-launch offline states. */
-export function AppMessage({ title, body, actionLabel, onAction }: { title: string; body: string; actionLabel?: string; onAction?: () => void }) {
+export function AppMessage({
+  title,
+  body,
+  actionLabel,
+  onAction,
+  children,
+}: {
+  title: string;
+  body: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  /** Extra actions or status below the primary action. */
+  children?: ReactNode;
+}) {
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.message, { paddingTop: insets.top + space.xxxl, paddingBottom: insets.bottom + space.xl }]}>
@@ -30,6 +44,7 @@ export function AppMessage({ title, body, actionLabel, onAction }: { title: stri
         </Text>
       </View>
       {actionLabel && onAction ? <PrimaryButton label={actionLabel} onPress={onAction} /> : null}
+      {children}
     </View>
   );
 }

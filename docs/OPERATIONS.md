@@ -112,6 +112,35 @@ To publish: fill in the placeholders, have someone qualified review both documen
 push (the service redeploys), and check that the banner is gone. External TestFlight testing and
 the App Store need the privacy page's URL.
 
+## Age assurance
+
+PaceLeague is for adults. At sign-up the app asks the App Store (Declared Age Range, iOS 26+) or
+Google Play (Age Signals) for the runner's age range where the platform provides one, using
+`expo-age-range` (`src/features/account/age-check.ts`). Where the platform says age rules don't
+apply, or has no answer outside a regulated region, the runner's own adult declaration stands. The
+profile records the outcome (`age_signal`: `adult`, `not_required` or `minor`), how it was declared
+and when; never a birth date.
+
+- **Under 18 at sign-up:** no profile is created.
+- **Under 18 for an existing account** (checked at launch, only where the platform confirms age
+  rules apply): the account is locked for uploads, leagues and reports, and removed from its league
+  at once. Its holder can still read and export their data and delete the account.
+- **Regulated region, no answer:** the app asks the runner to share their age range (or verify it
+  with Google Play) and can't be used until they do.
+
+The iOS entitlement `com.apple.developer.declared-age-range` is set in `app.config.ts`; EAS enables
+the capability on the App ID during the build. Test on a real iPhone: the simulator has no age
+answer.
+
+A store signal can be wrong (for example, a family sharing one Apple Account). After checking the
+holder's age another way, a staff operator clears the lock:
+
+```sql
+select private.clear_age_restriction('<user uuid>', 'Checked ID by email, ticket 123', 'ops:alex');
+```
+
+The action is recorded in `private.audit_log`. The runner rejoins a league with a new invite.
+
 ## Email delivery
 
 Not needed for the beta. You need an email provider to turn emailed sign-in codes back on

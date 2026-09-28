@@ -18,6 +18,7 @@ export const PERMANENT_CODES = new Set([
   'profile_required',
   'account_deleting',
   'eligibility_required',
+  'age_restricted',
   'permission_denied',
   'invalid_response',
 ]);

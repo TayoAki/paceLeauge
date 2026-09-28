@@ -311,9 +311,10 @@ From the gap analysis, before inviting testers:
 - **Say where routes go**: one line in onboarding and on the App Store page. Only you see your route.
 - **Explain held runs**: when the validator holds a run for review, say why and how to ask for
   another look.
-- **Check age at sign-up**: use Apple's Declared Age Range API and turn away under-18 accounts,
-  alongside the existing adult self-declaration. Texas has required age assurance for new Apple
-  accounts since 1 January 2026 (decision 3).
+- **Check age at sign-up** (built): Apple's Declared Age Range and Google Play Age Signals through
+  `expo-age-range`, alongside the existing adult self-declaration. Texas has required age
+  assurance for new Apple accounts since 1 January 2026 (decision 3). See
+  `src/features/account/age-check.ts` and `db/migrations/20260928000100_age_assurance.sql`.
 
 ## Phase 1: better runs (V1.1)
 

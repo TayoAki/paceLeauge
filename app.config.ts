@@ -34,6 +34,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: BUNDLE_ID,
     supportsTablet: false,
     usesAppleSignIn: true,
+    // Apple's Declared Age Range (expo-age-range): age assurance for regulated regions.
+    entitlements: { 'com.apple.developer.declared-age-range': true },
     config: { usesNonExemptEncryption: false },
     infoPlist: {
       NSLocationWhenInUseUsageDescription: LOCATION_WHEN_IN_USE_COPY,

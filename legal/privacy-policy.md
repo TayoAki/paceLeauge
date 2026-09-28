@@ -20,6 +20,7 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 - Your email address and your password. The password is stored only as a salted one-way hash (scrypt), so we can't read it.
 - If you use Sign in with Apple: the identifier Apple gives us for your account, and the email address Apple shares with us (which may be a private relay address).
 - Your runner name, preferred units, optional weekly goal, the time zone used for reminders, and when you confirmed that you are 18 or older.
+- Where the App Store or Google Play provides one, whether it says you are 18 or older, how that was declared (for example by you, a guardian, or the store's own check) and when we asked. We never receive your date of birth.
 
 ### Your runs
 
@@ -84,7 +85,7 @@ We use encryption in transit (HTTPS), store passwords only as salted hashes, and
 
 ## Children
 
-PaceLeague is for adults. We don't knowingly collect information from anyone under 18. If you believe someone under 18 has an account, contact us and we will delete it.
+PaceLeague is for adults. We don't knowingly collect information from anyone under 18. Where the App Store or Google Play tells us an account belongs to someone under 18, we don't create a profile, or we pause an existing one and remove it from its league; its holder can still export and delete it. If you believe someone under 18 has an account, contact us and we will delete it.
 
 ## Changes to this policy
 

@@ -78,6 +78,9 @@ export const profileSchema = z.object({
   notification_tz: z.string().nullable(),
   status: z.enum(['active', 'deleting']),
   created_at_ms: z.number(),
+  /** Absent from servers older than the age-assurance migration. */
+  age_signal: z.enum(['adult', 'not_required', 'minor']).nullable().optional(),
+  age_checked_at_ms: z.number().nullable().optional(),
 });
 export type Profile = z.infer<typeof profileSchema>;
 
