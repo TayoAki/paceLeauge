@@ -19,6 +19,10 @@ export const PERMANENT_CODES = new Set([
   'account_deleting',
   'eligibility_required',
   'age_restricted',
+  'too_many_shoes',
+  'edit_increases_distance',
+  'cannot_undo_merge',
+  'not_in_league',
   'permission_denied',
   'invalid_response',
 ]);

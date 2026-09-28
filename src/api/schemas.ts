@@ -15,6 +15,9 @@ export const xpAwardSchema = z.object({
 });
 export type XpAward = z.infer<typeof xpAwardSchema>;
 
+export const activityTypeSchema = z.enum(['run', 'walk', 'hike', 'ride', 'other']);
+export type ActivityType = z.infer<typeof activityTypeSchema>;
+
 export const runStatusSchema = z.enum(['uploading', 'accepted', 'personal_only', 'review']);
 export type RunStatus = z.infer<typeof runStatusSchema>;
 
@@ -36,6 +39,12 @@ export const serverRunSchema = z.object({
   validator_version: z.number().nullable(),
   rule_version: z.number().nullable(),
   finalized_at_ms: z.number().nullable(),
+  // Run log extras (Phase 1). Optional so a server without the migration still validates.
+  activity_type: activityTypeSchema.optional(),
+  source: z.string().optional(),
+  notes: z.string().nullable().optional(),
+  shoe_id: z.string().nullable().optional(),
+  edited_at_ms: z.number().nullable().optional(),
 });
 export type ServerRun = z.infer<typeof serverRunSchema>;
 
@@ -228,3 +237,87 @@ export const deletionSchema = z.object({
 export type DeletionStatus = z.infer<typeof deletionSchema>;
 
 export const logEventsResultSchema = z.object({ accepted: z.number(), dropped: z.number() });
+
+// ---------------------------------------------------------------------------------------
+// Phase 1 (docs/ROADMAP.md): run log, records, streaks, badges, cheers, stats, fixing runs
+// ---------------------------------------------------------------------------------------
+export const runListSchema = z.array(serverRunSchema);
+
+export const shoeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  limit_km: z.number().nullable(),
+  is_default: z.boolean(),
+  retired: z.boolean(),
+  created_at_ms: z.number(),
+  runs: z.number(),
+  distance_m: z.number(),
+});
+export type Shoe = z.infer<typeof shoeSchema>;
+export const shoesSchema = z.array(shoeSchema);
+export const deletedSchema = z.object({ deleted: z.boolean() });
+
+export const effortKeySchema = z.enum(['1k', '1mi', '5k', '10k', 'half', 'marathon']);
+export type EffortKey = z.infer<typeof effortKeySchema>;
+
+const recordRunSchema = z.object({ run_id: z.string(), elapsed_ms: z.number(), started_at_ms: z.number(), title: z.string() });
+export type RecordRun = z.infer<typeof recordRunSchema>;
+
+export const personalRecordsSchema = z.object({
+  records: z.array(z.object({ effort: effortKeySchema, distance_m: z.number(), best: recordRunSchema.nullable(), efforts: z.number() })),
+  longest_run: z.object({ run_id: z.string(), distance_m: z.number(), started_at_ms: z.number(), title: z.string() }).nullable(),
+});
+export type PersonalRecords = z.infer<typeof personalRecordsSchema>;
+
+export const recordHistorySchema = z.array(recordRunSchema);
+
+export const runEffortsSchema = z.object({
+  run_id: z.string(),
+  counts_for_records: z.boolean(),
+  efforts: z.array(z.object({ effort: effortKeySchema, elapsed_ms: z.number(), rank: z.number(), record_when_run: z.boolean() })),
+});
+export type RunEfforts = z.infer<typeof runEffortsSchema>;
+
+export const streakSchema = z.object({
+  current_weeks: z.number(),
+  best_weeks: z.number(),
+  this_week: z.object({ week_start: z.string(), active_days: z.number(), goal_days: z.number().nullable(), met: z.boolean(), frozen: z.boolean() }),
+  at_stake: z.boolean(),
+});
+export type Streak = z.infer<typeof streakSchema>;
+
+export const badgesSchema = z.object({
+  earned: z.array(z.object({ badge: z.string(), earned_at_ms: z.number() })),
+  progress: z.object({ accepted_runs: z.number(), distance_m: z.number(), lifetime_xp: z.number(), streak: streakSchema }),
+});
+export type Badges = z.infer<typeof badgesSchema>;
+
+export const cheersSchema = z.object({
+  week_start: z.string(),
+  league_id: z.string().nullable(),
+  received: z.array(z.object({ member_id: z.string(), count: z.number() })),
+  mine: z.array(z.string()),
+  cheered_me: z.array(z.string()),
+});
+export type Cheers = z.infer<typeof cheersSchema>;
+
+const statsTotalSchema = z.object({ runs: z.number(), days: z.number(), distance_m: z.number(), active_ms: z.number(), longest_m: z.number() });
+export const statsSchema = z.object({
+  from: z.string(),
+  to: z.string(),
+  bucket: z.enum(['week', 'month', 'year']),
+  activity: z.string(),
+  buckets: z.array(z.object({ start: z.string(), runs: z.number(), days: z.number(), distance_m: z.number(), active_ms: z.number() })),
+  total: statsTotalSchema,
+  previous_year: statsTotalSchema,
+});
+export type Stats = z.infer<typeof statsSchema>;
+
+export const runEditResultSchema = z.object({
+  run: serverRunSchema,
+  xp_changes: z.array(z.object({ competition_date: z.string(), delta: z.number() }).passthrough()),
+  lifetime_xp: z.number(),
+  can_undo: z.boolean(),
+  removed_run_id: z.string().optional(),
+});
+export type RunEditResult = z.infer<typeof runEditResultSchema>;

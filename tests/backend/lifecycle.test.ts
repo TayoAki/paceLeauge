@@ -51,7 +51,7 @@ describe('data export', () => {
     const data = await db.rpc(me, 'get_export', { p_export_id: job.export_id });
     expect(data).toMatchObject({
       format: 'paceleague-export',
-      format_version: 1,
+      format_version: 2,
       account: { email: me.email, alias: 'Exporter', units: 'metric' },
       lifetime_xp: 77,
       tier: 'Seed',

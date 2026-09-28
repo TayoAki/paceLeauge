@@ -28,6 +28,29 @@ import {
   serverRunSchema,
   uploadStateSchema,
   weekSummarySchema,
+  badgesSchema,
+  cheersSchema,
+  deletedSchema,
+  personalRecordsSchema,
+  recordHistorySchema,
+  runEditResultSchema,
+  runEffortsSchema,
+  runListSchema,
+  shoeSchema,
+  shoesSchema,
+  statsSchema,
+  streakSchema,
+  type ActivityType,
+  type Badges,
+  type Cheers,
+  type EffortKey,
+  type PersonalRecords,
+  type RecordRun,
+  type RunEditResult,
+  type RunEfforts,
+  type Shoe,
+  type Stats,
+  type Streak,
   type AppConfig,
   type BlockEntry,
   type DeletionStatus,
@@ -73,6 +96,37 @@ export interface ProfileInput {
 }
 
 export type ReportReason = 'offensive_name' | 'harassment' | 'impersonation' | 'cheating' | 'spam' | 'other';
+
+export interface ShoeInput {
+  name: string;
+  /** Remind at this distance; null for no reminder. */
+  limitKm: number | null;
+  isDefault: boolean;
+  /** Absent to add a new shoe. */
+  shoeId?: string;
+}
+
+export interface RunDetailsInput {
+  /** Omitted: unchanged. An empty string clears the note. */
+  notes?: string;
+  /** Omitted: unchanged. Null removes the shoe. */
+  shoeId?: string | null;
+}
+
+export interface RunEditInput {
+  keepFromMs?: number;
+  keepToMs?: number;
+  cutRanges?: { fromMs: number; toMs: number }[];
+  activityType?: ActivityType;
+}
+
+export interface StatsInput {
+  /** Inclusive calendar dates, YYYY-MM-DD. */
+  from: string;
+  to: string;
+  bucket: 'week' | 'month' | 'year';
+  activity?: ActivityType | 'all';
+}
 
 export interface TelemetryEvent {
   event_id: string;
@@ -125,6 +179,25 @@ export interface PaceApi {
   getAccountDeletionStatus(): Promise<DeletionStatus>;
 
   logEvents(events: TelemetryEvent[]): Promise<void>;
+
+  // Phase 1 (docs/ROADMAP.md 1.4–1.10)
+  listMyRunsBetween(fromMs: number, toMs: number, activity?: ActivityType | null): Promise<ServerRun[]>;
+  updateRunDetails(runId: string, input: RunDetailsInput): Promise<ServerRun>;
+  listShoes(): Promise<Shoe[]>;
+  saveShoe(input: ShoeInput): Promise<Shoe>;
+  retireShoe(shoeId: string, retired: boolean): Promise<Shoe>;
+  deleteShoe(shoeId: string): Promise<void>;
+  getPersonalRecords(): Promise<PersonalRecords>;
+  getRecordHistory(effort: EffortKey): Promise<RecordRun[]>;
+  getRunEfforts(runId: string): Promise<RunEfforts>;
+  getStreak(): Promise<Streak>;
+  getBadges(): Promise<Badges>;
+  cheerMember(memberId: string): Promise<Cheers>;
+  getLeagueCheers(weekOffset?: 0 | -1): Promise<Cheers>;
+  getStats(input: StatsInput): Promise<Stats>;
+  editRun(runId: string, expectedVersion: number, input: RunEditInput): Promise<RunEditResult>;
+  mergeRuns(firstRunId: string, secondRunId: string): Promise<RunEditResult>;
+  undoRunEdits(runId: string, expectedVersion: number): Promise<RunEditResult>;
 }
 
 const UPLOAD_TIMEOUT_MS = 30_000;
@@ -240,5 +313,52 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     logEvents: async (events) => {
       await call('log_events', { p_events: events }, logEventsResultSchema);
     },
+
+    listMyRunsBetween: (fromMs, toMs, activity = null) =>
+      call('list_my_runs_between', { p_from_ms: fromMs, p_to_ms: toMs, p_activity: activity }, runListSchema),
+    updateRunDetails: (runId, input) =>
+      call(
+        'update_run_details',
+        {
+          p_run_id: runId,
+          p_notes: input.notes ?? null,
+          p_shoe_id: input.shoeId ?? null,
+          p_clear_shoe: input.shoeId === null,
+        },
+        serverRunSchema,
+      ),
+    listShoes: () => call('list_shoes', {}, shoesSchema),
+    saveShoe: (input) =>
+      call('save_shoe', { p_name: input.name, p_limit_km: input.limitKm, p_is_default: input.isDefault, p_shoe_id: input.shoeId ?? null }, shoeSchema),
+    retireShoe: (shoeId, retired) => call('retire_shoe', { p_shoe_id: shoeId, p_retired: retired }, shoeSchema),
+    deleteShoe: async (shoeId) => {
+      await call('delete_shoe', { p_shoe_id: shoeId }, deletedSchema);
+    },
+    getPersonalRecords: () => call('get_personal_records', {}, personalRecordsSchema),
+    getRecordHistory: (effort) => call('get_record_history', { p_effort: effort }, recordHistorySchema),
+    getRunEfforts: (runId) => call('get_run_efforts', { p_run_id: runId }, runEffortsSchema),
+    getStreak: () => call('get_streak', {}, streakSchema),
+    getBadges: () => call('get_badges', {}, badgesSchema),
+    cheerMember: (memberId) => call('cheer_member', { p_member_id: memberId }, cheersSchema),
+    getLeagueCheers: (weekOffset = 0) => call('get_league_cheers', { p_week_offset: weekOffset }, cheersSchema),
+    getStats: (input) =>
+      call('get_stats', { p_from: input.from, p_to: input.to, p_bucket: input.bucket, p_activity: input.activity ?? 'run' }, statsSchema),
+    editRun: (runId, expectedVersion, input) =>
+      call(
+        'edit_run',
+        {
+          p_run_id: runId,
+          p_expected_version: expectedVersion,
+          p_keep_from_ms: input.keepFromMs ?? null,
+          p_keep_to_ms: input.keepToMs ?? null,
+          p_cut_ranges: (input.cutRanges ?? []).map((r) => ({ from_ms: r.fromMs, to_ms: r.toMs })),
+          p_activity_type: input.activityType ?? null,
+        },
+        runEditResultSchema,
+      ),
+    mergeRuns: (firstRunId, secondRunId) =>
+      call('merge_runs', { p_first_run_id: firstRunId, p_second_run_id: secondRunId }, runEditResultSchema),
+    undoRunEdits: (runId, expectedVersion) =>
+      call('undo_run_edits', { p_run_id: runId, p_expected_version: expectedVersion }, runEditResultSchema),
   };
 }
