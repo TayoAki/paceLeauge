@@ -215,7 +215,8 @@ describe('daily XP rules on the server', () => {
     const runner = await db.createRunner('Review Cases');
     const fast = await uploadRun(db, runner, runAt(FRIDAY_7AM, 4000, 500));
     expect(fast.result.run).toMatchObject({ status: 'review', reason_codes: ['speed_anomaly'] });
-    const late = await uploadRun(db, runner, runAt(FRIDAY_7AM, 3050, 900), { receivedAfterMs: 73 * 3600_000 });
+    // Two hours later, so it's a separate run rather than a second copy of the first (Phase 2 duplicates).
+    const late = await uploadRun(db, runner, runAt(FRIDAY_7AM + 2 * 3600_000, 3050, 900), { receivedAfterMs: 73 * 3600_000 });
     expect(late.result.run).toMatchObject({ status: 'review', reason_codes: ['late_upload'] });
     expect(await scoreInvariants(runner)).toBe(0);
 

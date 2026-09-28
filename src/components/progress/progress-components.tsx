@@ -202,11 +202,12 @@ export function DistanceBars({ weeks, units }: { weeks: { weekStart: string; dis
 // ---------------------------------------------------------------------------------------
 // Run rows
 // ---------------------------------------------------------------------------------------
-export type RunRowStatus = 'accepted' | 'personal_only' | 'review' | 'saved_local' | 'syncing' | 'needs_attention' | 'uploading';
+export type RunRowStatus = 'accepted' | 'personal_only' | 'review' | 'saved_local' | 'syncing' | 'needs_attention' | 'uploading' | 'duplicate';
 
 const statusLabel: Partial<Record<RunRowStatus, string>> = {
   personal_only: 'Personal',
   review: 'In review',
+  duplicate: 'Duplicate',
   saved_local: 'On this phone',
   syncing: 'Syncing',
   uploading: 'Syncing',

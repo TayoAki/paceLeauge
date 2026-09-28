@@ -18,7 +18,7 @@ export type XpAward = z.infer<typeof xpAwardSchema>;
 export const activityTypeSchema = z.enum(['run', 'walk', 'hike', 'ride', 'other']);
 export type ActivityType = z.infer<typeof activityTypeSchema>;
 
-export const runStatusSchema = z.enum(['uploading', 'accepted', 'personal_only', 'review']);
+export const runStatusSchema = z.enum(['uploading', 'accepted', 'personal_only', 'review', 'duplicate']);
 export type RunStatus = z.infer<typeof runStatusSchema>;
 
 export const serverRunSchema = z.object({
@@ -45,12 +45,22 @@ export const serverRunSchema = z.object({
   notes: z.string().nullable().optional(),
   shoe_id: z.string().nullable().optional(),
   edited_at_ms: z.number().nullable().optional(),
+  // Sources and provenance (Phase 2).
+  source_app: z.string().nullable().optional(),
+  source_device: z.string().nullable().optional(),
+  manual_entry: z.boolean().optional(),
+  avg_heart_rate: z.number().nullable().optional(),
+  max_heart_rate: z.number().nullable().optional(),
+  steps: z.number().nullable().optional(),
+  duplicate_of: z.string().nullable().optional(),
 });
 export type ServerRun = z.infer<typeof serverRunSchema>;
+export const runSourceSchema = z.enum(['phone_gps', 'watch', 'health_import', 'file_import', 'garmin', 'indoor']);
+export type RunSource = z.infer<typeof runSourceSchema>;
 
 export const uploadStateSchema = z.object({
   run_id: z.string(),
-  status: z.enum(['uploading', 'accepted', 'personal_only', 'review', 'deleted']),
+  status: z.enum(['uploading', 'accepted', 'personal_only', 'review', 'duplicate', 'deleted']),
   version: z.number(),
   expected_chunks: z.number(),
   received_chunks: z.array(z.number()),
@@ -321,3 +331,5 @@ export const runEditResultSchema = z.object({
   removed_run_id: z.string().optional(),
 });
 export type RunEditResult = z.infer<typeof runEditResultSchema>;
+
+export const diagnosticsResultSchema = z.object({ report_id: z.number() });

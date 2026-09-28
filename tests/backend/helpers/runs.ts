@@ -16,6 +16,8 @@ export interface UploadOptions {
   /** Pretend the server first received the run this long after it ended (default 5 s). */
   receivedAfterMs?: number;
   finalize?: boolean;
+  /** Extra start_run_upload arguments (source, provenance…). */
+  extra?: Record<string, unknown>;
 }
 
 export interface Uploaded {
@@ -52,7 +54,7 @@ export function startArgs(run: SyntheticRun, clientRunId: string, title = 'Test 
 /** Full client upload protocol: start → chunks → finalize. */
 export async function uploadRun(db: TestDb, user: TestUser, run: SyntheticRun, options: UploadOptions = {}): Promise<Uploaded> {
   const clientRunId = options.clientRunId ?? randomUUID();
-  const start = await db.rpc(user, 'start_run_upload', startArgs(run, clientRunId, options.title));
+  const start = await db.rpc(user, 'start_run_upload', { ...startArgs(run, clientRunId, options.title), ...options.extra });
   // Tests control "when the server first saw the run" independently of the wall clock.
   await db.sql('update public.runs set first_received_at = to_timestamp(($2::bigint + $3::bigint) / 1000.0) where id = $1', [
     start.run_id,
@@ -102,4 +104,10 @@ export async function backdateMembership(db: TestDb, user: TestUser, joinedAtMs:
     user.id,
     joinedAtMs,
   ]);
+}
+
+/** A workout with times but no route (a Garmin run via Apple Health, a typed-in run, indoor). */
+export function routelessRun(startAt: number, distanceM: number, durationS: number): SyntheticRun {
+  const endedAt = startAt + durationS * 1000;
+  return { startedAt: startAt, endedAt, segments: [{ index: 0, startAt, endAt: endedAt }], points: [], truthDistanceM: distanceM };
 }

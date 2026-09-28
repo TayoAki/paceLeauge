@@ -44,6 +44,8 @@ export function mergeRunViews(local: readonly SavedRun[], server: readonly Serve
   for (const l of local) {
     if (l.deleted || views.has(l.runId)) continue;
     const server = serverRunOf(l);
+    // Another copy of this run was kept (Phase 2 duplicates); the list shows that one.
+    if (server?.status === 'duplicate') continue;
     views.set(l.runId, {
       key: l.runId,
       localRunId: l.runId,
