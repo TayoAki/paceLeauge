@@ -1,8 +1,9 @@
 # PaceLeague
 
-A private running league for iPhone. Record runs with GPS, earn permanent XP, climb tiers
-(Seed → Stride → Tempo → Surge → Elite), and compete with your crew each week — your best three
-days count, rest days never cost you rank, and routes are only ever visible to you.
+A private running league for iPhone and Android, with a web app. Record runs with GPS, earn
+permanent XP, climb tiers (Seed → Stride → Tempo → Surge → Elite), and compete with your crew each
+week — your best three days count, rest days never cost you rank, and routes stay private unless
+you choose to share them.
 
 Built from the design and build packet in [`docs/packet/`](docs/packet/README.md) (the source of
 truth for requirements, scoring rules, copy and design tokens).
@@ -12,7 +13,7 @@ truth for requirements, scoring rules, copy and design tokens).
 | App | Expo SDK 57 · React Native 0.86 · React 19 · TypeScript (strict) · Expo Router |
 | Backend | PaceLeague API (`server/`, Node 22) on Railway with PostgreSQL 18: Row Level Security, SECURITY DEFINER RPCs, all scoring server-side |
 | Local data | Encrypted SQLite journal (SQLCipher) per account, durable upload outbox |
-| Status | V1 feature-complete (REQ-001–012, 014, 015). Pro purchase (REQ-013 / S17) is deferred by design. Device evidence pending — see [docs/STATUS.md](docs/STATUS.md). |
+| Status | V1 feature-complete (REQ-001–012, 014, 015), and the roadmap after it built and tested in code: the age check, Phases 1–5 (records and voice cues, watch and imports, coaching and Pro, the social features, maps) and the Android and web apps — see [docs/ROADMAP.md](docs/ROADMAP.md). Device evidence and partner accounts (App Store, RevenueCat, Strava, push credentials, maps and routing) pending — see [docs/STATUS.md](docs/STATUS.md). |
 
 ## Quick start (web preview + local backend, no Docker)
 

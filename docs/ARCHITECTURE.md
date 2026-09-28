@@ -143,14 +143,19 @@ remove (and ban) members and transfer ownership; parallel joins cannot exceed ca
 
 - **Access control lives in the database.** Every public table has RLS with owner-only SELECT
   policies and no write grants; all mutations are SECURITY DEFINER functions that derive the
-  caller from `auth.uid()` and pin `search_path`. Anonymous callers can execute exactly two
-  functions (app config, invite preview). `tests/backend/access.test.ts` checks this across the
+  caller from `auth.uid()` and pin `search_path`. Anonymous callers can execute exactly three
+  functions (app config, invite preview, and a live-location link's page). `tests/backend/access.test.ts` checks this across the
   whole catalog both with the strict platform layer that runs on Railway and with Supabase-style
   permissive default grants (`db/test-support/`), so RLS and explicit revokes — not missing
   grants — are what protect the data.
-- **Routes are owner-only**: stored in the `private` schema and returned only by owner-checked
-  functions. League views expose alias, tier and weekly XP — nothing else. The share poster is a
-  separate composition with statistics only, so no map or coordinates can be captured.
+- **Routes are private unless the runner shares them**: stored in the `private` schema and
+  returned by owner-checked functions. A runner can share a run's map with the people they
+  choose (roadmap 4.2); a shared map never shows the first or last 200 m or anything inside the
+  runner's privacy zones, and that same trimmed track is the only input to segment matching (5.3)
+  and the heatmap (5.4), which publishes a map cell only once 5 different contributors ran
+  through it. Planned routes (5.1) are visible only to their owner. League views expose alias,
+  tier and weekly XP — nothing else. The share poster is a separate composition with statistics
+  only, so no map or coordinates can be captured.
 - **Export** (recent sign-in required, 3 per day) returns the runner's data as JSON plus one GPX
   per route. **Account deletion** (recent sign-in required) hides the runner immediately, hands
   league ownership to the longest-standing member (or closes the league), then a retrying job
