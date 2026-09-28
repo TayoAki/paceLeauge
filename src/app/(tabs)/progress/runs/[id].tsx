@@ -9,6 +9,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { toApiError } from '@/api/errors';
 import { RunDetailsCard, RunEffortsCard } from '@/components/progress/run-extras';
+import { CoachNoteCard, useCoachNote } from '@/components/train/coach-note-card';
 import { StravaRunCard, usePostedToStrava } from '@/components/progress/strava-run';
 import { MetricBlock, XpPanel } from '@/components/run/run-components';
 import { routeLines } from '@/components/run/route-lines';
@@ -102,6 +103,19 @@ export default function RunDetailScreen() {
       units,
     );
   }, [points, segments, units]);
+  const coach = useCoachNote(
+    server || local
+      ? {
+          runKey: local?.runId ?? server?.client_run_id ?? server?.id ?? '',
+          serverRunId: server && server.status !== 'uploading' ? server.id : null,
+          activity: server?.activity_type ?? local?.origin?.activityType ?? 'run',
+          distanceM: server?.distance_m ?? local?.distanceM ?? 0,
+          activeMs: server?.active_ms ?? local?.activeMs ?? 0,
+          startedAtMs: local?.startedAt ?? server?.started_at_ms ?? 0,
+          splits,
+        }
+      : null,
+  );
 
   if ((local === undefined || fetched.isLoading) && !server) return <View style={styles.blank} />;
   if (!local && !server) {
@@ -287,6 +301,7 @@ export default function RunDetailScreen() {
         </Card>
       ) : null}
 
+      <CoachNoteCard note={coach} />
       {server && server.status !== 'uploading' ? <RunEffortsCard serverRunId={server.id} /> : null}
       {server && server.status !== 'uploading' ? <RunDetailsCard run={server} onSaved={setSaved} /> : null}
       {server && server.status !== 'uploading' && server.status !== 'duplicate' ? <StravaRunCard serverRunId={server.id} hasRoute={lines.length > 0} /> : null}

@@ -80,6 +80,8 @@ export class WorkoutController implements WorkoutCues {
   private steps: TimelineStep[] = [];
   private metrics = { activeS: 0, distanceM: 0 };
   private queued: string | null = null;
+  /** The workout of the run that just ended, for its summary (coach notes). */
+  private finished: { runId: string; workout: ActiveWorkout } | null = null;
   private snapshot: WorkoutSnapshot | null = null;
   private readonly listeners = new Set<() => void>();
 
@@ -175,7 +177,14 @@ export class WorkoutController implements WorkoutCues {
   }
 
   runEnded(runId: string): void {
-    if (this.active?.runId === runId) this.clear();
+    if (this.active?.runId !== runId) return;
+    this.finished = { runId, workout: this.active.workout };
+    this.clear();
+  }
+
+  /** What a run that ended in this session followed, if anything. */
+  finishedWorkout(runId: string): ActiveWorkout | null {
+    return this.finished?.runId === runId ? this.finished.workout : null;
   }
 
   getSnapshot = (): WorkoutSnapshot | null => this.snapshot;

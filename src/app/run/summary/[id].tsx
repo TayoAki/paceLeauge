@@ -5,13 +5,16 @@ import { useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { MetricBlock, XpPanel, useAnnounce } from '@/components/run/run-components';
+import { CoachNoteCard, useCoachNote } from '@/components/train/coach-note-card';
 import { routeLines } from '@/components/run/route-lines';
 import { RouteMap } from '@/components/run/route-map';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { Card, Screen } from '@/components/ui/layout';
 import { describeDistance, describeDuration, describePace, formatDistance, formatDuration, formatPace } from '@/domain/format';
 import { useAccountServices } from '@/features/account/account-provider';
-import { useLocalRun, useMe, useRefreshAccountData, useWeek } from '@/features/data/hooks';
+import { computeSplits } from '@/domain/splits';
+import { validateRun } from '@/domain/validator';
+import { useLocalRun, useLocalRuns, useMe, useRefreshAccountData, useRunHistory, useWeek } from '@/features/data/hooks';
 import { useWeekGoalDays } from '@/features/progress/use-week-goal';
 import { useRunPoints } from '@/features/recording/use-run-points';
 import { xpPanelState } from '@/features/recording/xp-state';
@@ -23,7 +26,7 @@ import { colors, space } from '@/design/tokens';
 export default function RunSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { engine } = useAccountServices();
+  const { engine, runtime } = useAccountServices();
   const run = useLocalRun(id ?? null);
   const me = useMe();
   const week = useWeek();
@@ -35,6 +38,34 @@ export default function RunSummaryScreen() {
   const lines = useMemo(() => routeLines(points), [points]);
   const days = useWeekGoalDays(week.data?.data);
   const goal = me.data?.data.profile?.goal_days ?? null;
+  const history = useRunHistory();
+  const localRuns = useLocalRuns();
+  const splits = useMemo(() => {
+    if (!run || points.length < 2 || run.segments.length === 0) return [];
+    const start = run.segments[0]?.startAt ?? 0;
+    const end = run.segments[run.segments.length - 1]?.endAt ?? start;
+    return computeSplits(run.segments, validateRun({ startedAt: start, endedAt: end, segments: run.segments, points, receivedAt: null }).segments, units);
+  }, [run, points, units]);
+  const serverRuns = history.data?.pages[0]?.runs ?? null;
+  const firstRun =
+    !!run && serverRuns !== null && serverRuns.every((r) => r.client_run_id === run.runId) && localRuns.every((r) => r.runId === run.runId || r.deleted);
+  const doneGoal = goal !== null && days.filter((d) => d.active).length >= goal;
+  const note = useCoachNote(
+    run
+      ? {
+          runKey: run.runId,
+          serverRunId: server?.id ?? null,
+          activity: server?.activity_type ?? run.origin?.activityType ?? 'run',
+          distanceM: server?.distance_m ?? run.distanceM,
+          activeMs: server?.active_ms ?? run.activeMs,
+          startedAtMs: run.startedAt,
+          splits,
+          workout: runtime.workout.finishedWorkout(run.runId),
+          firstRun,
+          weekGoalMet: doneGoal,
+        }
+      : null,
+  );
 
   useAnnounce(run ? 'Run saved' : null);
 
@@ -109,6 +140,8 @@ export default function RunSummaryScreen() {
         </View>
         {lines.length > 0 ? <RouteMap lines={lines} height={150} accessibilityLabel="Map of this run’s route. Visible only to you." /> : null}
       </Card>
+
+      <CoachNoteCard note={note} />
 
       <View testID="xp-panel">
         <XpPanel state={xp} />
