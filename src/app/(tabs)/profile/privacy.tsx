@@ -36,6 +36,9 @@ const DATA_HANDLING = [
   'App analytics never include your routes, locations, email or run titles.',
   'Runs you bring in from Apple Health, a file, Garmin or the Apple Watch app are stored the same way, with the app and device that recorded them and, when they have it, heart rate and steps.',
   'If you connect Strava, the runs you post there include their routes and follow your Strava settings.',
+  'A training plan keeps your setup answers, its sessions, your changes and how each session felt, including whether something hurt. Only you can see it.',
+  'Heart-rate zones and health trends from Apple Health are worked out on this phone and never sent to PaceLeague.',
+  'Pro purchases go through the App Store and RevenueCat; PaceLeague never sees your payment details.',
 ];
 
 function runDate(ms: number | null): string | undefined {

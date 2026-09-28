@@ -264,6 +264,25 @@ adds with `background: true`.
 - **Connections** use `expo-web-browser`'s sign-in sheet and return to `paceleague://strava` or
   `paceleague://garmin`.
 
+### Phase 3 native pieces
+
+- **Pro purchases** use `react-native-purchases` (RevenueCat), a native module: it works only in
+  builds made with EAS or Xcode, never in Expo Go. Without `EXPO_PUBLIC_REVENUECAT_IOS_KEY` in the
+  build's environment the Pro screen says subscriptions aren't available, and nothing else changes.
+- **Apple Health reads** grow: heart rate for zones on each run, and resting heart rate, heart
+  rate variability, VO2 max and sleep for Pro's health trends. Each is asked for only when the
+  runner switches it on. `NSHealthShareUsageDescription` in `app.config.ts` names them. Zones and
+  trends are worked out on the phone and never uploaded.
+- **Heat** is entered by the runner (temperature and humidity). The roadmap's forecast from Apple
+  WeatherKit needs the WeatherKit capability on the App ID and a WeatherKit key in the Apple
+  developer account; it isn't built.
+
+**App Store privacy (Phase 3).** Training plans store the setup answers (including "coming back
+from an injury") and after-session feedback (including "something hurt") on the server, linked to
+the runner, for app functionality. Declare them under "Health & Fitness". Purchases: declare
+"Purchases" (purchase history, through RevenueCat), linked to the runner, for app functionality.
+Zones and health trends stay on the phone, so they aren't "collected".
+
 ## Integrations (Phase 2)
 
 Both are off until their variables are set on the `api` service. Nothing about them is in the app.
@@ -311,6 +330,61 @@ the same validation as a phone run; the Apple Health copy of the same workout be
 A disconnect or account deletion deauthorizes the Terra user. Logs: `garmin jobs`, `garmin
 connect`, `garmin activity refused`, `garmin deauth retry`.
 
+## Pro subscriptions (3.6)
+
+Pro is sold through the App Store with RevenueCat. Until the variables below are set, the webhook
+answers 404 and nobody has Pro except through `grant-pro` (below). Everything here needs the
+operator's App Store Connect and RevenueCat accounts; nothing is created by the code.
+
+1. **App Store Connect:** create a subscription group (for example "PaceLeague Pro") with two
+   auto-renewable subscriptions: yearly at $29.99 with a 7-day free trial as its introductory
+   offer, and monthly at $4.99 with no trial (decision 4). Add the review screenshot and the
+   subscription's display name and description. The paid-apps agreement must be active.
+2. **RevenueCat:** create a project and its iOS app (bundle id `com.tayoaki.paceleague`) with the
+   App Store Connect in-app purchase key. Create the entitlement **`pro`**, attach both products,
+   and make the *current* offering hold them as the `$rc_annual` and `$rc_monthly` packages (the
+   app shows those two).
+3. **Webhook:** in RevenueCat → Integrations → Webhooks, send events to
+   `${PUBLIC_URL}/integrations/revenuecat/webhook`, with an *Authorization header value* you
+   generate (`openssl rand -base64 32`). Send sandbox and production events; the service records
+   which environment each came from.
+4. **Variables on `api`** (sealed):
+
+| Variable | Value |
+|---|---|
+| `REVENUECAT_WEBHOOK_AUTH` | The same Authorization value as the webhook, at least 24 characters. Events without it get 401 |
+| `REVENUECAT_SECRET_KEY` | Optional: a RevenueCat secret API key (`sk_…`). With it, the service asks RevenueCat for the runner's current state after each event instead of trusting the event alone |
+| `REVENUECAT_ENTITLEMENT` | Optional; defaults to `pro` |
+
+5. **App build:** put the RevenueCat **public** iOS SDK key in the EAS environment as
+   `EXPO_PUBLIC_REVENUECAT_IOS_KEY` (`EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` later for Android). It
+   is a public key; the secret key never goes in the app.
+
+Events are applied in the order they happened (a late, older event never undoes a newer one), and
+each event id is processed once. The app signs purchases in as the runner's account id, so a
+purchase follows the account, not the device. Deleting an account removes its Pro state and keeps
+the event log for 60 days without the link to the account; it doesn't cancel the store
+subscription, which the delete screen says.
+
+**Trial reminders.** Two days before a free trial converts, the service emails the runner (in
+production only, through the email provider in [Email delivery](#email-delivery)), once per trial.
+
+**Support and testers.** Give an account Pro without a purchase (for TestFlight testers, or to
+make good a problem), from a shell in the API container:
+
+```bash
+node dist/admin.js grant-pro runner@example.com 30    # days; 0 ends a grant
+```
+
+A grant never replaces a store subscription that's still running (the command says so), and the
+store's next event replaces a grant. Logs: `revenuecat event`, `billing jobs`,
+`trial reminder failed`.
+
+**Before launch** (roadmap 3.6), test in the App Store sandbox with a sandbox Apple ID: purchase
+(each plan), restore on a second device, expiry, a refund (from the sandbox's transaction
+history), the trial reminder (sandbox trials last minutes; point a staging account at a real
+inbox), and account deletion with an active subscription.
+
 ## Flags
 
 Stored in `private.app_flags`; every change needs a reason and an actor and is audited.
@@ -340,6 +414,7 @@ there are (`RUN_JOBS=false` opts an instance out).
 | `private.run_frequent_jobs()` | every minute | Processes account-deletion jobs (retrying with backoff, `failed` after 8 attempts) and applies pending scoring. Logs `frequent jobs` when it did something |
 | Strava uploads and revocations | every minute, when Strava is configured | Queues accepted runs of connected runners, uploads them, follows processing, refreshes tokens, confirms webhook deauthorizations, revokes ended grants. Logs `strava jobs` |
 | Garmin events | every minute, when Terra is configured | Uploads queued Garmin activities as their runners, deauthorizes ended links, keeps processed events a week. Logs `garmin jobs` |
+| Pro billing | hourly | Sends trial reminders (production), and removes store events older than 60 days. Logs `billing jobs` |
 | `private.purge_expired()` + sign-in cleanup | hourly, and 5 s after each start | Removes uploads never finalized after 7 days (the phone keeps its copy), expired exports, operational events after 14 days, rate-limit windows after 2 days, resolved reports after 90 days, dead invites after 30 days, completed deletion records after 30 days, expired sign-in codes, and revoked sessions after 30 days. Logs `hourly retention` |
 
 A failure logs `job failed` with the job name, and the job runs again on its next tick.

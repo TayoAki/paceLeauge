@@ -22,7 +22,8 @@ PaceLeague is in a beta. Features may change, pause or be removed, and you may f
 
 ## Run safely
 
-- PaceLeague doesn't give medical, health or training advice. Check with a doctor before you start or change an exercise routine.
+- PaceLeague's training plans, coach notes, guided runs and training analytics are general training guidance, not medical advice. Check with a doctor before you start or change an exercise routine, and stop and seek help if something hurts.
+- Heat-adjusted paces use the temperature and humidity you enter. On hot days, listen to your body and drink regularly.
 - Pay attention to your surroundings, follow traffic laws, and don't let the app distract you while you run.
 - Distance, pace and XP come from your phone's GPS. They are estimates, not certified measurements.
 
@@ -32,6 +33,13 @@ PaceLeague is in a beta. Features may change, pause or be removed, and you may f
 - Record real runs only: no GPS spoofing, vehicles, bikes, edited data or automated tools.
 - There are no cash prizes and no wagering, and no purchase changes XP or rank.
 - League owners can rename their league, manage invites and remove members. Leagues have a maximum size.
+
+## PaceLeague Pro
+
+- Pro is an optional subscription that adds features, such as the full guided-run library and training analytics. It never changes XP, rank or scoring.
+- Subscriptions are bought through the App Store, at the price shown in the app before you buy. They renew automatically unless you cancel at least 24 hours before the end of the current period. The annual plan may start with a free trial; if you don't cancel before it ends, the subscription starts and you're charged.
+- You manage and cancel your subscription in your App Store settings. Deleting your PaceLeague account doesn't cancel it.
+- Apple handles payments and refunds under its own terms.
 
 ## Community rules
 

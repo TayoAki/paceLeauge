@@ -36,6 +36,23 @@ describe('entitlements', () => {
     expect((await db.rpc(runner, 'get_entitlements')).pro).toBe(false);
   });
 
+  it('never lets a staff grant replace or end a running store subscription', async () => {
+    const runner = await db.createRunner('Pro Sol');
+    const month = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    await db.sql(`select private.apply_entitlement($1, $2, now())`, [runner.id, { active: true, expires_at: month, period_type: 'normal', will_renew: true }]);
+    await db.sql(`select private.grant_pro($1, now() + interval '7 days')`, [runner.id]);
+    expect(await db.rpc(runner, 'get_entitlements')).toMatchObject({ pro: true, source: 'revenuecat', will_renew: true, period: 'normal' });
+    await db.sql(`select private.grant_pro($1, now())`, [runner.id]);
+    expect(await db.rpc(runner, 'get_entitlements')).toMatchObject({ pro: true, source: 'revenuecat' });
+
+    // Once the store subscription has lapsed, a grant applies, and the store's next event wins again.
+    await db.sql(`select private.apply_entitlement($1, $2, now() + interval '1 second')`, [runner.id, { active: false, expires_at: new Date().toISOString(), period_type: 'normal' }]);
+    await db.sql(`select private.grant_pro($1, now() + interval '7 days')`, [runner.id]);
+    expect(await db.rpc(runner, 'get_entitlements')).toMatchObject({ pro: true, source: 'grant' });
+    await db.sql(`select private.apply_entitlement($1, $2, now() + interval '2 seconds')`, [runner.id, { active: true, expires_at: month, period_type: 'normal', will_renew: true }]);
+    expect(await db.rpc(runner, 'get_entitlements')).toMatchObject({ pro: true, source: 'revenuecat' });
+  });
+
   it('exports the subscription, and deletes with the account whatever its state', async () => {
     const runner = await db.createRunner('Pro Rio');
     await db.sql(`select private.grant_pro($1, now() + interval '1 year')`, [runner.id]);

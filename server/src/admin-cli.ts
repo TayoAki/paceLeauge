@@ -17,7 +17,8 @@ import { maskEmail } from './mailer';
  *   node dist/admin.js grant-pro <email> <days>
  *
  * grant-pro gives the account Pro for that many days (testers, support); 0 ends a grant. Store
- * subscriptions are RevenueCat's, and a store event replaces a grant.
+ * subscriptions are RevenueCat's: a grant never replaces one that's running, and the store's next
+ * event replaces a grant.
  */
 const USAGE = 'usage: node dist/admin.js set-password <email>\n       node dist/admin.js grant-pro <email> <days>';
 
@@ -41,7 +42,9 @@ async function main(): Promise<void> {
         return;
       }
       await pool.query(`select private.grant_pro($1, now() + make_interval(days => $2))`, [rows[0].id, days]);
-      console.log(days > 0 ? `${maskEmail(email)} has Pro for ${days} days.` : `${maskEmail(email)}'s Pro grant has ended.`);
+      const { rows: after } = await pool.query<{ source: string }>('select source from private.entitlements where user_id = $1', [rows[0].id]);
+      if (after[0]?.source !== 'grant') console.log(`${maskEmail(email)} has Pro from the store, so nothing changed.`);
+      else console.log(days > 0 ? `${maskEmail(email)} has Pro for ${days} days.` : `${maskEmail(email)}'s Pro grant has ended.`);
       return;
     }
     const password = await setTemporaryPassword(pool, email);

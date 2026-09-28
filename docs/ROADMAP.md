@@ -88,12 +88,13 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 | 4 | Friends, family and everyone | Leagues 2.0 with group runs, privacy zones, follow, feed, clubs, challenges, opt-in leaderboards, live location, push, teen family accounts | 23–36 weeks |
 | 5 | Maps | Route planning, offline maps and navigation, segments, heatmaps | 18–28 weeks |
 
-**Progress (28 September 2026).** Phase 0's age check, Phase 1 and Phase 2 are built and tested
-in code: the server by 239 database and API tests, the app by 212 unit tests and a browser
-walkthrough of the new screens. What remains is on devices: the Part C audio matrix and the Part A
-failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new Swift and Kotlin code
-(the watch app is off until then), the recorded voice, and the Strava and Terra accounts. Each
-item below says what was built.
+**Progress (28 September 2026).** Phase 0's age check and Phases 1, 2 and 3 are built and tested
+in code: the server by 260 database and API tests, the app by 294 unit tests and browser
+walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
+matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
+Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
+coach's review of plans and notes, the 30-runner pilot, counsel's review of health data, and the
+Strava, Terra, App Store and RevenueCat accounts. Each item below says what was built.
 
 Sizes are rough engineer-weeks for one engineer working with Claude, before testing on devices.
 Sizes per epic: **S** is up to a week, **M** 1–3 weeks, **L** 3–6 weeks, **XL** more than 6.
@@ -548,16 +549,32 @@ least 20 Apple Watch users and at least 5 Garmin users.
   plan and session tables on the server.
 - Done when: every template passes the coach's review, and the engine's tests cover edits,
   missed sessions and pauses.
+- Built: the engine in `src/domain/plans` (7 plan types at 3 levels, run/walk ladder, lighter
+  weeks, tapers, warnings, 36 golden and invariant tests), `20261001000100_training_plans.sql`
+  (plans and sessions, versioned saves, sessions before today frozen, runs matched to the session
+  on their local date, feedback and pain flags, export), the Train tab (setup from real history,
+  the plan by week, each session, managing the plan), today's workout on Home, and workout steps
+  spoken on the run screen (`src/domain/workout.ts`). The templates and numbers are a draft for
+  the coach. Workout steps on the watch wait for the watch app's first build.
 
 **3.2 Adjustable, adaptive plans** · XL
 - What: everything in Part B points 3–7. That covers the check-ins, feedback, heat, pain flag,
   pausing and full editing.
 - Done when: the 30-runner pilot meets the targets at the end of Part B.
+- Built: `src/domain/plans/adapt.ts` and the Train screens: feedback after each session (two
+  *too hard* answers lighten the next week), the pain flag (rest suggested, return-to-run offered),
+  the daily check-in (easy run or rest), missed sessions dropped, and every edit in Part B point 6
+  with warnings instead of blocks. Pauses resume with a lower rung. Heat (Pro) takes the
+  temperature and humidity from the runner; the WeatherKit forecast needs the Apple developer
+  account's WeatherKit key and isn't built. The pilot hasn't run.
 
 **3.3 Coach feedback after runs** · M
 - What: a short note after each run in the coach's voice. For example: *"You held your easy pace.
   That's what today was for."* Rule-based, from coach-written templates, with no generative AI.
 - Done when: every note maps to a rule and a template the coach approved.
+- Built: `src/domain/coach-notes.ts` (13 rules, each with its own templates, picked the same way
+  every time for a run), on the run summary and each run's page. The wording is a draft for the
+  coach.
 
 **3.4 Audio-guided runs** · L, plus content
 - What: a starter library of 12–20 coached runs: first run, easy, recovery, tempo, intervals,
@@ -570,6 +587,10 @@ least 20 Apple Watch users and at least 5 Garmin users.
   - A starter set is free; the full library is Pro.
 - Done when: every guided run plays correctly offline, with the screen locked, over Spotify and
   Apple Music.
+- Built: `src/features/guided/catalog.ts` (18 runs, 6 free, scripts anchored to workout steps),
+  the Guided runs list with length and type filters, and coaching spoken through the Part C cue
+  path. Until the recordings exist, the best installed voice reads the scripts, so nothing needs
+  downloading; recorded audio and the device checks are still to do.
 
 **3.5 Health and training data** · L
 - What: heart-rate zones per run (free), and these trends (Pro, decision 4):
@@ -585,6 +606,12 @@ least 20 Apple Watch users and at least 5 Garmin users.
   - Counsel reviews the FTC Health Breach Notification Rule and state consumer-health-data laws
     (such as Washington's My Health My Data Act) before this ships.
 - Done when: counsel signs off, and each metric has a written definition in the app.
+- Built: `src/domain/training.ts` (load, fitness and fatigue, form, Riegel predictions, aerobic
+  efficiency, zones, health-trend averages), heart-rate zones on each run's page (free, from
+  Apple Health on the phone), the Training screen under Progress (Pro) with a definition beside
+  every number, health trends behind their own switch (off by default, read on the phone, never
+  uploaded), and heart-rate ranges on plan sessions (Pro). Counsel hasn't reviewed it yet; plan
+  answers about injury and pain flags are on the server, so they're part of that review.
 
 **3.6 Pro subscription** · M
 - What: the Pro tier in [Free and Pro](#free-and-pro): $29.99 a year or $4.99 a month (REQ-013).
@@ -594,6 +621,13 @@ least 20 Apple Watch users and at least 5 Garmin users.
   - Account deletion never requires cancelling first (REQ-010).
 - Done when: purchase, restore, expiry, refund, trial reminder and deletion are tested in the
   sandbox.
+- Built: `20261001000200_pro.sql` and `20261001000300_pro_grants.sql` (entitlements applied in
+  event order, staff grants that never replace a store subscription), `server/src/revenuecat.ts`
+  (the webhook, an optional check with RevenueCat's API, trial reminders two days ahead), the Pro
+  screen with purchase and restore on `react-native-purchases`, *Manage subscription* in Profile,
+  and Pro gating for the guided library, training analytics, heat and heart-rate ranges. The App
+  Store products, the RevenueCat project and the sandbox tests need the operator's accounts
+  (OPERATIONS.md).
 
 ## Platform track
 

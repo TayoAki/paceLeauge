@@ -2,7 +2,7 @@
 
 Snapshot: 26 September 2026 · rule version 1 · validator version 1.
 
-**Summary.** Every V1 requirement except the deferred Pro purchase (REQ-013) is implemented, and
+**Summary.** Every V1 requirement is implemented (the Pro purchase, REQ-013, arrived with roadmap 3.6), and
 every screen S01–S16 exists and has been exercised in a browser against the real SQL backend. The
 server-side rules (scoring, validation, leagues, access control, lifecycle) and the API service
 (sign-in, sessions, RPC) are proven by automated tests against PostgreSQL, and a staging backend
@@ -49,7 +49,7 @@ acceptance criteria also need the device checks listed · **Deferred** — inten
 | REQ-010 | Privacy, export, deletion | **Verified** (server) · device pending (local) | Other users, league owners and anonymous callers can't read routes or exports, including guessed IDs; recent sign-in required; 3 exports/day; deletion hides immediately, hands over or closes the league, retries an interrupted cleanup and completes (`lifecycle.test.ts`, `access.test.ts`); export and deletion flows in the walkthrough | Local journal and key removal on device; Railway backup schedule of 30 days or less (NFR-010) |
 | REQ-011 | Abuse controls | **Verified** (server) · ops pending | Name filter; report queue with snapshot, staff-only, audited moderator action; blocked/removed users can't bypass via cached invite or direct API (`leagues.test.ts`, `lifecycle.test.ts`) | Real reviewer contact and moderation rota before launch (OPERATIONS.md) |
 | REQ-012 | Optional reminders | Implemented, device pending | One identifier replaced on every change (never duplicated), cancelled on opt-out and sign-out, restored after sign-in only when enabled and permitted, changes applied strictly in order (`reminders.test.ts`); calm copy; web preview disables it | Permission denial, DST and sign-out on device (EV-012) |
-| REQ-013 | Pro purchase | **Deferred (V1.1)** | No purchase UI, no "Manage subscription" row, no simulated paywall; nothing in V1 depends on it | F10 per the packet |
+| REQ-013 | Pro purchase | Implemented, store setup pending (roadmap 3.6) | The Pro screen (purchase, restore, trial wording), *Manage subscription* in Profile, deletion without cancelling first; entitlements from RevenueCat's webhook in event order (`tests/server/revenuecat.test.ts`, `tests/backend/pro.test.ts`) | App Store products and the RevenueCat project; F10 in the sandbox (purchase, restore, expiry, refund, trial reminder, deletion) |
 | REQ-014 | Accessible native UX | Implemented, device pending | Every control labelled (no icon-only actions without labels); text alternatives for charts and the poster; token contrast ratios asserted (`design-tokens.test.ts`); font-scaling caps per text style; ≥ 44 pt targets; no rank-up animation to reduce | VoiceOver full journey, 200 % text on the smallest iPhone, sunlight review (EV-014) |
 | REQ-015 | Telemetry and operations | Implemented, ops pending | Allowlisted events with enumerated properties, deduplicated (`lifecycle.test.ts`); environment tag on every event; recording and history keep working with competition disabled (`runs.test.ts`); `private.health_report()` for backlog checks | Non-production dashboard, alert routing and on-call before pilot (EV-015) |
 
@@ -84,9 +84,9 @@ also show each runner's tier.
 
 ## Roadmap work after V1 (docs/ROADMAP.md)
 
-Snapshot 28 September 2026. Phase 0's age check, all of Phase 1 and all of Phase 2 are built. As
-with V1, the logic and screens are proven automatically; nothing that needs an iPhone or an Apple
-Watch is.
+Snapshot 28 September 2026. Phase 0's age check and all of Phases 1, 2 and 3 are built. As with
+V1, the logic and screens are proven automatically; nothing that needs an iPhone or an Apple Watch
+is, and Phase 3's content (plans, notes, guided runs) is a draft until the coach reviews it.
 
 | Item | Evidence | Still required |
 |---|---|---|
@@ -107,10 +107,17 @@ Watch is.
 | Treadmill and indoor (2.5) | `indoor-run.test.ts`, `indoor-credit.test.ts` (the plausibility checks, the 5 km cap in scores and standings, late and duplicate runs), `goal_days` in `sources.test.ts` | P2-INDOOR (the step counter on a device) |
 | Sync status and diagnostics (2.6) | `diagnostics.test.ts`, the sync screen in the walkthrough | The Part A failure tests |
 | Walks, hikes and rides (2.7) | `activities.test.ts`, `by_activity` in `cheers-stats.test.ts`, `xp-state.test.ts` | — |
+| Training plans (3.1) | `plans.test.ts` (36: every template, level and length; progression, lighter weeks, tapers, warnings, edits, pauses), `tests/backend/plans.test.ts` (9: versioned saves, frozen past, automatic and chosen run matching, feedback, export), `plan-client.test.ts`, `workout.test.ts` (steps on the run screen); Train, Home and workout screens in the browser | The coach's review of every template; workout steps on the watch |
+| Adaptive plans (3.2) | `plans.test.ts` (feedback, check-ins, pain, pauses, missed sessions), `heat.test.ts` (3); check-in, pause, edits and heat in the browser | The 30-runner pilot; the WeatherKit forecast |
+| Coach notes (3.3) | `coach-notes.test.ts` (6: every rule and template, fixed per run) | The coach's approval of the wording |
+| Guided runs (3.4) | `guided.test.ts`, `workout.test.ts` (coaching placed on the timeline, late lines skipped); list, filters, locked and free runs in the browser | Recorded scripts; the offline, locked-screen, Spotify and Apple Music checks |
+| Health and training data (3.5) | `training.test.ts` (10: load, fitness and fatigue, predictions, efficiency, zones, sleep and trend averages), `training-data.test.ts` (5); zones, the Training screen and health trends in the browser with sample Health data | HealthKit reads on a device; counsel's review (FTC Health Breach Notification Rule, state consumer-health-data laws) |
+| Pro (3.6) | `tests/backend/pro.test.ts` (4: grants, event order, grants never replacing a store subscription, export and deletion), `tests/server/revenuecat.test.ts` (8: webhook auth, ordering, API refresh, trial reminders); the Pro screen and gating in the browser | App Store products, the RevenueCat project and the sandbox tests (OPERATIONS.md, "Pro subscriptions") |
 
-Totals: 212 unit tests and 239 database and API tests passing. The browser walkthrough covers every
+Totals: 294 unit tests and 260 database and API tests passing. The browser walkthrough covers every
 Phase 1 screen (62 screenshots, no browser errors; sheets 11–15 in [evidence/web](evidence/README.md));
-the Phase 2 screens (treadmill run, Connections, activity filters, the rules page) were checked in
+the Phase 2 screens (treadmill run, Connections, activity filters, the rules page) and the Phase 3
+screens (Train, sessions, workouts, guided runs, Pro, heart-rate zones, Training) were checked in
 the browser against the development backend.
 `npx expo prebuild` generates the widget target, the HealthKit and App Group entitlements and
 links the three local modules; the Swift and Kotlin have not been compiled here (no Xcode or
@@ -121,8 +128,10 @@ Android SDK in this environment), so the first EAS build is their compile check.
 
 1. **F01 on two physical iPhones** — the packet's first gate. Nothing about background GPS,
    distance accuracy or battery is claimed until it is run.
-2. **Finish staging** — fill in and publish the Privacy Policy and Terms (`legal/`), then the load
-   checks (NFR-005, NFR-009).
+2. **Finish staging** — fill in and publish the Privacy Policy and Terms (`legal/`, updated for
+   plans, Pro and the new Apple Health reads, with an `[Email provider]` placeholder for trial
+   reminders), have counsel review the health-data parts, then the load checks (NFR-005,
+   NFR-009).
 3. **Operations** — support/reviewer contacts, moderation rota, alerting on
    `private.health_report()` and the API's error logs, Railway backups (daily + weekly), the
    production environment, and legal pages (terms/privacy URLs).

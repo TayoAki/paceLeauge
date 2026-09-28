@@ -2,6 +2,7 @@ import { generateKeyPairSync, randomUUID } from 'node:crypto';
 
 import { createPaceApi } from '@/api/pace-api';
 import { supabaseTransport } from '@/api/supabase-transport';
+import { competitionDate, startOfDay } from '@/domain/calendar';
 import { chunk, encodeChunk } from '@/domain/route-codec';
 import { steadyRun } from '@/domain/synthetic';
 
@@ -182,8 +183,12 @@ describe('RPC endpoint', () => {
     const { client } = await signIn(api);
     const paceApi = createPaceApi(supabaseTransport(client));
     await paceApi.saveProfile({ alias: `Runner${Math.floor(Math.random() * 1e6)}`, units: 'metric', goalDays: 3, notificationTz: 'America/Chicago', ackEligibility: true });
-    const endedAgo = 30 * 60_000;
-    const run = steadyRun(Date.now() - endedAgo - 1_888_000, 5246, 1888);
+    // Ended half an hour ago, but never across the league's midnight: a run split over two days
+    // earns two active-day bonuses.
+    let endedAt = Date.now() - 30 * 60_000;
+    const midnight = startOfDay(competitionDate(endedAt));
+    if (endedAt - 1_888_000 < midnight) endedAt = midnight - 60_000;
+    const run = steadyRun(endedAt - 1_888_000, 5246, 1888);
     const clientRunId = randomUUID();
     const chunks = chunk(run.points).map((points, seq) => {
       const body = encodeChunk(points);
