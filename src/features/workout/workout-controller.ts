@@ -26,7 +26,17 @@ export interface ActiveWorkout {
   blocks: WorkoutBlock[];
   /** Pace ranges for the steps; null trains by effort. */
   zones: PaceZones | null;
+  /** A guided run's coaching, spoken at these active seconds (3.4). */
+  lines?: CoachLine[];
 }
+
+export interface CoachLine {
+  atS: number;
+  text: string;
+}
+
+/** A line more than this late (the app was suspended) is skipped rather than spoken out of place. */
+const LINE_LATE_S = 30;
 
 export interface WorkoutSnapshot {
   workout: ActiveWorkout;
@@ -56,9 +66,13 @@ interface Stored {
   workout: ActiveWorkout;
   progress: WorkoutProgress;
   done: boolean;
+  /** The next coach line to speak. */
+  line?: number;
 }
 
 export const WORKOUT_KEY = 'workout:active';
+
+const join = (parts: (string | null)[]) => parts.filter((p): p is string => !!p).join(' ') || null;
 
 export class WorkoutController implements WorkoutCues {
   private pending: ActiveWorkout | null = null;
@@ -103,14 +117,29 @@ export class WorkoutController implements WorkoutCues {
       if (this.active) this.clear();
       return null;
     }
-    this.active = { runId, workout: this.pending, progress: WORKOUT_START, done: false };
+    this.active = { runId, workout: this.pending, progress: WORKOUT_START, done: false, line: 0 };
     this.pending = null;
     this.steps = flattenWorkout(this.active.workout.blocks);
     this.metrics = { activeS: 0, distanceM: 0 };
+    const first = this.steps[0];
+    const text = join([first ? stepCueText(first, units) : null, this.dueLines(0)]);
     this.persist();
     this.emit();
-    const first = this.steps[0];
-    return first ? stepCueText(first, units) : null;
+    return text;
+  }
+
+  /** Coach lines that have come due, marking them spoken; stale ones are passed over. */
+  private dueLines(activeS: number): string | null {
+    const active = this.active;
+    const lines = active?.workout.lines ?? [];
+    let i = active?.line ?? 0;
+    const due: string[] = [];
+    while (i < lines.length && lines[i]!.atS <= activeS) {
+      if (activeS - lines[i]!.atS <= LINE_LATE_S) due.push(lines[i]!.text);
+      i++;
+    }
+    if (active && i !== (active.line ?? 0)) this.active = { ...active, line: i };
+    return due.length ? due.join(' ') : null;
   }
 
   update(runId: string, activeMs: number, distanceM: number, units: Units): string | null {
@@ -120,15 +149,17 @@ export class WorkoutController implements WorkoutCues {
     let text = this.queued;
     this.queued = null;
     const { progress, entered } = advanceWorkout(this.steps, active.progress, this.metrics.activeS, distanceM);
+    const lineBefore = active.line ?? 0;
     if (entered.length > 0) {
       const last = entered[entered.length - 1]!;
       const finished = last >= this.steps.length;
       text = finished ? (active.done ? null : WORKOUT_DONE_TEXT) : stepCueText(this.steps[last]!, units);
       this.active = { ...active, progress, done: active.done || finished };
-      this.persist();
     }
+    const lines = this.dueLines(this.metrics.activeS);
+    if (entered.length > 0 || (this.active?.line ?? 0) !== lineBefore) this.persist();
     this.emit();
-    return text;
+    return join([text, lines]);
   }
 
   /** Ends the current step now; the next one is announced with the next update. */
