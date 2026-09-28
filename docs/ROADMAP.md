@@ -88,8 +88,8 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 | 4 | Friends, family and everyone | Leagues 2.0 with group runs, privacy zones, follow, feed, clubs, challenges, opt-in leaderboards, live location, push, teen family accounts | 23–36 weeks |
 | 5 | Maps | Route planning, offline maps and navigation, segments, heatmaps | 18–28 weeks |
 
-**Progress (28 September 2026).** Phase 0's age check and Phases 1, 2 and 3 are built and tested
-in code: the server by 260 database and API tests, the app by 294 unit tests and browser
+**Progress (28 September 2026).** Phase 0's age check, Phases 1, 2 and 3, and the platform track
+(the Android app and the web app) are built and tested in code: the server by 260 database and API tests, the app by 294 unit tests and browser
 walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
 matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
 Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
@@ -643,6 +643,14 @@ least 20 Apple Watch users and at least 5 Garmin users.
   - Wear OS: through Health Connect first; a Wear OS app later if there's demand.
 - Done when: the Android version of the device test protocol passes on three phones from
   different makers.
+- Built: recording in a location foreground service the runner starts (`location-driver.android.ts`),
+  so the app never asks for background location and needs no background-location declaration;
+  preflight with Android's wording and a battery-saving tip; Health Connect behind the same ports
+  as Apple Health (`src/features/health/health-connect.ts`): imports with routes when allowed,
+  saved runs, heart-rate zones and trends; Health Connect's privacy-policy link answered
+  (`modules/launch-intent`); Google Play wording for Pro; a reminder channel; media-read
+  permissions removed. The Android protocol is in DEVICE_TEST_PROTOCOL.md; no Android build has
+  run yet, and treadmill step counting on Android waits for a device.
 
 **P.2 Web app** · L (lands with Phase 4)
 - What: history, league standings, profile, export, and the page people open to follow a shared
@@ -650,6 +658,12 @@ least 20 Apple Watch users and at least 5 Garmin users.
 - How: Expo Router already renders the app on the web for development. The web app turns that into
   a supported, signed-in site.
 - Done when: the core screens pass the existing web walkthrough and an accessibility check.
+- Built: the production web build (`npm run build:web`) served by `scripts/web/serve.mjs` with a
+  strict Content-Security-Policy and security headers, deployable as its own Railway service
+  (`web/Dockerfile`); a readable column on wide screens; recording left to the phone app; the
+  browser's local copy removed at sign-out; and `npm run e2e:web-app`, which signs in and opens 13
+  core screens at phone and desktop widths with no browser or CSP errors and no serious axe-core
+  findings. The live-run page arrives with 4.8.
 
 ## Phase 4: friends, family and everyone
 

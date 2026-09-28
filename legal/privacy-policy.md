@@ -2,7 +2,7 @@
 
 Effective [Effective date]
 
-PaceLeague is a running app for iPhone, operated by [Operator legal name] ("we", "us"), [Mailing address]. This policy explains what PaceLeague collects, why, who can see it, how long it is kept, and the choices you have. Questions: [Contact email].
+PaceLeague is a running app for iPhone and Android, with a web app, operated by [Operator legal name] ("we", "us"), [Mailing address]. This policy explains what PaceLeague collects, why, who can see it, how long it is kept, and the choices you have. Questions: [Contact email].
 
 PaceLeague is in a beta for adults (18 and over) in the United States.
 
@@ -10,7 +10,7 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 
 - Your routes — the map of where you ran — are visible only to you. They never appear in leagues or in share images. If you choose to connect Strava, the runs you post there include their routes, under your Strava settings.
 - Your league sees your runner name, tier and weekly XP. Not your email address, and not your routes.
-- Heart-rate zones and health trends from Apple Health are worked out on your phone and never sent to us.
+- Heart-rate zones and health trends from Apple Health or Health Connect are worked out on your phone and never sent to us.
 - We don't sell your data, show ads, or use third-party advertising or analytics tools.
 - You can export your data and delete your account from inside the app, at any time.
 
@@ -25,7 +25,7 @@ PaceLeague is in a beta for adults (18 and over) in the United States.
 
 ### Your runs
 
-- While you record a run, your phone's precise location: coordinates, times, accuracy and related readings. If you allow it, this continues while the screen is locked or the app is in the background, but only during a run you started. Before a run, the app briefly checks your location on the start screen to confirm a good GPS signal. PaceLeague does not collect your location at any other time.
+- While you record a run, your phone's precise location: coordinates, times, accuracy and related readings. If you allow it, this continues while the screen is locked or the app is in the background, but only during a run you started. On Android, a notification shows for as long as the run records. The web app never uses your location. Before a run, the app briefly checks your location on the start screen to confirm a good GPS signal. PaceLeague does not collect your location at any other time.
 - What we calculate from a run: distance, time, pace, splits, XP, which competition days it counts toward, your fastest times for set distances (personal records), badges and your weekly streak.
 - The titles, activity types and private notes you give your runs, and the shoes you track (their names, the distance you set for a replacement reminder, and which runs you wore them for).
 - If you fix a run (trim it, cut out a stop, change its activity or merge two runs), we keep the run as it was first saved, so you can restore it.
@@ -52,7 +52,7 @@ We use these only to build and adjust your plan. They're visible only to you. Co
 
 Only if you subscribe:
 
-- Apple handles payment through the App Store; we never receive your card or payment details. RevenueCat, a subscription service, processes your purchase for us: it receives the App Store's records of your purchase and an identifier for your PaceLeague account (not your email address).
+- Apple (the App Store) or Google (Google Play) handles payment; we never receive your card or payment details. RevenueCat, a subscription service, processes your purchase for us: it receives the store's records of your purchase and an identifier for your PaceLeague account (not your email address).
 - We keep whether you have Pro, the product, which store it came from, whether it's a free trial, when it renews or ends, whether it will renew, and whether there's a billing problem, plus a log of subscription events (their identifiers, types and times) so each is processed once.
 - If you start a free trial, we email you two days before it ends. An email delivery provider, [Email provider], sends that email for us.
 
@@ -70,22 +70,26 @@ Only if you subscribe:
 
 ### On your phone
 
-The app keeps your runs and any uploads that are waiting in an encrypted database on your phone, protected by a key in the iOS Keychain. This is what lets you record without a connection. Each account on the phone has its own database. Your run settings (voice cues, auto-pause, the numbers on the run screen, and your maximum heart rate if you enter it), the temperature and humidity you enter for heat-adjusted paces, and the workout or guided run you're following are kept there too.
+The app keeps your runs and any uploads that are waiting in an encrypted database on your phone, protected by a key in the iOS Keychain or the Android Keystore. This is what lets you record without a connection. Each account on the phone has its own database. Your run settings (voice cues, auto-pause, the numbers on the run screen, and your maximum heart rate if you enter it), the temperature and humidity you enter for heat-adjusted paces, and the workout or guided run you're following are kept there too.
 
 Training analytics in Pro (training load, fitness and fatigue, race predictions and aerobic efficiency) are worked out on your phone from the runs and workouts in your account; nothing new is collected for them.
 
 While you run, your distance, time and pace are shown on your lock screen and in the Dynamic Island, so anyone who can see your phone can see them. You can turn this off for PaceLeague in the iPhone's Settings. If you add the PaceLeague widget, this week's active days, weekly XP and league place are stored on your phone where the widget can read them; they're removed when you sign out.
 
-### Apple Health
+### In a web browser
 
-PaceLeague works with Apple Health in these ways, each only if you turn it on:
+The web app shows your account in a browser: your runs and routes, league, plan and settings. It doesn't record runs or read health data. While you're signed in, the browser keeps your session and a copy of what you've viewed in its storage for this site; signing out removes that copy, unless something you did there hasn't reached us yet.
+
+### Apple Health and Health Connect
+
+On iPhone PaceLeague works with Apple Health, and on Android with Health Connect, in the same ways. Each happens only if you turn it on, and what's said here about Apple Health applies to Health Connect too:
 
 - **Save runs to Apple Health:** when you finish a run, PaceLeague saves it to Apple Health as a workout with its time, distance and route. If you delete or fix the run in PaceLeague, we delete or update that workout. What we write to Health stays in Health on your device (and in iCloud if you use it).
 - **Import from Apple Health:** PaceLeague reads your running, walking, hiking, cycling and strength workouts from the last 30 days and new ones as they arrive, with their routes, heart rate, and step counts for indoor workouts, and uploads each as a run, with the details listed under "Your runs". Runs from the PaceLeague Apple Watch app arrive this way too.
-- **Heart-rate zones** (Run settings): PaceLeague reads the heart rate Apple Health recorded during each run you open, to show how long you spent in each zone. This is worked out on your phone; the readings aren't uploaded.
-- **Health trends** (Pro, on the Training screen): PaceLeague reads your resting heart rate, heart rate variability, VO2 max and sleep, and shows their weekly averages. They're read on your phone each time you look, and never uploaded to us or kept by us.
+- **Heart-rate zones** (Run settings): PaceLeague reads the heart rate Apple Health (or Health Connect) recorded during each run you open, to show how long you spent in each zone. This is worked out on your phone; the readings aren't uploaded.
+- **Health trends** (Pro, on the Training screen): PaceLeague reads your resting heart rate, heart rate variability, VO2 max and sleep (on Android, with the history Health Connect keeps beyond 30 days if you allow it), and shows their weekly averages. They're read on your phone each time you look, and never uploaded to us or kept by us.
 
-We use Health information only to provide PaceLeague: to bring in your runs, measure them and check them for your league, and to show you your heart-rate zones and trends. We don't use it for advertising or marketing, don't sell it, and don't share it with anyone except as described in this policy (for example, a run you post to Strava). You can stop any of these at any time where you turned them on, or remove PaceLeague's access in the Health app.
+We use Health information only to provide PaceLeague: to bring in your runs, measure them and check them for your league, and to show you your heart-rate zones and trends. We don't use it for advertising or marketing, don't sell it, and don't share it with anyone except as described in this policy (for example, a run you post to Strava). You can stop any of these at any time where you turned them on, or remove PaceLeague's access in the Health app or in Health Connect.
 
 ### Strava
 
@@ -109,7 +113,7 @@ We don't use your information for advertising, and we don't sell it or share it 
 - Moderators working for us see reports and what they need to decide them. Routes are never part of moderation.
 - If you connect Strava or Garmin, the runs described above go to Strava or come from Terra, each under its own terms.
 - Service providers process data on our behalf to run PaceLeague: Railway hosts the service and its database in the United States. Apple provides Sign in with Apple if you use it, draws the maps in the app with Apple Maps (so the map areas you view are requested from Apple), and distributes the app through TestFlight and the App Store under Apple's own privacy policy.
-- If you subscribe to Pro, RevenueCat processes your purchase for us as described above, and Apple handles payment. If you start a free trial, an email delivery provider processes your email address to send the reminder.
+- If you subscribe to Pro, RevenueCat processes your purchase for us as described above, and Apple or Google handles payment. If you start a free trial, an email delivery provider processes your email address to send the reminder.
 - We may disclose information if the law requires it, or to protect the rights, property or safety of our users, the public or us.
 - If PaceLeague is sold or reorganized, your information may move to the new owner, who must keep honoring this policy.
 
@@ -128,9 +132,9 @@ We don't use your information for advertising, and we don't sell it or share it 
 - **Export:** Profile → Privacy → Export gives you your data as JSON, with a GPX file for each route. It includes your training plans and your Pro status.
 - **Correct:** edit your profile or rename your runs at any time.
 - **Delete:** delete individual runs, or your whole account under Profile → Privacy → Delete account.
-- **Location:** you control location permission in iOS Settings. Recording a run needs it; everything else works without it.
-- **Health and motion:** you control Apple Health access in the Health app, and motion access (for treadmill runs) in iOS Settings. Heart-rate zones and health trends each have their own switch.
-- **Pro:** cancel in your App Store settings (Settings → your name → Subscriptions). Deleting your PaceLeague account doesn't cancel a subscription.
+- **Location:** you control location permission in your phone's settings. Recording a run needs it; everything else works without it. PaceLeague never asks for location "all the time" on Android.
+- **Health and motion:** you control Apple Health access in the Health app, Health Connect access in Health Connect, and motion access (for treadmill runs) in your phone's settings. Heart-rate zones and health trends each have their own switch.
+- **Pro:** cancel in your App Store settings (Settings → your name → Subscriptions) or in Google Play (Payments & subscriptions → Subscriptions). Deleting your PaceLeague account doesn't cancel a subscription.
 - **Connections:** connect or disconnect Strava and Garmin at any time in Profile → Connections.
 - **Reminders:** optional, and you can turn them off at any time. They are scheduled on your phone; we don't send push notifications.
 

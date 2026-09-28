@@ -1,11 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
 import * as Network from 'expo-network';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { api } from '@/api/client';
 import type { PaceApi } from '@/api/pace-api';
 import { env } from '@/config/env';
+import { deleteAccountDatabase } from '@/db/open';
 import { cancelReminder, restoreReminder } from '@/features/reminders/reminders';
 import { createRunActions, type RunActions } from '@/features/sync/run-actions';
 import { writeWidgetWeek } from '@/features/widgets/widget-data';
@@ -186,10 +187,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (state.status === 'ready' && (await state.runtime.journal.getSession())) throw new RunInProgressError();
+    // In a browser (P.2), signing out leaves nothing behind for the next person at this computer:
+    // the account's local copy goes, unless something in it hasn't reached the server yet.
+    const wipe =
+      Platform.OS === 'web' && state.status === 'ready' && (await state.runtime.journal.openOutbox().catch(() => [{}])).length === 0
+        ? state.accountId
+        : null;
     await cancelReminder().catch(() => undefined);
     writeWidgetWeek(null);
     if (state.status === 'ready') state.engine?.stop();
     await closeAccountRuntime();
+    if (wipe) await deleteAccountDatabase(wipe).catch(() => undefined);
     queryClient.clear();
     setRecordingAccount(null);
     await signOutEverywhere();

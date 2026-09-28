@@ -14,9 +14,16 @@ import { activeMsOf } from '@/features/indoor/indoor-run';
 import { useNow } from '@/lib/use-now';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
+import { RecordInApp } from '@/components/run/record-in-app';
+import { RECORDING_AVAILABLE } from '@/features/recording/recording-support';
 
 /** Treadmill and indoor runs (docs/ROADMAP.md 2.5): a clock, steps and the treadmill's distance. */
-export default function IndoorRunScreen() {
+/** The web app records nothing: runs come from the phone app (P.2). */
+export default function IndoorRunScreenRoute() {
+  return RECORDING_AVAILABLE ? <IndoorRunScreen /> : <RecordInApp />;
+}
+
+function IndoorRunScreen() {
   const router = useRouter();
   const { runtime, engine } = useAccountServices();
   const indoor = runtime.indoor;

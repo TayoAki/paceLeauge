@@ -95,6 +95,37 @@ Targets across the TestFlight round: zero lost runs, zero duplicates in standing
 of runs synced without action, and a median under 60 seconds from finish to synced when the
 phone is nearby.
 
+## Phase 3 device checks (docs/ROADMAP.md)
+
+| Case | Steps | Pass criteria |
+|---|---|---|
+| P3-WORKOUT | Start today's plan session from Home with the phone locked in a pocket, music playing; skip a step from the run screen | Each step is announced on time over the music; the skipped step moves on at once; the run is matched to the session afterwards |
+| P3-GUIDED | A free and a Pro guided run in airplane mode, screen locked, over Spotify and Apple Music | Every coaching line plays at its point in the run and none plays more than 30 s late; music comes back after each |
+| P3-HR | With an Apple Watch, record a run on the phone; turn on heart-rate zones; open the run | Zones appear within a few seconds and add up to the active time within a minute |
+| P3-TRENDS | Pro, with 12 weeks of Apple Watch data: turn on health trends | Resting heart rate, HRV, VO2 max and sleep match Apple Health's weekly averages within rounding |
+| P3-PRO | In the App Store sandbox: buy yearly (trial) and monthly, restore on a second device, let one expire, refund one, delete an account while subscribed (OPERATIONS.md, "Pro subscriptions") | Pro turns on within seconds of each purchase and off at expiry or refund; the trial email arrives two days before the end (staging with a real inbox); deletion works and says the subscription continues |
+
+## Android device checks (docs/ROADMAP.md P.1)
+
+The Android version of this protocol. It passes when every case passes on three phones from
+different makers, for example a Google Pixel, a Samsung Galaxy and a Motorola or Xiaomi, each on
+Android 12 or later, with the maker's default battery settings (then again with "Unrestricted"
+where a case fails only under battery saving). Use a build of the `pilot` profile for Android,
+installed from Google Play's internal testing track.
+
+| Case | Steps | Pass criteria |
+|---|---|---|
+| AND-F01 | The F01 runs above: a 45-minute run with the screen off in a pocket, a phone call during it, and the app swiped away from recent apps mid-run | The "Recording your run" notification shows throughout; the route has no gap longer than 60 s; swiping the app away doesn't stop recording; distance within the NFR-002 tolerance |
+| AND-PERMISSION | First run with "While using the app", then "Only this time", then approximate location only; revoke location mid-run from quick settings | The app never asks for "Allow all the time"; approximate location is blocked with Android's own wording; revoking mid-run interrupts the run and keeps what was recorded |
+| AND-BATTERY | Battery saver on; the maker's app-sleeping list with PaceLeague on it (Samsung "Deep sleeping apps", for example) | Either the run records in full, or the preflight tip leads to the setting that fixes it; no run is lost |
+| AND-AUDIO | P1-AUDIO's matrix with Spotify, YouTube Music and Pocket Casts; Bluetooth headphones and the speaker | Music lowers for each cue and comes back; podcasts resume; no cue plays from the speaker after the headphones disconnect unless chosen |
+| AND-HC-IMPORT | Turn on "Import runs from Health Connect" with runs from Google Fit (or Fitbit), Samsung Health and Garmin Connect in Health Connect; allow all exercise routes, then repeat on a second phone without routes | Each workout comes in once; with routes they're validated like phone runs, without routes they're history; the source app's name shows on the run |
+| AND-HC-SAVE | Turn on "Save runs to Health Connect"; record, fix and delete a run | The run appears in Health Connect (and in Fit or Samsung Health) with its route and distance once; the fix replaces it; deletion removes it |
+| AND-HC-ZONES | Record a run wearing a watch that writes heart rate to Health Connect; turn on heart-rate zones | Zones appear on the run; Health Connect's permission screen's privacy-policy link opens PaceLeague's Privacy Policy |
+| AND-REMINDER | Turn on the daily reminder on Android 13 or later | Android asks for notification permission once; the reminder arrives at the chosen time on the "Run reminders" channel, silently |
+| AND-SHARE | Save a share image to the gallery on Android 13 or later and on Android 10 | The image saves without any photo-reading permission on 13+; on 10 the storage permission is asked once |
+| AND-PRO | Google Play's license testers: buy each plan, restore on another phone, cancel | As P3-PRO, with Google Play's wording and its subscription page |
+
 ## Log template
 
 ```

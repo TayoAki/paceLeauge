@@ -37,9 +37,9 @@ PaceLeague is in a beta. Features may change, pause or be removed, and you may f
 ## PaceLeague Pro
 
 - Pro is an optional subscription that adds features, such as the full guided-run library and training analytics. It never changes XP, rank or scoring.
-- Subscriptions are bought through the App Store, at the price shown in the app before you buy. They renew automatically unless you cancel at least 24 hours before the end of the current period. The annual plan may start with a free trial; if you don't cancel before it ends, the subscription starts and you're charged.
-- You manage and cancel your subscription in your App Store settings. Deleting your PaceLeague account doesn't cancel it.
-- Apple handles payments and refunds under its own terms.
+- Subscriptions are bought through the App Store or Google Play, at the price shown in the app before you buy. They renew automatically unless you cancel at least 24 hours before the end of the current period. The annual plan may start with a free trial; if you don't cancel before it ends, the subscription starts and you're charged.
+- You manage and cancel your subscription in your App Store or Google Play settings. Deleting your PaceLeague account doesn't cancel it.
+- Apple or Google handles payments and refunds under its own terms.
 
 ## Community rules
 

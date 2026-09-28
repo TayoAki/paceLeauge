@@ -96,6 +96,9 @@ export function SwitchRow({
       accessibilityLabel={label}
       accessibilityHint={hint}
       accessibilityState={{ checked: value, disabled: !!disabled }}
+      // The web reads ARIA attributes, not accessibilityState (P.2).
+      aria-checked={value}
+      aria-disabled={!!disabled}
       disabled={disabled}
       onPress={() => onChange(!value)}
       testID={testID}
@@ -266,6 +269,7 @@ export function SegmentedControl<T extends string>({
             key={option.value}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
+            aria-selected={selected}
             accessibilityLabel={option.label}
             onPress={() => onChange(option.value)}
             style={[styles.segment, selected && styles.segmentSelected]}>
@@ -303,6 +307,8 @@ export function ChoiceChips<T extends string>({
             accessibilityRole="radio"
             accessibilityLabel={option.accessibilityLabel ?? option.label}
             accessibilityState={{ checked: selected, disabled: !!disabled }}
+            aria-checked={selected}
+            aria-disabled={!!disabled}
             disabled={disabled}
             onPress={() => onChange(option.value)}
             style={({ pressed }) => [styles.chip, selected && styles.chipOn, pressed && { opacity: 0.8 }, disabled && { opacity: 0.5 }]}>

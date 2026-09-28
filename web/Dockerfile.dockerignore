@@ -1,0 +1,18 @@
+# The web app's build context (web/Dockerfile; the root .dockerignore is the API's).
+# The app's sources go in; dependencies are installed fresh, and local settings never ship:
+# the build takes its public settings as build args.
+node_modules
+**/node_modules
+.git
+.expo
+ios
+android
+dist
+dist-web
+server
+db
+tests
+docs
+*.log
+.env
+.env.*

@@ -283,6 +283,93 @@ the runner, for app functionality. Declare them under "Health & Fitness". Purcha
 "Purchases" (purchase history, through RevenueCat), linked to the runner, for app functionality.
 Zones and health trends stay on the phone, so they aren't "collected".
 
+## Android builds for testers (Google Play, P.1)
+
+The same `pilot` profile builds the Android app against staging. The package is
+`com.tayoaki.paceleague` (development builds `com.tayoaki.paceleague.dev`), set in
+`app.config.ts`. You need a Google Play developer account; the first upload creates nothing by
+itself, so create the app in the Play Console first (name, default language, free).
+
+```bash
+eas build --platform android --profile pilot          # an .aab for Google Play
+eas submit --platform android --profile pilot --latest # needs a Play service-account key the first time
+```
+
+Put the build on the **internal testing** track and add testers by email. What the Play Console
+asks before any testing track reaches people:
+
+- **Foreground service declaration** (App content › Foreground service permissions): the app
+  uses `FOREGROUND_SERVICE_LOCATION` for *user-initiated location tracking*: a run the runner
+  starts and ends. Record a short video of starting a run, locking the phone and finishing.
+- **No background location.** The manifest removes `ACCESS_BACKGROUND_LOCATION`; the run's
+  foreground service works on "while in use" access, so there's no background-location
+  declaration to make.
+- **Health apps declaration** (App content › Health apps): the Health Connect data types and why:
+  exercise, exercise routes, distance, steps and heart rate read to import workouts and show
+  heart-rate zones; resting heart rate, heart rate variability, VO2 max, sleep and history read
+  for Pro's training trends; exercise, exercise routes and distance written to save runs. Google
+  reviews this before Health Connect access works in a release build (allow about two weeks).
+  Health Connect's permission screen links to the Privacy Policy, which the app opens.
+- **Data safety:** the same answers as the App Store privacy questionnaire (above): location,
+  health and fitness, and purchases, collected for app functionality, linked to the runner, not
+  shared for advertising; encrypted in transit; deletion available in the app.
+- **Photo and video permissions:** none; the manifest removes them (share images are only saved).
+- **Age signals:** Play Age Signals needs no declaration beyond the app's target audience (adults).
+- **Pro on Google Play:** create the two subscriptions in the Play Console (yearly $29.99 with a
+  7-day free trial offer, monthly $4.99), connect Google Play to the RevenueCat project with a
+  service-account key, attach both products to the `pro` entitlement and the current offering,
+  and set `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` (RevenueCat's public Google key) in the build's
+  environment. Test with the Play Console's license testers.
+
+Native pieces on Android: the location foreground service (`expo-location`), voice cues
+(`modules/voice-cue`, Kotlin), Health Connect (`react-native-health-connect`, minSdk 26), the
+launch-intent module that answers Health Connect's privacy-policy link (`modules/launch-intent`),
+and purchases. The Live Activity, widget and watch app are iPhone only. Treadmill runs on Android
+take the distance the runner types in; step counting there waits for a device test.
+
+## Web app (P.2)
+
+The web app is the same code base, built for the browser: history, runs and their routes,
+league standings, plans, stats, records, the Pro analytics, settings, export and account deletion.
+It doesn't record runs (a browser can't keep GPS going in a pocket; *Start run* explains that
+recording is in the phone app), sell Pro, or read Apple Health or Health Connect.
+
+**Deploy it as a second Railway service** in the same project and environment:
+
+1. New service → from the repository; Settings › Build › Dockerfile path `web/Dockerfile`
+   (or the variable `RAILWAY_DOCKERFILE_PATH=web/Dockerfile`). Its build context is the repository
+   root with `web/Dockerfile.dockerignore`.
+2. Variables (used at build time; all public):
+
+| Variable | Value |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | The API's public URL (staging: `https://api-staging-753f.up.railway.app`) |
+| `EXPO_PUBLIC_API_KEY` | The API's `PUBLIC_API_KEY` for that environment |
+| `EXPO_PUBLIC_APP_ENV` | `staging` or `production` |
+| `EXPO_PUBLIC_PRIVACY_URL`, `EXPO_PUBLIC_TERMS_URL`, `EXPO_PUBLIC_SUPPORT_EMAIL` | As for the app builds |
+| `API_ORIGIN` | The API's origin again (no path), used at run time for the Content-Security-Policy |
+
+3. Generate a domain (or add the operator's, for example `app.` next to `api.`), then add that
+   origin to the **API's** `CORS_ORIGINS` (comma-separated, no trailing slash) and deploy the API.
+   Without it, the browser refuses every call.
+4. Health check path: `/healthz`.
+
+`scripts/web/serve.mjs` serves the build: the app's page for every route, hashed bundles cached
+for a year, and strict headers: a Content-Security-Policy that allows only the app's own scripts
+and the API (plus WebAssembly for the browser's SQLite), no framing, HSTS, and a
+Permissions-Policy that turns off location, motion, camera and microphone. The browser keeps the
+session in local storage like any single-page app, which is why the CSP matters; signing out
+removes the account's local copy from the browser unless something hasn't synced.
+
+Check a build locally against the development backend:
+
+```bash
+EXPO_PUBLIC_API_URL=http://127.0.0.1:54400 EXPO_PUBLIC_API_KEY=pl_dev_public_key npm run build:web
+API_ORIGIN=http://127.0.0.1:54400 PORT=8090 npm run serve:web &
+npm run e2e:web-app      # signs in, opens 13 screens at phone and desktop widths, fails on any
+                         # browser or CSP error and on serious axe-core accessibility findings
+```
+
 ## Integrations (Phase 2)
 
 Both are off until their variables are set on the `api` service. Nothing about them is in the app.

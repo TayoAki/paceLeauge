@@ -23,6 +23,8 @@ import { ActiveRunExistsError } from '@/features/recording/recorder-service';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 import { useNow } from '@/lib/use-now';
+import { RecordInApp } from '@/components/run/record-in-app';
+import { RECORDING_AVAILABLE } from '@/features/recording/recording-support';
 
 /** iOS asks for "Always" location; Android's foreground service records on "while in use". */
 const NEEDS_BACKGROUND = locationDriver.needsBackgroundPermission ?? locationDriver.supportsBackground;
@@ -47,7 +49,12 @@ const signalCopy = {
 } as const;
 
 /** S04 — explain, request location in context, confirm a fresh fix, then count down. */
-export default function PreflightScreen() {
+/** The web app records nothing: runs come from the phone app (P.2). */
+export default function PreflightScreenRoute() {
+  return RECORDING_AVAILABLE ? <PreflightScreen /> : <RecordInApp />;
+}
+
+function PreflightScreen() {
   const router = useRouter();
   const { runtime } = useAccountServices();
   const [pf, setPf] = useState<PreflightState>(INITIAL);

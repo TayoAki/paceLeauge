@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ChevronLeft, X } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 
 import { Text } from '@/design/text';
@@ -95,15 +95,19 @@ export function Gap({ size = space.lg }: { size?: number }) {
   return <View style={{ height: size }} />;
 }
 
+/** On the web, screens keep a phone-like column in the middle of wide windows (P.2). */
+const WIDE = Platform.OS === 'web' ? ({ width: '100%', maxWidth: 680, alignSelf: 'center' } as const) : {};
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   fill: { flex: 1 },
-  content: { paddingHorizontal: layout.screenPadding, gap: space.lg },
+  content: { paddingHorizontal: layout.screenPadding, gap: space.lg, ...WIDE },
   footer: {
     paddingHorizontal: layout.screenPadding,
     paddingTop: space.md,
     gap: space.sm,
     backgroundColor: colors.background,
+    ...WIDE,
   },
   card: { backgroundColor: colors.surface, borderRadius: radius.card, padding: layout.cardPadding, gap: space.md },
   largeHeader: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.xs },

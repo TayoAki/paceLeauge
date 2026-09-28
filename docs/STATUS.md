@@ -84,7 +84,8 @@ also show each runner's tier.
 
 ## Roadmap work after V1 (docs/ROADMAP.md)
 
-Snapshot 28 September 2026. Phase 0's age check and all of Phases 1, 2 and 3 are built. As with
+Snapshot 28 September 2026. Phase 0's age check, all of Phases 1, 2 and 3, and the platform track
+(Android and the web app) are built. As with
 V1, the logic and screens are proven automatically; nothing that needs an iPhone or an Apple Watch
 is, and Phase 3's content (plans, notes, guided runs) is a draft until the coach reviews it.
 
@@ -112,16 +113,22 @@ is, and Phase 3's content (plans, notes, guided runs) is a draft until the coach
 | Coach notes (3.3) | `coach-notes.test.ts` (6: every rule and template, fixed per run) | The coach's approval of the wording |
 | Guided runs (3.4) | `guided.test.ts`, `workout.test.ts` (coaching placed on the timeline, late lines skipped); list, filters, locked and free runs in the browser | Recorded scripts; the offline, locked-screen, Spotify and Apple Music checks |
 | Health and training data (3.5) | `training.test.ts` (10: load, fitness and fatigue, predictions, efficiency, zones, sleep and trend averages), `training-data.test.ts` (5); zones, the Training screen and health trends in the browser with sample Health data | HealthKit reads on a device; counsel's review (FTC Health Breach Notification Rule, state consumer-health-data laws) |
+| Android app (P.1) | `preflight.test.ts` (no "Always" location on Android, Android wording), `health-connect.test.ts` (5: activity types, pauses, routes, sleep stages, an imported session becoming the same run as an Apple Health one), `reminders.test.ts` (the channel); `npx expo prebuild --platform android` produces the foreground-service, Health Connect and rationale entries with background location and media-read permissions removed; the Android bundle builds | The Android device checks (DEVICE_TEST_PROTOCOL.md) on three phones; the first Android build; the Play Console declarations (OPERATIONS.md) |
+| Web app (P.2) | `npm run e2e:web-app` against a production build behind `serve.mjs`: 13 core screens at phone and desktop widths, no browser or CSP errors, no serious axe-core findings (it found and we fixed missing ARIA states on choice chips, tabs and switches); header and path checks on `serve.mjs` | A Railway `web` service and the API's `CORS_ORIGINS` (OPERATIONS.md, "Web app") |
 | Pro (3.6) | `tests/backend/pro.test.ts` (4: grants, event order, grants never replacing a store subscription, export and deletion), `tests/server/revenuecat.test.ts` (8: webhook auth, ordering, API refresh, trial reminders); the Pro screen and gating in the browser | App Store products, the RevenueCat project and the sandbox tests (OPERATIONS.md, "Pro subscriptions") |
 
-Totals: 294 unit tests and 260 database and API tests passing. The browser walkthrough covers every
+Totals: 300 unit tests and 260 database and API tests passing. The browser walkthrough covers every
 Phase 1 screen (62 screenshots, no browser errors; sheets 11–15 in [evidence/web](evidence/README.md));
 the Phase 2 screens (treadmill run, Connections, activity filters, the rules page) and the Phase 3
 screens (Train, sessions, workouts, guided runs, Pro, heart-rate zones, Training) were checked in
-the browser against the development backend.
+the browser against the development backend. The V1 walkthrough (`npm run e2e:web`) depends on
+the date: it records "Friday's run" against seed data built for the current week, so it runs from
+Wednesday to Sunday; on Monday 28 September it stopped at its pre-run XP check (640 instead of
+820, because this week's seeded runs were still in the future).
 `npx expo prebuild` generates the widget target, the HealthKit and App Group entitlements and
-links the three local modules; the Swift and Kotlin have not been compiled here (no Xcode or
-Android SDK in this environment), so the first EAS build is their compile check. If it fails,
+links the local modules, and on Android the foreground service, Health Connect and its rationale
+entries; the Swift and Kotlin have not been compiled here (no Xcode or Android SDK in this
+environment), so the first EAS build is their compile check. If it fails,
 `PL_WIDGETS=0` or `PL_HEALTHKIT=0` leaves that piece out (OPERATIONS.md, "Native extras").
 
 ## Known gaps before a pilot

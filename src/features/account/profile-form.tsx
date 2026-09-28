@@ -112,6 +112,7 @@ export function ProfileForm({
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{ checked: draft.ackEligibility }}
+          aria-checked={draft.ackEligibility}
           accessibilityLabel="I’m 18 or older and joining the PaceLeague pilot."
           onPress={() => onChange({ ...draft, ackEligibility: !draft.ackEligibility })}
           style={styles.check}

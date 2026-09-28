@@ -137,6 +137,8 @@ export default function NotificationsScreen() {
         accessibilityLabel="Daily run reminder"
         accessibilityHint={enabled ? undefined : 'Asks for notification permission the first time'}
         accessibilityState={{ checked: enabled, disabled: !settings || asking }}
+        aria-checked={enabled}
+        aria-disabled={!settings || asking}
         disabled={!settings || asking}
         onPress={() => void toggle()}
         style={({ pressed }) => [styles.switchRow, pressed && { backgroundColor: colors.surfaceElevated }]}
