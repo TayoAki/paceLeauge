@@ -124,7 +124,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             {
               NSHealthUpdateUsageDescription: 'When you turn it on, PaceLeague saves your runs to Apple Health with their distance and route.',
               NSHealthShareUsageDescription:
-                'When you turn on import, PaceLeague reads your workouts, their routes and heart rate so runs from your watch and other apps count.',
+                'Only for what you turn on in PaceLeague: workouts, routes and heart rate, so runs from your watch count and show heart-rate zones; and, if you choose, resting heart rate, heart rate variability, VO2 max and sleep for training trends. Zones and trends stay on your phone.',
               // Health wakes the app for new workouts, so imports sync without opening it (2.1).
               background: true,
             },

@@ -272,13 +272,16 @@ export function planHistory(input: {
   const longestRunMin = Math.round(
     Math.max(0, ...input.runs.filter((r) => r.startedAtMs >= input.now - RECENT_RUN_MS).map((r) => r.activeMs)) / 60_000,
   );
-  const bestEfforts: Partial<Record<EffortKey, number>> = {};
-  for (const record of input.records?.records ?? []) {
-    if (record.best && record.best.started_at_ms >= input.now - RECENT_EFFORT_MS) {
-      bestEfforts[record.effort] = Math.round(record.best.elapsed_ms / 1000);
-    }
+  return { weeklyMinutes, longestRunMin, bestEfforts: recentBestEfforts(input.records, input.now) };
+}
+
+/** Best efforts from the last six months, in seconds: older ones say little about fitness now. */
+export function recentBestEfforts(records: PersonalRecords | null, now: number): Partial<Record<EffortKey, number>> {
+  const best: Partial<Record<EffortKey, number>> = {};
+  for (const record of records?.records ?? []) {
+    if (record.best && record.best.started_at_ms >= now - RECENT_EFFORT_MS) best[record.effort] = Math.round(record.best.elapsed_ms / 1000);
   }
-  return { weeklyMinutes, longestRunMin, bestEfforts };
+  return best;
 }
 
 // ---------------------------------------------------------------------------------------------

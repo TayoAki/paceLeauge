@@ -199,6 +199,12 @@ describe('run settings', () => {
     expect(parsed.cues.trigger).toEqual(DEFAULT_CUE_SETTINGS.trigger);
     expect(parsed.cues.mode).toBe('important');
     expect(parsed.cues.fields).toEqual({ ...DEFAULT_CUE_SETTINGS.fields, heartRate: true });
+    // Health reads start switched off, and a maximum heart rate must be a believable whole number.
+    expect(parsed.heartRateZones).toBe(false);
+    expect(parsed.healthTrends).toBe(false);
+    expect(parseRunSettings({ maxHr: 188 }).maxHr).toBe(188);
+    expect(parseRunSettings({ maxHr: 300 }).maxHr).toBeNull();
+    expect(parseRunSettings({ maxHr: 187.5 }).maxHr).toBeNull();
   });
 
   it('saves to the account journal and notifies listeners', async () => {

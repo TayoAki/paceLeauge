@@ -3,6 +3,7 @@ import { ArrowLeftRight, CalendarDays, Coffee, Feather, Play } from 'lucide-reac
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { HeatCard, HeatUpsell } from '@/components/train/heat-card';
 import { dayLabel } from '@/components/train/train-components';
 import { PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
@@ -10,6 +11,8 @@ import { ChoiceChips, InlineStatus, Pill, Row, RowGroup, SwitchRow } from '@/com
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { addDays, startOfDay } from '@/domain/calendar';
 import { formatDistance, formatDuration } from '@/domain/format';
+import { heatAdvice } from '@/domain/heat';
+import { hrRangeForEffort, slowRange } from '@/domain/plans/paces';
 import type { Effort, PlanAdjustment } from '@/domain/plans/types';
 import type { PlanFeedback } from '@/api/schemas';
 import { useMe, useRunsBetween } from '@/features/data/hooks';
@@ -23,6 +26,9 @@ import {
   sessionView,
 } from '@/features/plans/plan-client';
 import { usePlanActions, usePlanState } from '@/features/plans/use-plan';
+import { usePro } from '@/features/pro/use-pro';
+import { useHeat } from '@/features/training/use-heat';
+import { useMaxHr } from '@/features/training/use-training';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
 
@@ -38,11 +44,14 @@ export default function SessionScreen() {
   const units = useMe().data?.data.profile?.units ?? 'metric';
   const [sheet, setSheet] = useState<'move' | 'swap' | 'rest' | 'match' | null>(null);
   const [pain, setPain] = useState<boolean | null>(null);
+  const { pro } = usePro();
+  const maxHr = useMaxHr();
 
   const server = state?.server.sessions.find((s) => s.id === id) ?? null;
   const view = state && server ? sessionView(state, server) : null;
   const dayStart = server ? startOfDay(addDays(server.date, -1), state!.server.time_zone) : 0;
   const nearbyRuns = useRunsBetween(dayStart, dayStart + 3 * 86_400_000, 'run', sheet === 'match');
+  const { entry: heat } = useHeat(server?.date ?? null);
 
   const upcoming =
     state && server
@@ -60,7 +69,13 @@ export default function SessionScreen() {
 
   const s = view.session;
   const plan = state.plan;
-  const zone = plan?.zones && s.effort !== 'walk' ? plan.zones[s.effort] : null;
+  const planZone = plan?.zones && s.effort !== 'walk' ? plan.zones[s.effort] : null;
+  // Pro: today's heat slows the range (and the workout's spoken paces, set up in preflight).
+  const advice = pro && heat && view.status === 'today' ? heatAdvice(heat) : null;
+  const slowdown = advice?.slowdown ?? null;
+  const byFeel = advice !== null && advice.slowdown === null;
+  const zone = planZone && slowdown ? slowRange(planZone, slowdown) : planZone;
+  const hrRange = pro && maxHr ? hrRangeForEffort(maxHr.value, s.effort) : null;
   const editable = !state.readOnly && (view.status === 'today' || view.status === 'upcoming');
   const planId = state.server.id;
   const add = (adjustments: PlanAdjustment[]) => void actions.addAdjustments(adjustments).then(() => setSheet(null));
@@ -93,12 +108,23 @@ export default function SessionScreen() {
         {zone ? (
           <Text variant="label" tone="secondary">
             {EFFORT_NAMES[s.effort]} pace: {formatPaceRange(zone, units)}
+            {slowdown ? ' (slowed for heat)' : byFeel ? ' (too hot today: go by feel)' : ''}
+          </Text>
+        ) : null}
+        {hrRange ? (
+          <Text variant="label" tone="secondary" accessibilityLabel={`Heart rate ${hrRange.low} to ${hrRange.high} beats per minute`}>
+            Heart rate: {hrRange.low}–{hrRange.high} bpm
           </Text>
         ) : null}
         <Text variant="label" tone="secondary">
           {EFFORT_FEEL[s.effort]}
         </Text>
+        {pro && !maxHr && view.status !== 'done' ? (
+          <TextButton label="Set your maximum heart rate for heart-rate ranges" onPress={() => router.push('/profile/run-settings')} />
+        ) : null}
       </Card>
+
+      {view.status === 'today' ? pro ? <HeatCard date={s.date} units={units} zone={planZone} effortName={EFFORT_NAMES[s.effort]} /> : <HeatUpsell /> : null}
 
       {view.status === 'done' && view.run ? (
         <Card style={styles.card}>

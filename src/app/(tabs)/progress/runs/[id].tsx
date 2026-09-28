@@ -10,6 +10,7 @@ import { StyleSheet, View } from 'react-native';
 import { toApiError } from '@/api/errors';
 import { RunDetailsCard, RunEffortsCard } from '@/components/progress/run-extras';
 import { CoachNoteCard, useCoachNote } from '@/components/train/coach-note-card';
+import { RunHeartRateCard } from '@/components/training/heart-rate-card';
 import { StravaRunCard, usePostedToStrava } from '@/components/progress/strava-run';
 import { MetricBlock, XpPanel } from '@/components/run/run-components';
 import { routeLines } from '@/components/run/route-lines';
@@ -301,6 +302,12 @@ export default function RunDetailScreen() {
         </Card>
       ) : null}
 
+      <RunHeartRateCard
+        runKey={local?.runId ?? server?.id ?? ''}
+        segments={segments}
+        avgHr={server?.avg_heart_rate ?? local?.origin?.avgHeartRate ?? null}
+        maxHr={server?.max_heart_rate ?? local?.origin?.maxHeartRate ?? null}
+      />
       <CoachNoteCard note={coach} />
       {server && server.status !== 'uploading' ? <RunEffortsCard serverRunId={server.id} /> : null}
       {server && server.status !== 'uploading' ? <RunDetailsCard run={server} onSaved={setSaved} /> : null}

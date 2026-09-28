@@ -1,14 +1,25 @@
-import { Download, Headphones, HeartPulse, Pause, Volume2 } from 'lucide-react-native';
+import { Activity, Download, Headphones, HeartPulse, Pause, Volume2 } from 'lucide-react-native';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { SecondaryButton } from '@/components/ui/buttons';
-import { ChoiceChips, InlineStatus, RowGroup, SegmentedControl, SwitchRow } from '@/components/ui/elements';
+import { ChoiceChips, InlineStatus, RowGroup, SegmentedControl, SwitchRow, TextField } from '@/components/ui/elements';
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { cueText, type CueField, type CueSettings } from '@/domain/cues';
 import { useAccountServices } from '@/features/account/account-provider';
 import { useMe } from '@/features/data/hooks';
-import { CUE_VOLUME, MAX_SCREEN_FIELDS, RUN_SCREEN_FIELDS, type CueVolume, type RunScreenField, type RunSettings } from '@/features/voice/run-settings';
+import { deviceHealthData } from '@/features/health/health-data';
+import { useMaxHr } from '@/features/training/use-training';
+import {
+  CUE_VOLUME,
+  MAX_HR_RANGE,
+  MAX_SCREEN_FIELDS,
+  RUN_SCREEN_FIELDS,
+  validMaxHr,
+  type CueVolume,
+  type RunScreenField,
+  type RunSettings,
+} from '@/features/voice/run-settings';
 import { deviceVoiceOutput } from '@/features/voice/voice-output';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
@@ -68,6 +79,10 @@ export default function RunSettingsScreen() {
   const [importing, setImporting] = useState(false);
   const health = runtime.health;
   const importer = runtime.healthImport;
+  const heartRate = deviceHealthData();
+  const maxHr = useMaxHr();
+  const [maxHrText, setMaxHrText] = useState(settings.maxHr ? String(settings.maxHr) : '');
+  const [maxHrError, setMaxHrError] = useState<string | null>(null);
 
   useEffect(() => store.setUnits(units), [store, units]);
 
@@ -100,6 +115,28 @@ export default function RunSettingsScreen() {
     } finally {
       setImporting(false);
     }
+  };
+
+  const toggleZones = async (on: boolean) => {
+    // Permission is asked only now, when the runner switches this on.
+    if (on) await heartRate?.requestHeartRate().catch(() => undefined);
+    save({ ...store.get(), heartRateZones: on });
+  };
+
+  const saveMaxHr = () => {
+    const text = maxHrText.trim();
+    if (!text) {
+      setMaxHrError(null);
+      save({ ...store.get(), maxHr: null });
+      return;
+    }
+    const value = validMaxHr(Number(text));
+    if (value === null) {
+      setMaxHrError(`Enter a whole number from ${MAX_HR_RANGE.min} to ${MAX_HR_RANGE.max}.`);
+      return;
+    }
+    setMaxHrError(null);
+    save({ ...store.get(), maxHr: value });
   };
 
   const toggleHealth = async (on: boolean) => {
@@ -267,6 +304,45 @@ export default function RunSettingsScreen() {
           testID="auto-pause-switch"
         />
       </RowGroup>
+
+      <View style={styles.group}>
+        <Text variant="labelStrong" accessibilityRole="header">
+          Heart rate
+        </Text>
+        {heartRate?.isAvailable() ? (
+          <RowGroup>
+            <SwitchRow
+              icon={Activity}
+              label="Heart-rate zones"
+              hint="Time in each zone for runs with heart rate from an Apple Watch or another device that saves to Apple Health. Worked out on this phone."
+              value={settings.heartRateZones}
+              onChange={(on) => void toggleZones(on)}
+              last
+              testID="hr-zones-switch"
+            />
+          </RowGroup>
+        ) : null}
+        <TextField
+          label="Maximum heart rate (bpm)"
+          value={maxHrText}
+          onChangeText={setMaxHrText}
+          onBlur={saveMaxHr}
+          onSubmitEditing={saveMaxHr}
+          keyboardType="number-pad"
+          returnKeyType="done"
+          maxLength={3}
+          placeholder={maxHr?.source === 'observed' ? String(maxHr.value) : 'For example, 185'}
+          error={maxHrError}
+          hint={
+            settings.maxHr
+              ? 'Zones and heart-rate ranges use this. Clear it to use the highest heart rate in your runs.'
+              : maxHr
+                ? `Using ${maxHr.value} bpm, the highest in your recent runs. If you know your maximum from a test, enter it.`
+                : 'Zones and heart-rate ranges need it. Enter yours, or run with a heart-rate device and we’ll use the highest we see.'
+          }
+          testID="max-hr"
+        />
+      </View>
 
       {health.available ? (
         <RowGroup>

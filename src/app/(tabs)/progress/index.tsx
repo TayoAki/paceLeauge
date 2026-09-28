@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Award, CalendarDays, ChartColumn, CircleHelp, Play, Trophy } from 'lucide-react-native';
+import { Activity, Award, CalendarDays, ChartColumn, CircleHelp, Play, Trophy } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { RefreshControl, View } from 'react-native';
 
@@ -11,6 +11,7 @@ import { Card, LargeHeader, Screen } from '@/components/ui/layout';
 import { useBadges, useLocalRuns, useMe, usePersonalRecords, useProgress, useRunHistory, useStreak } from '@/features/data/hooks';
 import { formatEffort } from '@/features/progress/records';
 import { mergeRunViews } from '@/features/progress/run-views';
+import { usePro } from '@/features/pro/use-pro';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
@@ -24,6 +25,7 @@ export default function ProgressScreen() {
   const streak = useStreak();
   const records = usePersonalRecords();
   const badges = useBadges();
+  const { pro } = usePro();
   const units = me.data?.data.profile?.units ?? 'metric';
   const data = progress.data?.data;
   const runs = useMemo(() => mergeRunViews(local, history.data?.pages.flatMap((p) => p.runs) ?? []), [local, history.data]);
@@ -62,6 +64,7 @@ export default function ProgressScreen() {
         <Row icon={Trophy} label="Personal records" value={recordSummary} onPress={() => router.push('/progress/records')} testID="progress-records" />
         <Row icon={Award} label="Badges" value={badgeSummary} onPress={() => router.push('/progress/badges')} testID="progress-badges" />
         <Row icon={ChartColumn} label="Stats and trends" onPress={() => router.push('/progress/stats')} testID="progress-stats" />
+        <Row icon={Activity} label="Training" value={pro ? undefined : 'Pro'} onPress={() => router.push('/progress/training')} testID="progress-training" />
         <Row icon={CalendarDays} label="Calendar" onPress={() => router.push('/progress/calendar')} last testID="progress-calendar" />
       </RowGroup>
 

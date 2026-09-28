@@ -26,6 +26,12 @@ export interface RunSettings {
   healthImport: boolean;
   /** One to three numbers under the distance on the run screen, in this order. */
   screenFields: RunScreenField[];
+  /** Read heart rate from Apple Health for zones on each run (iOS; asks permission when switched on). */
+  heartRateZones: boolean;
+  /** The runner's maximum heart rate for zones and ranges; null uses the highest in their runs. */
+  maxHr: number | null;
+  /** Pro: resting heart rate, HRV, VO2 max and sleep from Apple Health, shown on this phone only. */
+  healthTrends: boolean;
 }
 
 export const DEFAULT_RUN_SETTINGS: RunSettings = {
@@ -36,7 +42,17 @@ export const DEFAULT_RUN_SETTINGS: RunSettings = {
   appleHealth: false,
   healthImport: false,
   screenFields: ['time', 'currentPace', 'averagePace'],
+  heartRateZones: false,
+  maxHr: null,
+  healthTrends: false,
 };
+
+/** Maximum heart rates the app accepts, in beats per minute. */
+export const MAX_HR_RANGE = { min: 120, max: 230 } as const;
+
+export function validMaxHr(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= MAX_HR_RANGE.min && value <= MAX_HR_RANGE.max ? value : null;
+}
 
 /** The account journal key holding this account's run settings. */
 export const RUN_SETTINGS_KEY = 'settings:run';
@@ -78,6 +94,9 @@ export function parseRunSettings(value: unknown): RunSettings {
     appleHealth: typeof v.appleHealth === 'boolean' ? v.appleHealth : DEFAULT_RUN_SETTINGS.appleHealth,
     healthImport: typeof v.healthImport === 'boolean' ? v.healthImport : DEFAULT_RUN_SETTINGS.healthImport,
     screenFields: parseScreenFields(v.screenFields),
+    heartRateZones: typeof v.heartRateZones === 'boolean' ? v.heartRateZones : DEFAULT_RUN_SETTINGS.heartRateZones,
+    maxHr: validMaxHr(v.maxHr),
+    healthTrends: typeof v.healthTrends === 'boolean' ? v.healthTrends : DEFAULT_RUN_SETTINGS.healthTrends,
   };
 }
 

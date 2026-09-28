@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarCheck, Headphones, Info, Lock, MapPin, Satellite } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 
 import { RouteMap } from '@/components/run/route-map';
@@ -10,12 +10,14 @@ import { PrimaryButton, TextButton } from '@/components/ui/buttons';
 import { InlineStatus, Row, RowGroup } from '@/components/ui/elements';
 import { NavHeader, Screen } from '@/components/ui/layout';
 import { RECORDER_V1 } from '@/domain/config';
+import { heatAdvice, heatZones } from '@/domain/heat';
 import { useAccountServices } from '@/features/account/account-provider';
 import { locationDriver } from '@/features/recording/location-driver';
 import { guidedLines, guidedMinutes, guidedRun } from '@/features/guided/catalog';
 import { formatMinutes } from '@/features/plans/plan-client';
 import { usePro } from '@/features/pro/use-pro';
 import { usePlanState } from '@/features/plans/use-plan';
+import { useHeat } from '@/features/training/use-heat';
 import { blocker, blockerCopy, signalLevel, type PermissionStatus, type PreflightState } from '@/features/recording/preflight';
 import { ActiveRunExistsError } from '@/features/recording/recorder-service';
 import { Text } from '@/design/text';
@@ -60,14 +62,22 @@ export default function PreflightScreen() {
   const { state: plan } = usePlanState();
   const planned = sessionId && plan?.server.status === 'active' ? (plan.server.sessions.find((s) => s.id === sessionId) ?? null) : null;
   const planId = plan?.server.id ?? null;
-  const zones = plan?.plan?.zones ?? null;
+  const planZones = plan?.plan?.zones ?? null;
   // Or a guided run (3.4), its coaching placed on the workout's timeline.
   const { pro } = usePro();
+  // Pro: the heat the runner gave for today slows the session's spoken paces.
+  const { entry: heat } = useHeat(planned?.date ?? null);
+  // Undefined: no heat given; null: too hot for set paces, so the steps are spoken by effort alone.
+  const slowdown = pro && heat ? heatAdvice(heat).slowdown : undefined;
+  const zones = useMemo(
+    () => (!planZones || slowdown === undefined || slowdown === 0 ? planZones : slowdown === null ? null : heatZones(planZones, slowdown)),
+    [planZones, slowdown],
+  );
   const found = guidedId ? guidedRun(guidedId) : null;
   const guided = found && (found.free || pro) ? found : null;
   useEffect(() => {
     if (guided) {
-      runtime.workout.prepare({ source: { kind: 'guided', guidedId: guided.id }, title: guided.title, blocks: guided.blocks, zones, lines: guidedLines(guided) });
+      runtime.workout.prepare({ source: { kind: 'guided', guidedId: guided.id }, title: guided.title, blocks: guided.blocks, zones: planZones, lines: guidedLines(guided) });
     } else if (planned && planId) {
       runtime.workout.prepare({ source: { kind: 'plan', planId, sessionId: planned.id }, title: planned.title, blocks: planned.blocks, zones });
     } else {
@@ -76,7 +86,7 @@ export default function PreflightScreen() {
     return () => {
       if (!runtime.recorder.getSnapshot().session) runtime.workout.cancel();
     };
-  }, [runtime, planned, planId, zones, guided]);
+  }, [runtime, planned, planId, zones, planZones, guided]);
 
   const refresh = useCallback(async () => {
     const services = await Location.hasServicesEnabledAsync().catch(() => true);
