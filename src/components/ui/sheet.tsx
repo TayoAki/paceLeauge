@@ -9,9 +9,9 @@ import { colors, layout, radius, space } from '@/design/tokens';
 export function Sheet({ visible, onClose, title, busy, children }: { visible: boolean; onClose: () => void; title: string; busy?: boolean; children: ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent aria-label={title}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close" onPress={busy ? undefined : onClose} />
+        <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel="Close" onPress={busy ? undefined : onClose} />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) + space.sm }]} accessibilityViewIsModal>
           <Text variant="section" accessibilityRole="header">
             {title}

@@ -87,6 +87,8 @@ describe('push routes', () => {
     expect(pushRoute({ url: `/runner/${RUN}` })).toBe(`/runner/${RUN}`);
     expect(pushRoute({ url: '/league' })).toBe('/league');
     expect(pushRoute({ url: '/profile/people' })).toBe('/profile/people');
+    expect(pushRoute({ url: `/league/challenges/${RUN}` })).toBe(`/league/challenges/${RUN}`);
+    expect(pushRoute({ url: '/league/challenges/create' })).toBeNull();
     for (const url of ['https://example.test', '/shared/../profile/delete-account', '/profile/delete-account', `/shared/${RUN}?x=1`, 42, '']) {
       expect(pushRoute({ url })).toBeNull();
     }

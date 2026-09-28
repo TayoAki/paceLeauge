@@ -118,6 +118,7 @@ Android phone.
 | P4-QUIET | Set A's phone and profile time zone to one where it's 23:00; from B, comment on A's run | Nothing arrives until 07:00 local time, then the comment push does |
 | P4-FEED | B shares runs with the league (one with its map); A opens League › Feed and Today | B's runs appear newest first, the map only on the one shared with it and never near B's privacy zones; "From friends" on Today lists them |
 | P4-LEAGUES | A in two leagues; B plans a group run in one of them starting in 70 minutes; A answers Going; B challenges A to a duel; A accepts | A gets the group-run push, then a reminder about an hour before the start (even at 06:00 local time); the duel push opens League; the switcher shows both leagues and each keeps its own standings |
+| P4-CHALLENGE | A owns a league with B in it; A starts a challenge for next month ("Points", 500) from League; B taps the push and joins; both open League › Challenges and join this month's "Run 12 days" | B's push opens the challenge; both see it on the league page and in Challenges with the same board; a run B records today moves B's days on the monthly challenge within a minute of syncing; deleting that run moves it back |
 | P4-REPORT | From A, report B's comment and B's run; as a moderator on a third phone, open Profile › Moderation | Both disappear for A at once; the moderator sees both with "Due in 24 hours" and can remove the comment and hide the run; B's run then leaves A's feed and the comment is gone for everyone |
 
 ## Android device checks (docs/ROADMAP.md P.1)

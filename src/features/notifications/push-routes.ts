@@ -3,7 +3,14 @@
  * push's data; the app opens only these routes, whatever a payload says.
  */
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const ALLOWED = [new RegExp(`^/shared/${UUID}$`), new RegExp(`^/runner/${UUID}$`), /^\/league$/, /^\/profile\/people$/, /^\/feed$/];
+const ALLOWED = [
+  new RegExp(`^/shared/${UUID}$`),
+  new RegExp(`^/runner/${UUID}$`),
+  new RegExp(`^/league/challenges/${UUID}$`),
+  /^\/league$/,
+  /^\/profile\/people$/,
+  /^\/feed$/,
+];
 
 export function pushRoute(data: unknown): string | null {
   if (data === null || typeof data !== 'object') return null;

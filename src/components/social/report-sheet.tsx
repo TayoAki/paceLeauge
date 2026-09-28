@@ -20,7 +20,7 @@ export interface ReportTarget {
   runId?: string;
 }
 
-const WHAT: Record<ReportKind, string> = { comment: 'comment', run: 'run', runner: 'runner', club: 'club', group_run: 'group run' };
+const WHAT: Record<ReportKind, string> = { comment: 'comment', run: 'run', runner: 'runner', club: 'club', group_run: 'group run', challenge: 'challenge' };
 /** Reported runs and comments disappear for the reporter at once; the rest wait for a moderator. */
 const HIDES: ReportKind[] = ['run', 'comment'];
 

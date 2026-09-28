@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { challengeBadgeSchema } from './challenge-schemas';
+
 /**
  * Runtime schemas for every RPC response (types alone cannot validate a hostile or
  * mismatched payload). Field names mirror the SQL functions in db/migrations.
@@ -322,6 +324,8 @@ export type Streak = z.infer<typeof streakSchema>;
 
 export const badgesSchema = z.object({
   earned: z.array(z.object({ badge: z.string(), earned_at_ms: z.number() })),
+  /** Finished challenges (docs/ROADMAP.md 4.6), one badge each. */
+  challenges: z.array(challengeBadgeSchema).default([]),
   progress: z.object({ accepted_runs: z.number(), distance_m: z.number(), lifetime_xp: z.number(), streak: streakSchema }),
 });
 export type Badges = z.infer<typeof badgesSchema>;

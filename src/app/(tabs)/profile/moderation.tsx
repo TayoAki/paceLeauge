@@ -11,6 +11,7 @@ import { EmptyState, InlineStatus, SegmentedControl, TextField } from '@/compone
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { formatDistance } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
+import { monthLabel } from '@/features/challenges/challenge-text';
 import { useCachedQuery, useMe } from '@/features/data/hooks';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
@@ -23,6 +24,9 @@ const KIND: Record<ModReport['target_kind'], string> = {
   runner: 'Runner',
   run: 'Run',
   comment: 'Comment',
+  club: 'Club',
+  group_run: 'Group run',
+  challenge: 'Challenge',
 };
 
 const REASON: Record<string, string> = {
@@ -43,16 +47,35 @@ const ACTION: Record<ModAction, { label: string; body: string; destructive: bool
   rename_league: { label: 'Rename league', body: 'The league gets a neutral name the owner can change.', destructive: true },
   hide_run: { label: 'Hide run', body: 'Only the runner sees it until they share it again. Their data stays.', destructive: true },
   remove_comment: { label: 'Remove comment', body: 'The comment is removed for everyone. Other reports about it close too.', destructive: true },
+  reset_club: { label: 'Reset club name', body: 'The club gets a neutral name and loses its description. Members stay.', destructive: true },
+  close_club: { label: 'Close club', body: 'Everyone leaves the club and its invite codes stop working.', destructive: true },
+  remove_group_run: { label: 'Remove group run', body: 'The group run is taken down for everyone. Other reports about it close too.', destructive: true },
+  reset_challenge_name: {
+    label: 'Reset challenge name',
+    body: 'The challenge goes back to a name made from its goal and month. Entries and badges stay.',
+    destructive: true,
+  },
+  remove_challenge: { label: 'Remove challenge', body: 'The challenge and its badges are removed for everyone. Other reports about it close too.', destructive: true },
 };
 
-const FIELDS: [string, string][] = [
-  ['alias', 'Runner'],
-  ['league_name', 'League'],
-  ['title', 'Run'],
-  ['run_title', 'On the run'],
-  ['body', 'Comment'],
-  ['visibility', 'Shared with'],
-];
+const TITLE: Partial<Record<ModReport['target_kind'], string>> = { group_run: 'Group run', challenge: 'Challenge' };
+
+/** The snapshot's fields worth showing, labelled for what was reported. */
+function fields(kind: ModReport['target_kind']): [string, string][] {
+  return [
+    ['alias', 'Runner'],
+    ['league_name', 'League'],
+    ['club_name', 'Club'],
+    ['group', 'Group'],
+    ['title', TITLE[kind] ?? 'Run'],
+    ['run_title', 'On the run'],
+    ['body', 'Comment'],
+    ['description', 'Description'],
+    ['meeting_point', 'Meeting point'],
+    ['notes', 'Notes'],
+    ['visibility', 'Shared with'],
+  ];
+}
 
 function hoursFrom(ms: number, now: number): string {
   const hours = Math.round(Math.abs(ms - now) / 3_600_000);
@@ -62,9 +85,15 @@ function hoursFrom(ms: number, now: number): string {
 
 function Snapshot({ report }: { report: ModReport }) {
   const s = report.content_snapshot;
-  const lines = FIELDS.filter(([key]) => typeof s[key] === 'string' && s[key] !== '').map(([key, label]) => [label, s[key] as string]);
+  const lines = fields(report.target_kind)
+    .filter(([key]) => typeof s[key] === 'string' && s[key] !== '')
+    .map(([key, label]) => [label, s[key] as string]);
   if (typeof s.distance_m === 'number') lines.push(['Distance', (({ value, unit }) => `${value} ${unit}`)(formatDistance(s.distance_m, 'metric'))]);
   if (typeof s.started_at_ms === 'number') lines.push(['Started', new Date(s.started_at_ms).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })]);
+  if (typeof s.metric === 'string' && typeof s.target === 'number') {
+    const month = typeof s.starts_on === 'string' ? ` in ${monthLabel(s.starts_on)}` : '';
+    lines.push(['Goal', `${s.target} ${s.metric === 'active_days' ? 'days' : 'points'}${month}`]);
+  }
   return (
     <View style={styles.snapshot}>
       {lines.map(([label, value]) => (
@@ -194,6 +223,10 @@ export default function ModerationScreen() {
           {report.target_state.removed === true ? (
             <Text variant="caption" tone="secondary">
               Already removed.
+            </Text>
+          ) : report.target_state.status === 'closed' ? (
+            <Text variant="caption" tone="secondary">
+              Club closed.
             </Text>
           ) : report.target_state.held === true ? (
             <Text variant="caption" tone="secondary">

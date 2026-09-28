@@ -69,6 +69,12 @@ export const REPORT_REASONS: Record<ReportKind, { value: ContentReportReason; la
     { value: 'spam', label: 'Spam' },
     { value: 'other', label: 'Something else' },
   ],
+  challenge: [
+    { value: 'offensive_name', label: 'Offensive name' },
+    { value: 'harassment', label: 'Aimed at someone' },
+    { value: 'spam', label: 'Spam' },
+    { value: 'other', label: 'Something else' },
+  ],
   group_run: [
     { value: 'offensive_content', label: 'Offensive or unsafe' },
     { value: 'private_info', label: 'Shares someone’s private information' },

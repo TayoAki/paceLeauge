@@ -5,6 +5,7 @@ import { Linking, Share, StyleSheet, View } from 'react-native';
 
 import type { ClubMember } from '@/api/club-schemas';
 import type { Standing } from '@/api/schemas';
+import { GroupChallengesCard } from '@/components/league/challenge-card';
 import { GroupRunsCard } from '@/components/league/group-runs-card';
 import { LeagueRow } from '@/components/league/league-row';
 import { ReportSheet, type ReportTarget } from '@/components/social/report-sheet';
@@ -136,6 +137,7 @@ export default function ClubScreen() {
             ) : null}
           </View>
 
+          <GroupChallengesCard target={{ clubId: id }} canManage={isAdmin} now={now} />
           <GroupRunsCard target={{ clubId: id }} now={now} onReport={(groupRunId) => setReport({ kind: 'group_run', id: groupRunId, owner: null })} />
 
           <RowGroup>

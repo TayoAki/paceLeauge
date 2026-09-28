@@ -299,8 +299,8 @@ Zones and health trends stay on the phone, so they aren't "collected".
 runner, for app functionality, and push tokens as "Device ID", linked, for app functionality.
 Location stays as declared: shared maps come from the runner's own routes, cut on the server.
 Nothing reads the address book. Apple's guideline 1.2 for user-generated content is met by the
-comment filter, reporting on runners, runs and comments, blocking, the 24-hour response target and
-the published contact (Staff roles and moderation).
+comment filter, reporting on runners, runs, comments, clubs, group runs and challenges, blocking,
+the 24-hour response target and the published contact (Staff roles and moderation).
 
 ## Android builds for testers (Google Play, P.1)
 
@@ -568,11 +568,15 @@ reason and target in `private.moderation_actions`.
 | Comment | `dismiss`, `remove_comment`, `reset_alias` |
 | Club | `dismiss`, `reset_club` (a neutral name, no description; members stay), `close_club` |
 | Group run | `dismiss`, `remove_group_run`, `reset_alias` (its host) |
+| Challenge (a league's or club's) | `dismiss`, `reset_challenge_name` (back to the name made from its goal and month; entries and badges stay), `remove_challenge` (with its badges), `reset_alias` (who set it) |
 
-Removing a comment, hiding a run or taking down a club or group run closes every open report
-about it. Club owners and admins moderate their own clubs too: removing a member
-(`club_remove_member`) and removing someone else's group run (`group_run_removed`) are recorded
-in `private.moderation_actions` with the admin as the moderator. What runners see:
+Removing a comment, hiding a run or taking down a club, group run or challenge closes every open
+report about it. Club owners and admins moderate their own clubs too: removing a member
+(`club_remove_member`) and removing someone else's group run (`group_run_removed`) or challenge
+(`challenge_removed`) are recorded in `private.moderation_actions` with the admin as the
+moderator; a league's owner removing a challenge someone else set is recorded the same way. The
+two monthly challenges for everyone need no job: the first runner to open Challenges each month
+creates them (and next month's, which show from a week before). What runners see:
 
 - A runner who reports a run or a comment stops seeing it at once.
 - Three open reports from different runners hold a comment: only its author sees it until a

@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
-import { CircleHelp, MessagesSquare, Newspaper, Plus, Settings2, Users, UsersRound } from 'lucide-react-native';
+import { CircleHelp, Flag, MessagesSquare, Newspaper, Plus, Settings2, Users, UsersRound } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Linking, RefreshControl, StyleSheet, View } from 'react-native';
 
 import type { Standing } from '@/api/schemas';
+import { GroupChallengesCard } from '@/components/league/challenge-card';
 import { DuelsCard } from '@/components/league/duels-card';
 import { GroupRunsCard } from '@/components/league/group-runs-card';
 import { LeagueRow } from '@/components/league/league-row';
@@ -23,12 +24,13 @@ import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 import { useNow } from '@/lib/use-now';
 
-/** The feed (docs/ROADMAP.md 4.4) and clubs (4.5). */
-function SocialRows({ onFeed, onClubs }: { onFeed: () => void; onClubs: () => void }) {
+/** The feed (docs/ROADMAP.md 4.4), clubs (4.5) and challenges (4.6). */
+function SocialRows({ onFeed, onClubs, onChallenges }: { onFeed: () => void; onClubs: () => void; onChallenges: () => void }) {
   return (
     <RowGroup>
       <Row icon={Newspaper} label="Feed" hint="Runs your friends and league share, with kudos and comments" onPress={onFeed} testID="open-feed" />
-      <Row icon={UsersRound} label="Clubs" hint="Bigger groups with a weekly board and group runs" onPress={onClubs} last testID="open-clubs" />
+      <Row icon={UsersRound} label="Clubs" hint="Bigger groups with a weekly board and group runs" onPress={onClubs} testID="open-clubs" />
+      <Row icon={Flag} label="Challenges" hint="Monthly goals with a badge each" onPress={onChallenges} last testID="open-challenges" />
     </RowGroup>
   );
 }
@@ -90,7 +92,7 @@ export default function LeagueScreen() {
       <Screen refreshControl={refresh}>
         <LargeHeader title="League" />
         {league.isError ? <InlineStatus tone="danger" title="Couldn’t load your league." body="Pull to try again." /> : null}
-        <SocialRows onFeed={() => router.push('/feed')} onClubs={() => router.push('/league/clubs')} />
+        <SocialRows onFeed={() => router.push('/feed')} onClubs={() => router.push('/league/clubs')} onChallenges={() => router.push('/league/challenges')} />
         <Card>
           <EmptyState icon={Users} title="A little friendly competition." body="Start a private league for your crew, or join one with an invite code. Your best three days each week count.">
             <PrimaryButton label="Create league" onPress={() => router.push('/league/create')} testID="create-league" />
@@ -152,7 +154,7 @@ export default function LeagueScreen() {
         />
       ) : null}
 
-      <SocialRows onFeed={() => router.push('/feed')} onClubs={() => router.push('/league/clubs')} />
+      <SocialRows onFeed={() => router.push('/feed')} onClubs={() => router.push('/league/clubs')} onChallenges={() => router.push('/league/challenges')} />
 
       <SegmentedControl
         label="Week"
@@ -215,6 +217,7 @@ export default function LeagueScreen() {
       {recap !== null && view.competition_enabled ? <RecapCard leagueId={leagueId} leagueName={view.league.name} weekOffset={recap} units={units} /> : null}
       <SeasonCard leagueId={leagueId} />
       <DuelsCard leagueId={leagueId} weekOffset={weekOffset} />
+      <GroupChallengesCard target={{ leagueId }} canManage={isOwner} now={now} />
       <GroupRunsCard target={{ leagueId }} now={now} />
 
       {isOwner ? <PrimaryButton label="Invite friends" onPress={() => setInviteOpen(true)} testID="invite-friends" /> : null}

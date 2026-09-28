@@ -41,9 +41,9 @@ export function ConfirmSheet({
 }: ConfirmSheetProps) {
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} onDismiss={onDismiss} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} onDismiss={onDismiss} statusBarTranslucent aria-label={title}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Dismiss" onPress={busy ? undefined : onCancel} />
+        <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel="Dismiss" onPress={busy ? undefined : onCancel} />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) + space.sm }]} accessibilityViewIsModal>
           <Text variant="section" accessibilityRole="header">
             {title}

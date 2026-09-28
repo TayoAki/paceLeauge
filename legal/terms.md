@@ -49,8 +49,9 @@ limits, and tell someone where you're going.
 - Choose respectful runner and league names, run titles and comments. There is no tolerance for harassment, hate, threats, sexual content, spam, impersonation, or sharing other people's personal information.
 - Comments can't include links, and some words aren't allowed.
 - Don't misuse invites, follows, kudos, comments, reports or blocks, and don't try to reach other people's data or disrupt PaceLeague — for example by scraping, getting around limits, overloading the service, or probing it for weaknesses without our permission.
-- If you own or help run a club, you're responsible for its name, description and group runs, and for using the removal tools fairly. We may reset or close clubs that break these rules.
-- You can report runners, runs, comments, clubs and group runs, and block other runners. We aim to act on reports within 24 hours. We may remove comments, stop a run from being shared, reset names, remove members from leagues or close accounts.
+- If you own or help run a club, you're responsible for its name, description, group runs and challenges, and for using the removal tools fairly. We may reset or close clubs that break these rules. The same goes for a league's owner and the challenges they set.
+- Challenges and their badges are for fun: they never change your XP, and a badge goes away if the runs behind it are deleted or don't count.
+- You can report runners, runs, comments, clubs, group runs and challenges, and block other runners. We aim to act on reports within 24 hours. We may remove comments, stop a run from being shared, reset names, remove members from leagues or close accounts.
 
 ## Your content
 

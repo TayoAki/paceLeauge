@@ -18,9 +18,9 @@ import { formatInZone, deviceTimeZone } from './week-copy';
 function Sheet({ visible, onClose, children, title }: { visible: boolean; onClose: () => void; children: React.ReactNode; title: string }) {
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent aria-label={title}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close" onPress={onClose} />
+        <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) + space.sm }]} accessibilityViewIsModal>
           <Text variant="section" accessibilityRole="header">
             {title}

@@ -41,6 +41,7 @@ const SCREENS = [
   { path: '/progress/records', wait: 'Personal records', name: 'records' },
   { path: '/league', wait: 'League', name: 'league' },
   { path: '/feed', wait: 'Maya', name: 'feed' },
+  { path: '/league/challenges', wait: 'For everyone', name: 'challenges' },
   { path: '/train', wait: 'Train', name: 'train' },
   { path: '/profile', wait: 'Profile', name: 'profile' },
   { path: '/profile/privacy', wait: 'Export', name: 'privacy' },

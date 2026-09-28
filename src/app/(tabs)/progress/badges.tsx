@@ -1,17 +1,22 @@
-import { Award, Lock } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Award, Flag, Lock } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 
+import type { ChallengeBadge } from '@/api/challenge-schemas';
+import { TextButton } from '@/components/ui/buttons';
 import { InlineStatus, ProgressBar } from '@/components/ui/elements';
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
+import { fullDayLabel } from '@/features/challenges/challenge-text';
 import { useBadges } from '@/features/data/hooks';
 import { BADGE_GROUPS, badgeViews, type BadgeView } from '@/features/progress/badges';
 import { shortDate } from '@/features/progress/records';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
-/** Badges and milestones (docs/ROADMAP.md 1.8). Earned from runs that count; deleting the run takes the badge back. */
+/** Badges and milestones (docs/ROADMAP.md 1.8), and one for each challenge finished (4.6). Earned from runs that count; deleting the run takes the badge back. */
 export default function BadgesScreen() {
+  const router = useRouter();
   const badges = useBadges();
   const data = badges.data?.data;
   const views = useMemo(() => (data ? badgeViews(data) : []), [data]);
@@ -30,6 +35,22 @@ export default function BadgesScreen() {
         </Text>
       ) : null}
 
+      {data ? (
+        <Card>
+          <Text variant="labelStrong" accessibilityRole="header">
+            Challenges
+          </Text>
+          {data.challenges.length === 0 ? (
+            <Text variant="caption" tone="secondary">
+              Finish a challenge to earn its badge.
+            </Text>
+          ) : (
+            data.challenges.map((c) => <ChallengeBadgeRow key={c.challenge_id} badge={c} />)
+          )}
+          <TextButton label="See challenges" icon={Flag} onPress={() => router.push('/league/challenges')} />
+        </Card>
+      ) : null}
+
       {BADGE_GROUPS.map((group) => {
         const items = views.filter((b) => b.group === group);
         if (items.length === 0) return null;
@@ -45,6 +66,27 @@ export default function BadgesScreen() {
         );
       })}
     </Screen>
+  );
+}
+
+function ChallengeBadgeRow({ badge }: { badge: ChallengeBadge }) {
+  const from = badge.scope === 'global' ? 'Monthly challenge' : (badge.group_name ?? 'Group challenge');
+  const status = `Earned ${fullDayLabel(badge.earned_on)}`;
+  return (
+    <View style={styles.row} accessible accessibilityLabel={`${badge.title}. ${from}. ${status}.`}>
+      <View style={[styles.icon, styles.iconEarned]}>
+        <Award size={22} color={colors.onAccent} strokeWidth={2.2} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="bodyStrong">{badge.title}</Text>
+        <Text variant="caption" tone="secondary">
+          {from}
+        </Text>
+        <Text variant="caption" tone="accent">
+          {status}
+        </Text>
+      </View>
+    </View>
   );
 }
 

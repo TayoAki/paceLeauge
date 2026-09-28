@@ -4,6 +4,7 @@ import type { RunOrigin } from '@/db/journal';
 import type { ActiveSegment } from '@/domain/types';
 
 import { ApiError } from './errors';
+import { challengesApi, type ChallengesApi } from './challenges-api';
 import { clubsApi, type ClubsApi } from './clubs-api';
 import { feedApi, type FeedApi } from './feed-api';
 import { leaguesApi, type LeaguesApi } from './leagues-api';
@@ -171,7 +172,7 @@ export interface TelemetryEvent {
   props: Record<string, string | boolean>;
 }
 
-export interface PaceApi extends SocialApi, FeedApi, LeaguesApi, ClubsApi {
+export interface PaceApi extends SocialApi, FeedApi, LeaguesApi, ClubsApi, ChallengesApi {
   getAppConfig(): Promise<AppConfig>;
   getMe(): Promise<Me>;
   checkAlias(alias: string): Promise<{ available: boolean; problem: 'invalid' | 'not_allowed' | 'taken' | null }>;
@@ -478,5 +479,6 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     ...feedApi(call),
     ...leaguesApi(call),
     ...clubsApi(call),
+    ...challengesApi(call),
   };
 }

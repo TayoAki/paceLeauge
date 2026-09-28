@@ -321,9 +321,23 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
       p_meeting_point: 'Diversey Harbor',
       p_club_id: clubRow.id,
     });
+    // Challenges (docs/ROADMAP.md 4.6): the club's points challenge this month, joined by a few.
+    const clubChallenge = await rpc<{ id: string }>(pool, maya, 'create_challenge', { p_metric: 'capped_score', p_target: 500, p_club_id: clubRow.id });
+    for (const claims of [viewer, ...friends.slice(1, 3).map((f) => f.claims)]) await rpc(pool, claims, 'join_challenge', { p_challenge_id: clubChallenge.id });
   }
+  // The viewer's league has a days challenge, and the viewer is in this month's twelve days.
+  const leagueChallenge = await rpc<{ id: string }>(pool, viewer, 'create_challenge', {
+    p_metric: 'active_days',
+    p_target: 10,
+    p_title: 'Ten Days Together',
+    p_league_id: league.league.id,
+  });
+  for (const f of friends.slice(0, 3)) await rpc(pool, f.claims, 'join_challenge', { p_challenge_id: leagueChallenge.id });
+  const monthly = await rpc<{ current: { id: string; scope: string; metric: string }[] }>(pool, viewer, 'list_challenges');
+  const twelveDays = monthly.current.find((c) => c.scope === 'global' && c.metric === 'active_days');
+  if (twelveDays) await rpc(pool, viewer, 'join_challenge', { p_challenge_id: twelveDays.id });
 
   console.log(
-    `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends and a family league; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,
+    `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends and a family league, with a club and challenges; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,
   );
 }

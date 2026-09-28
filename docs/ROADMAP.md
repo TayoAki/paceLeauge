@@ -91,8 +91,9 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 **Progress (28 September 2026).** Phase 0's age check, Phases 1, 2 and 3, and the platform track
 (the Android app and the web app) are built and tested in code, and Phase 4 is under way: privacy
 zones and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and
-moderation (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), and clubs (4.5) are
-built. The server is tested by 301 database and API tests, the app by 309 unit tests and browser
+moderation (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5) and
+challenges (4.6) are built. The server is tested by 310 database and API tests, the app by 314
+unit tests and browser
 walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
 matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
 Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
@@ -767,6 +768,19 @@ is where other people start seeing more than a name and a number.
 - How: challenges measure days and the capped weekly score, not raw mileage. Nike Run Club's
   distance challenges are topped by accounts logging 5,000 miles a month.
 - Done when: a challenge can't be won by one very long run or by splitting runs.
+- Built: League › Challenges. Two monthly challenges for everyone (run on 12 days; 750 points from
+  each week's best three days) and challenges a league's owner or a club's admins set for this
+  month or next (2 days up to every day of the month, or 100–1,500 points), three at a time per
+  group, with an optional name that passes the name filter. Runners join in one tap until the
+  last day; league members get a push about a new challenge, a club sees it on its page. Progress
+  uses the league board's day totals (accepted runs, the indoor cap, runs the server had by a day
+  after the end), each day capped at 125 points, and is worked out when it's read, so deleting a
+  run takes the badge back. A league's or club's challenge has a board (blocked runners unnamed);
+  the monthly ones show only your own progress. Each finished challenge is a badge on the Badges
+  screen, and none awards XP. Challenges can be reported: moderators can reset a challenge's name
+  or remove it, and owners and admins can remove one before it ends (recorded).
+  `tests/backend/challenges.test.ts` shows a marathon, and ten 1 km runs on one day, each counting
+  as one day and 125 points, behind three ordinary 4 km days.
 
 **4.7 Global and regional leaderboards** · M–L
 - What: weekly boards by tier (Seed to Elite) and by country, scored with the capped best-3-days
