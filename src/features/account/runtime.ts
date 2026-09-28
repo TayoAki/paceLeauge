@@ -14,6 +14,8 @@ import type { CreditedDays } from '@/features/recording/run-draft';
 import { countBucket, createTelemetry, durationBucket, type Telemetry } from '@/features/telemetry/telemetry';
 import { AppleHealthSync, deviceHealthKit, healthRunFrom } from '@/features/health/apple-health';
 import { deviceHealthReader, HealthImporter } from '@/features/health/health-import';
+import { IndoorRunService } from '@/features/indoor/indoor-run';
+import { devicePedometer } from '@/features/indoor/pedometer';
 import { deviceRunActivity, LiveActivityController } from '@/features/run-activity/live-activity';
 import { CueController } from '@/features/voice/cue-controller';
 import { RunSettingsStore } from '@/features/voice/run-settings';
@@ -38,6 +40,8 @@ export interface AccountRuntime {
   liveActivity: LiveActivityController;
   /** Brings in runs recorded elsewhere through Apple Health. */
   healthImport: HealthImporter;
+  /** Treadmill and indoor runs. */
+  indoor: IndoorRunService;
 }
 
 let current: AccountRuntime | null = null;
@@ -110,7 +114,9 @@ async function create(accountId: string): Promise<AccountRuntime> {
     enabled: () => runSettings.get().healthImport,
     ownBundleId: Application.applicationId,
   });
-  return { accountId, journal, recorder, telemetry, runSettings, cues, health, liveActivity, healthImport };
+  const indoor = new IndoorRunService({ kv: journal, journal, steps: devicePedometer(), newRunId: newId });
+  await indoor.restore();
+  return { accountId, journal, recorder, telemetry, runSettings, cues, health, liveActivity, healthImport, indoor };
 }
 
 export async function openAccountRuntime(accountId: string): Promise<AccountRuntime> {

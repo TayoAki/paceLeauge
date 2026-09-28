@@ -6,6 +6,7 @@ import type { PaceApi, StatsInput } from '@/api/pace-api';
 import type { ActivityType, EffortKey, HistoryPage, ServerRun } from '@/api/schemas';
 import type { JournalChange, SavedRun } from '@/db/journal';
 import { useAccount } from '@/features/account/account-provider';
+import type { IndoorSession } from '@/features/indoor/indoor-run';
 import { EMPTY_METRICS, type RecorderSnapshot } from '@/features/recording/types';
 import type { SyncStatus } from '@/features/sync/sync-engine';
 
@@ -162,6 +163,14 @@ export function useRecorder(): RecorderSnapshot {
   const { state } = useAccount();
   const recorder = state.status === 'ready' ? state.runtime.recorder : null;
   return useSyncExternalStore(recorder?.subscribe ?? noopSubscribe, recorder?.getSnapshot ?? (() => IDLE_SNAPSHOT));
+}
+
+/** The open treadmill or indoor run, if any. */
+export function useIndoorSession(): IndoorSession | null {
+  const { state } = useAccount();
+  const indoor = state.status === 'ready' ? state.runtime.indoor : null;
+  const subscribe = useCallback((listener: () => void) => indoor?.changes.subscribe(listener) ?? (() => undefined), [indoor]);
+  return useSyncExternalStore(subscribe, () => indoor?.current ?? null);
 }
 
 export function useSyncStatus(): SyncStatus | null {

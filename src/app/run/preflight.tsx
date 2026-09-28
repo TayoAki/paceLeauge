@@ -45,6 +45,11 @@ export default function PreflightScreen() {
   const [error, setError] = useState<string | null>(null);
   const now = useNow(1000);
 
+  // An open treadmill run comes first: finish or discard it before a GPS run.
+  useEffect(() => {
+    if (runtime.indoor.current) router.replace('/run/indoor');
+  }, [runtime, router]);
+
   const refresh = useCallback(async () => {
     const services = await Location.hasServicesEnabledAsync().catch(() => true);
     const fg = await Location.getForegroundPermissionsAsync();
@@ -222,6 +227,7 @@ export default function PreflightScreen() {
       footer={
         <>
           <PrimaryButton label={primary.label} onPress={primary.onPress} disabled={primary.disabled} size="large" testID="preflight-primary" />
+          <TextButton label="Treadmill or indoors instead" onPress={() => router.replace('/run/indoor')} testID="indoor-run" />
           <TextButton label="Not now" onPress={() => router.back()} />
         </>
       }>

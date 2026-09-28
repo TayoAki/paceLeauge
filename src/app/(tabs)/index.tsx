@@ -10,7 +10,7 @@ import { InlineStatus } from '@/components/ui/elements';
 import { Card, LargeHeader, Screen } from '@/components/ui/layout';
 import { ordinal } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
-import { useLeague, useLocalRuns, useMe, useRecorder, useRunHistory, useSyncStatus, useWeek } from '@/features/data/hooks';
+import { useIndoorSession, useLeague, useLocalRuns, useMe, useRecorder, useRunHistory, useSyncStatus, useWeek } from '@/features/data/hooks';
 import { pendingInvite } from '@/features/leagues/pending-invite';
 import { mergeRunViews } from '@/features/progress/run-views';
 import { useWeekGoalDays } from '@/features/progress/use-week-goal';
@@ -38,6 +38,7 @@ export default function TodayScreen() {
   const history = useRunHistory();
   const local = useLocalRuns();
   const { session } = useRecorder();
+  const indoor = useIndoorSession();
   const sync = useSyncStatus();
   const now = useNow(60_000);
   const days = useWeekGoalDays(week.data?.data, now);
@@ -105,6 +106,8 @@ export default function TodayScreen() {
 
       {session ? (
         <PrimaryButton label="Return to run" icon={Radio} size="large" onPress={() => router.push('/run/active')} />
+      ) : indoor ? (
+        <PrimaryButton label="Return to indoor run" icon={Radio} size="large" onPress={() => router.push('/run/indoor')} testID="return-indoor" />
       ) : (
         <View style={{ gap: space.sm }}>
           {runs.length === 0 && !history.isPending ? (

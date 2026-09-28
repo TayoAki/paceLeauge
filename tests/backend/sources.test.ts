@@ -73,6 +73,10 @@ describe('run sources', () => {
     // No XP, but three active days meet the goal.
     const streak = await db.rpc(runner, 'get_streak');
     expect(streak.this_week).toMatchObject({ active_days: 3, goal_days: 3, met: true });
+    // The week on Today shows the same three days.
+    const week = await db.rpc(runner, 'get_week_summary', { p_week_offset: 0 });
+    expect(week).toMatchObject({ active_days: 3, weekly_xp: 0 });
+    expect(week.days.filter((d: { active: boolean }) => d.active)).toHaveLength(3);
     expect((await db.rpc(runner, 'get_personal_records')).records.every((r: { best: unknown }) => r.best === null)).toBe(true);
   });
 

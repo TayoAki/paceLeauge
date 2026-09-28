@@ -6,6 +6,7 @@ import { steadyRun } from '@/domain/synthetic';
 import type { TrackPoint } from '@/domain/types';
 import { importActivityFile } from '@/features/files/file-import';
 import { HealthImporter, type HealthReaderPort, type HealthWorkout } from '@/features/health/health-import';
+import { IndoorRunService } from '@/features/indoor/indoor-run';
 import { RecorderService } from '@/features/recording/recorder-service';
 import type { LocationDriver } from '@/features/recording/types';
 import { serverRunOf, SyncEngine } from '@/features/sync/sync-engine';
@@ -137,7 +138,7 @@ describe('file import through sync', () => {
       .join('')}</trkseg></trk></gpx>`;
     const bytes = new TextEncoder().encode(gpx);
     const first = await importActivityFile(d.journal, { name: 'tempo.gpx', bytes });
-    expect(first.kind).toBe('imported');
+    if (first.kind !== 'imported') throw new Error(`expected an import, got ${first.kind}`);
     expect((await importActivityFile(d.journal, { name: 'tempo-copy.gpx', bytes })).kind).toBe('already_imported');
     await d.engine.run();
     const server = serverRunOf((await d.journal.getSavedRun(first.runId))!);
@@ -145,5 +146,35 @@ describe('file import through sync', () => {
     expect(server!.distance_m).toBeCloseTo(7_000, -2);
     expect((await d.api.getMe()).lifetime_xp).toBe(0);
     expect((await d.api.submitDiagnostics({ app_version: 'test' })).reportId).toEqual(expect.any(Number));
+  });
+});
+
+describe('indoor runs through sync', () => {
+  it('keeps a treadmill run as history with its steps, and counts it for the week', async () => {
+    const runner = await db.createRunner('Treadmill Tia');
+    const d = await device(runner, []);
+    const start = inCurrentWeek(4);
+    d.clock.wall = start;
+    const indoor = new IndoorRunService({
+      kv: d.journal,
+      journal: d.journal,
+      steps: { stepsBetween: async (from, to) => Math.round(((to - from) / 1000) * 2.8) },
+      newRunId: randomUUID,
+      now: () => d.clock.wall,
+    });
+    await indoor.start();
+    d.clock.wall = start + 1_000_000;
+    await indoor.pause();
+    d.clock.wall = start + 1_120_000;
+    await indoor.resume();
+    d.clock.wall = start + 1_920_000;
+    const runId = await indoor.finish(5_000);
+    d.clock.wall = Date.now();
+    expect(await d.engine.run()).toMatchObject({ pending: 0, needsAttention: 0 });
+
+    const server = serverRunOf((await d.journal.getSavedRun(runId))!);
+    expect(server).toMatchObject({ status: 'personal_only', reason_codes: ['indoor'], source: 'indoor', distance_m: 5000, active_ms: 1_800_000, steps: 5_040 });
+    expect((await d.api.getMe()).lifetime_xp).toBe(0);
+    expect((await d.api.getStreak()).this_week.active_days).toBe(1);
   });
 });
