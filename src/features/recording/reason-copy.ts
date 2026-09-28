@@ -16,7 +16,10 @@ const serverReasonCopy: Record<string, string> = {
   edited: 'This run was changed after it was saved, so it’s held for a quick review before it counts.',
   no_route: 'This workout came without a route, so it can’t be checked for the league. It still counts for your weekly goal and streak.',
   manual_entry: 'This run was typed in by hand, so it can’t earn league XP. It still counts for your weekly goal and streak.',
-  indoor: 'Indoor runs have no GPS to check, so they don’t earn league XP yet. They count for your weekly goal and streak.',
+  indoor:
+    'Indoor runs from your phone can’t be checked, so they don’t earn league XP. They count for your weekly goal and streak. Indoor runs recorded on a watch with heart rate can earn XP.',
+  indoor_unverified:
+    'This indoor run’s pace, steps and heart rate didn’t all look like running, so it can’t earn league XP. It still counts for your weekly goal and streak.',
   file_import: 'Imported files can be edited, so they’re kept as history. They count for your weekly goal and streak.',
 };
 

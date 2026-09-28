@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
-import { TIERS } from '@/domain/config';
+import { INDOOR_DAILY_CAP_KM, TIERS } from '@/domain/config';
 import { formatXp } from '@/domain/format';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
@@ -40,6 +40,21 @@ export default function RulesScreen() {
           '1 XP for every 100 m in a day, up to 100.',
           '+25 active-day bonus when a day has at least 1 km and 5 minutes.',
           'Runs on the same day add up, so the most a day can earn is 125 XP — splitting a run doesn’t earn more.',
+        ]}
+      />
+      <Section
+        title="Runs from your watch and other apps"
+        lines={[
+          'Runs from Apple Health, a watch or Garmin earn XP the same way when they come with a GPS route.',
+          'Workouts without a route, runs typed in by hand and imported files are kept as history. They count for your weekly goal and streak, not league XP.',
+          'If two devices record the same run, it counts once — we keep the copy with the better GPS record.',
+        ]}
+      />
+      <Section
+        title="Treadmill and indoor runs"
+        lines={[
+          `Indoor runs recorded on a watch earn XP when their pace, steps and heart rate all look like running. There’s no GPS to check them, so indoor distance earns XP for up to ${INDOOR_DAILY_CAP_KM} km a day (${INDOOR_DAILY_CAP_KM * 10} XP). The active-day bonus still applies.`,
+          'Indoor runs recorded on your phone, or with a typed-in distance, count for your weekly goal and streak but don’t earn league XP.',
         ]}
       />
       <Card>

@@ -73,6 +73,14 @@ async function create(accountId: string): Promise<AccountRuntime> {
         return healthRunFrom({ id: runId, activity: 'running', segments: run.segments, points: await journal.getRunPoints(runId) });
       })
       .catch(() => undefined);
+  // Treadmill runs estimate distance from steps; outdoor runs teach the runner's stride.
+  const indoor = new IndoorRunService({ kv: journal, journal, steps: devicePedometer(), newRunId: newId });
+  const calibrateStride = (runId: string) =>
+    void (async () => {
+      const run = await journal.getSavedRun(runId);
+      if (!run || run.deleted || run.origin || run.validation.outcome !== 'accepted') return;
+      await indoor.calibrateFromRun(run.distanceM, run.segments);
+    })().catch(() => undefined);
   const recorder = new RecorderService({
     journal,
     location: locationDriver,
@@ -88,6 +96,7 @@ async function create(accountId: string): Promise<AccountRuntime> {
     onEvent: (event) => {
       if (event.name === 'run_saved_local') {
         saveToHealth(event.runId);
+        calibrateStride(event.runId);
         telemetry.track('run_saved_local', {
           interrupted: event.interrupted,
           duration_bucket: durationBucket(event.activeMs),
@@ -114,7 +123,6 @@ async function create(accountId: string): Promise<AccountRuntime> {
     enabled: () => runSettings.get().healthImport,
     ownBundleId: Application.applicationId,
   });
-  const indoor = new IndoorRunService({ kv: journal, journal, steps: devicePedometer(), newRunId: newId });
   await indoor.restore();
   return { accountId, journal, recorder, telemetry, runSettings, cues, health, liveActivity, healthImport, indoor };
 }

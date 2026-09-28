@@ -266,6 +266,8 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
                 p_avg_heart_rate: input.origin.avgHeartRate ?? null,
                 p_max_heart_rate: input.origin.maxHeartRate ?? null,
                 p_steps: input.origin.steps ?? null,
+                // Sent only when set, so older servers still accept other imports.
+                ...(input.origin.indoor ? { p_indoor: true } : {}),
               }
             : {}),
         },

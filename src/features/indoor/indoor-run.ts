@@ -36,6 +36,16 @@ export const INDOOR_STRIDE_KEY = 'indoor:stride';
 export const DEFAULT_STRIDE_M = 1.05;
 const MIN_STRIDE_M = 0.5;
 const MAX_STRIDE_M = 2;
+/** How far one run moves the learned stride: a treadmill's reading is the same setting, so it counts more. */
+const TREADMILL_WEIGHT = 0.5;
+const OUTDOOR_WEIGHT = 0.3;
+/** Too few steps say little about a stride. */
+const MIN_LEARNING_STEPS = 200;
+const MIN_OUTDOOR_M = 1_000;
+
+function plausibleStride(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= MIN_STRIDE_M && value <= MAX_STRIDE_M;
+}
 
 export function activeMsOf(session: IndoorSession, now: EpochMs): number {
   const closed = session.segments.reduce((sum, s) => sum + (s.endAt - s.startAt), 0);
@@ -121,7 +131,34 @@ export class IndoorRunService {
 
   async stride(): Promise<number> {
     const saved = (await this.deps.kv.getKv<number>(INDOOR_STRIDE_KEY))?.value;
-    return typeof saved === 'number' && saved >= MIN_STRIDE_M && saved <= MAX_STRIDE_M ? saved : DEFAULT_STRIDE_M;
+    return plausibleStride(saved) ? saved : DEFAULT_STRIDE_M;
+  }
+
+  /** Moves the learned stride toward a measured one (the first measurement is taken as it is). */
+  private async learn(distanceM: number, steps: number | null, weight: number): Promise<number | null> {
+    if (steps === null || steps <= MIN_LEARNING_STEPS || distanceM <= 0) return null;
+    const measured = distanceM / steps;
+    if (!plausibleStride(measured)) return null;
+    const saved = (await this.deps.kv.getKv<number>(INDOOR_STRIDE_KEY))?.value;
+    const next = plausibleStride(saved) ? saved + (measured - saved) * weight : measured;
+    await this.deps.kv.setKv(INDOOR_STRIDE_KEY, next);
+    return next;
+  }
+
+  /**
+   * Calibrates the stride against an outdoor run: its GPS distance over the steps the phone counted
+   * while it was running.
+   */
+  async calibrateFromRun(distanceM: number, segments: readonly ActiveSegment[]): Promise<number | null> {
+    const source = this.deps.steps;
+    if (!source || distanceM < MIN_OUTDOOR_M || segments.length === 0) return null;
+    let steps = 0;
+    for (const s of segments) {
+      const n = await source.stepsBetween(s.startAt, s.endAt);
+      if (n === null) return null;
+      steps += n;
+    }
+    return this.learn(distanceM, steps, OUTDOOR_WEIGHT);
   }
 
   async estimateM(): Promise<number | null> {
@@ -131,17 +168,14 @@ export class IndoorRunService {
 
   /**
    * Saves the run with the distance the runner confirmed (the treadmill's reading, or the
-   * estimate). A correction teaches the stride for next time.
+   * estimate). A correction teaches the stride for next time, as outdoor runs do.
    */
   async finish(distanceM: number): Promise<string> {
     await this.pause();
     const s = this.session;
     if (!s || s.segments.length === 0) throw new Error('No indoor run to save.');
     const steps = await this.steps();
-    if (steps !== null && steps > 200 && distanceM > 0) {
-      const stride = distanceM / steps;
-      if (stride >= MIN_STRIDE_M && stride <= MAX_STRIDE_M) await this.deps.kv.setKv(INDOOR_STRIDE_KEY, stride);
-    }
+    await this.learn(distanceM, steps, TREADMILL_WEIGHT);
     const activeMs = activeMsOf(s, this.now());
     const endedAt = s.segments[s.segments.length - 1]!.endAt;
     const draft: SavedRunDraft = {

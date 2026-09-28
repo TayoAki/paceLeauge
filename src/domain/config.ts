@@ -72,7 +72,12 @@ export const SCORING_V1 = {
   maxWeeklyXp: 375,
   /** League weeks settle this long after they close. */
   settlementGraceMs: 24 * 60 * 60_000,
+  /** Indoor distance from a watch earns XP only up to this much a day (private.indoor_daily_cap_cm). */
+  indoorDailyCapCm: 500_000,
 } as const;
+
+/** The indoor cap in kilometres, for the rules page. */
+export const INDOOR_DAILY_CAP_KM = SCORING_V1.indoorDailyCapCm / 100_000;
 
 export const TIERS = [
   { name: 'Seed', minXp: 0 },

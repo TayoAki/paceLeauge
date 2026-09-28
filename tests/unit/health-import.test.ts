@@ -76,6 +76,16 @@ describe('Apple Health import mapping', () => {
     expect(points.map((p) => p.seq)).toEqual(points.map((_, i) => i));
   });
 
+  it('marks an indoor workout with its steps, so the server can judge it by heart rate and steps', () => {
+    const treadmill = importedRun(workout({ indoor: true, steps: 5_100, distanceM: 6_000 }), []);
+    expect(treadmill.origin).toMatchObject({ source: 'health_import', indoor: true, steps: 5_100, claimedDistanceM: 6_000, avgHeartRate: 152 });
+    expect(treadmill.draft.title).toMatch(/indoor run$/);
+    expect(treadmill.draft.distanceM).toBe(6_000);
+    // An outdoor workout is never marked indoor, and a workout with a route is judged by the route.
+    expect(importedRun(workout(), routeOf(T0, 5_000, 1_500)).origin.indoor).toBe(false);
+    expect(importedRun(workout({ indoor: true }), routeOf(T0, 5_000, 1_500)).origin.indoor).toBe(false);
+  });
+
   it('measures a routed workout from its route and a routeless one from Health’s distance', () => {
     const routed = importedRun(workout(), routeOf(T0, 5_000, 1_500));
     expect(routed.draft.distanceM).toBeCloseTo(5_000, -1);

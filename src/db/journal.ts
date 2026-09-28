@@ -59,6 +59,8 @@ export interface RunOrigin {
   avgHeartRate?: number | null;
   maxHeartRate?: number | null;
   steps?: number | null;
+  /** Recorded indoors (a treadmill): no GPS, so the server judges it by heart rate and steps. */
+  indoor?: boolean;
 }
 
 export interface SavedRun {

@@ -52,6 +52,7 @@ export const serverRunSchema = z.object({
   avg_heart_rate: z.number().nullable().optional(),
   max_heart_rate: z.number().nullable().optional(),
   steps: z.number().nullable().optional(),
+  indoor: z.boolean().optional(),
   duplicate_of: z.string().nullable().optional(),
 });
 export type ServerRun = z.infer<typeof serverRunSchema>;

@@ -104,6 +104,24 @@ describe('Indoor runs', () => {
     expect(await next.estimateM()).toBe(360);
   });
 
+  it('calibrates the stride against outdoor runs, and blends later measurements', async () => {
+    const { indoor } = await setup();
+    // 5 km outdoors in 25 minutes at 3 steps a second: 4,500 steps, a 1.11 m stride.
+    const segments = [
+      { index: 0, startAt: T0 - 3_600_000, endAt: T0 - 3_000_000 },
+      { index: 1, startAt: T0 - 2_900_000, endAt: T0 - 2_000_000 },
+    ];
+    expect(await indoor.calibrateFromRun(5_000, segments)).toBeCloseTo(5_000 / 4_500, 5);
+    // A second outdoor run moves it part of the way (30%) toward what it measured.
+    const next = await indoor.calibrateFromRun(6_000, segments);
+    expect(next).toBeCloseTo(5_000 / 4_500 + (6_000 / 4_500 - 5_000 / 4_500) * 0.3, 5);
+    expect(await indoor.stride()).toBeCloseTo(next!, 5);
+    // Short runs and runs without step counts teach nothing.
+    expect(await indoor.calibrateFromRun(800, segments)).toBeNull();
+    const { indoor: noSteps } = await setup(null);
+    expect(await noSteps.calibrateFromRun(5_000, segments)).toBeNull();
+  });
+
   it('ignores implausible strides and short runs when learning', async () => {
     const { clock, journal, indoor } = await setup();
     await indoor.start();

@@ -90,6 +90,19 @@ describe('Apple Health import through sync', () => {
     expect((await d.api.getMe()).lifetime_xp).toBe(77);
   });
 
+  it('credits an Apple Watch treadmill run up to the indoor cap', async () => {
+    const runner = await db.createRunner('Treadmill Theo');
+    // 7 km in 35 minutes at 170 steps a minute, with heart rate: it looks like running.
+    const treadmill: HealthWorkout = { ...watchWorkout('A1B2C3D4-0000-4000-8000-000000000004', inCurrentWeek(5), 7_000, 2_100, false), indoor: true, steps: 5_950, sourceName: 'Workout', sourceBundleId: 'com.apple.health.workout', deviceName: 'Apple Watch' };
+    const d = await device(runner, [treadmill]);
+    expect(await d.importer.importNew()).toBe(1);
+    const saved = await d.journal.getSavedRun(treadmill.uuid.toLowerCase());
+    expect(saved).toMatchObject({ title: expect.stringMatching(/indoor run$/), origin: { indoor: true, steps: 5_950 } });
+    expect(await d.engine.run()).toMatchObject({ pending: 0, needsAttention: 0 });
+    const server = serverRunOf((await d.journal.getSavedRun(treadmill.uuid.toLowerCase()))!);
+    expect(server).toMatchObject({ status: 'accepted', indoor: true, distance_m: 7000, xp_award: { total_xp: 75 } });
+  });
+
   it('counts a run once when the phone recorded it and Health brings in the watch copy', async () => {
     const runner = await db.createRunner('Both Devices');
     const start = inCurrentWeek(2);

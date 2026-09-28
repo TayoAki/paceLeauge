@@ -41,6 +41,10 @@ export interface HealthWorkout {
   externalUuid: string | null;
   avgHeartRate: number | null;
   maxHeartRate: number | null;
+  /** An indoor workout (a treadmill): no route, judged by heart rate and steps. */
+  indoor?: boolean;
+  /** Steps during the workout, when Health has them. */
+  steps?: number | null;
   readRoute(): Promise<RoutePoint[]>;
   /** Frees the native object (the library holds routes in memory until released). */
   release?(): void;
@@ -119,7 +123,12 @@ export function importedRun(workout: HealthWorkout, route: readonly RoutePoint[]
   const points = workoutPoints(segments, route);
   const validation = validateRun({ startedAt: workout.start, endedAt: workout.end, segments, points, receivedAt: null });
   const hasRoute = points.length > 1;
-  const title = workout.activity === 'run' ? defaultRunTitle(workout.start) : `${defaultRunTitle(workout.start)} ${ACTIVITY_WORD[workout.activity]}`;
+  const title =
+    workout.activity === 'run' && workout.indoor
+      ? `${defaultRunTitle(workout.start)} indoor run`
+      : workout.activity === 'run'
+        ? defaultRunTitle(workout.start)
+        : `${defaultRunTitle(workout.start)} ${ACTIVITY_WORD[workout.activity]}`;
   return {
     draft: {
       title,
@@ -149,6 +158,8 @@ export function importedRun(workout: HealthWorkout, route: readonly RoutePoint[]
       claimedDistanceM: workout.distanceM,
       avgHeartRate: workout.avgHeartRate,
       maxHeartRate: workout.maxHeartRate,
+      steps: workout.steps ?? null,
+      indoor: workout.indoor === true && !hasRoute,
     },
   };
 }
@@ -241,6 +252,8 @@ const READ_TYPES = [
   'HKQuantityTypeIdentifierHeartRate',
   'HKQuantityTypeIdentifierDistanceWalkingRunning',
   'HKQuantityTypeIdentifierDistanceCycling',
+  // Steps let an indoor run from the watch earn capped league credit (docs/ROADMAP.md 2.5).
+  'HKQuantityTypeIdentifierStepCount',
 ] as const;
 
 function metres(quantity: { unit: string; quantity: number } | undefined): number | null {
@@ -248,6 +261,20 @@ function metres(quantity: { unit: string; quantity: number } | undefined): numbe
   const factor: Record<string, number> = { m: 1, km: 1000, mi: 1609.344, ft: 0.3048, yd: 0.9144 };
   const f = factor[quantity.unit];
   return f ? quantity.quantity * f : null;
+}
+
+type WorkoutProxy = Awaited<ReturnType<HealthKitLibrary['queryWorkoutSamples']>>[number];
+
+/** Steps during a workout: the workout's own statistic, else the steps Health links to it. */
+async function workoutSteps(lib: HealthKitLibrary, w: WorkoutProxy): Promise<number | null> {
+  const own = await w.getStatistic('HKQuantityTypeIdentifierStepCount', 'count').catch(() => undefined);
+  const fromWorkout = own?.sumQuantity?.quantity;
+  if (typeof fromWorkout === 'number' && fromWorkout > 0) return Math.round(fromWorkout);
+  const linked = await lib
+    .queryStatisticsForQuantity('HKQuantityTypeIdentifierStepCount', ['cumulativeSum'], { filter: { workout: w }, unit: 'count' })
+    .catch(() => undefined);
+  const sum = linked?.sumQuantity?.quantity;
+  return typeof sum === 'number' && sum > 0 ? Math.round(sum) : null;
 }
 
 let readerPort: HealthReaderPort | null | undefined;
@@ -296,6 +323,9 @@ export function deviceHealthReader(): HealthReaderPort | null {
         }
         const metadata = (w.metadata ?? {}) as Record<string, unknown>;
         const heart = await w.getStatistic('HKQuantityTypeIdentifierHeartRate', 'count/min').catch(() => undefined);
+        const indoor = metadata.HKIndoorWorkout === true || metadata.HKIndoorWorkout === 1;
+        // Steps matter only indoors, where they stand in for the route.
+        const steps = indoor ? await workoutSteps(lib, w) : null;
         result.push({
           uuid: w.uuid,
           activity,
@@ -310,6 +340,8 @@ export function deviceHealthReader(): HealthReaderPort | null {
           externalUuid: typeof metadata.HKExternalUUID === 'string' ? metadata.HKExternalUUID : null,
           avgHeartRate: heart?.averageQuantity ? Math.round(heart.averageQuantity.quantity) : null,
           maxHeartRate: heart?.maximumQuantity ? Math.round(heart.maximumQuantity.quantity) : null,
+          indoor,
+          steps,
           readRoute: async () => {
             const routes = await w.getWorkoutRoutes();
             return routes.flatMap((r) =>
