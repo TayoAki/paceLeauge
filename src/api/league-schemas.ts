@@ -71,6 +71,7 @@ export type Rsvp = z.infer<typeof rsvpSchema>;
 export const groupRunSchema = z.object({
   id: z.string(),
   league_id: z.string().nullable(),
+  club_id: z.string().nullable().optional(),
   title: z.string(),
   starts_at_ms: z.number(),
   meeting_point: z.string(),

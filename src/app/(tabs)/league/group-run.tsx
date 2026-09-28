@@ -9,6 +9,7 @@ import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { ChoiceChips, InlineStatus, TextField } from '@/components/ui/elements';
 import { NavHeader, Screen } from '@/components/ui/layout';
 import { clockLabel, dayLabel, groupRunStart, pickerPosition, TIME_STEP_MINUTES } from '@/features/leagues/group-run-time';
+import type { GroupTarget } from '@/api/leagues-api';
 import { useGroupRuns, useLeagueActions } from '@/features/leagues/use-leagues';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
@@ -23,10 +24,11 @@ const PRESETS = [6 * 60, 7 * 60, 8 * 60, 17 * 60 + 30, 18 * 60 + 30];
  * an hour before.
  */
 export default function GroupRunScreen() {
-  const { leagueId, id } = useLocalSearchParams<{ leagueId: string; id?: string }>();
+  const { leagueId, clubId, id } = useLocalSearchParams<{ leagueId?: string; clubId?: string; id?: string }>();
   const router = useRouter();
   const uses24h = useCalendars()[0]?.uses24hourClock ?? false;
-  const existing = (useGroupRuns(leagueId ?? null).data?.data ?? []).find((r) => r.id === id) ?? null;
+  const target: GroupTarget | null = clubId ? { clubId } : leagueId ? { leagueId } : null;
+  const existing = (useGroupRuns(target).data?.data ?? []).find((r) => r.id === id) ?? null;
   const actions = useLeagueActions();
   const [now] = useState(() => Date.now());
   const initial = existing ? pickerPosition(now, existing.starts_at_ms) : null;
@@ -38,6 +40,8 @@ export default function GroupRunScreen() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   // Read here, not inside a handler: the compiler treats values a handler reads as render inputs.
   const existingId = existing?.id ?? null;
+  // Someone else's run (a club admin or the league's owner acting on it) is removed, not cancelled.
+  const removing = existing !== null && !existing.is_host;
   const startsAt = groupRunStart(now, day, minutes);
   const tooSoon = startsAt < now + 15 * 60_000;
   const ready = title.trim().length >= 3 && meeting.trim().length >= 3 && !tooSoon;
@@ -54,9 +58,9 @@ export default function GroupRunScreen() {
   }
 
   const save = async () => {
-    if (!leagueId || !ready) return;
+    if (!target || !ready) return;
     const input = { title: title.trim(), startsAtMs: startsAt, meetingPoint: meeting.trim(), notes: notes.trim() || null };
-    const saved = existingId ? await actions.updateGroupRun(existingId, input) : await actions.createGroupRun(leagueId, input);
+    const saved = existingId ? await actions.updateGroupRun(existingId, input) : await actions.createGroupRun(target, input);
     if (saved) router.back();
   };
 
@@ -69,7 +73,7 @@ export default function GroupRunScreen() {
       footer={<PrimaryButton label={existing ? 'Save changes' : 'Plan group run'} onPress={() => void save()} disabled={!ready} loading={actions.busy} testID="group-run-save" />}>
       <NavHeader title={existing ? 'Edit group run' : 'Plan a group run'} />
       <Text variant="body" tone="secondary">
-        Everyone in the league can see it and say if they’re coming. Whoever’s going gets a reminder an hour before.
+        Everyone in the {clubId ? 'club' : 'league'} can see it and say if they’re coming. Whoever’s going gets a reminder an hour before.
       </Text>
       <TextField label="What" value={title} onChangeText={setTitle} maxLength={60} placeholder="Saturday long run" testID="group-run-title" />
 
@@ -115,26 +119,26 @@ export default function GroupRunScreen() {
         onChangeText={setMeeting}
         maxLength={80}
         placeholder="Lakefront Trail at Fullerton"
-        hint="A place everyone can find. It’s shown only to your league."
+        hint={`A place everyone can find. It’s shown only to your ${clubId ? 'club' : 'league'}.`}
         testID="group-run-meeting"
       />
       <TextField label="Notes (optional)" value={notes} onChangeText={setNotes} maxLength={280} multiline placeholder="Easy pace, coffee after." style={styles.notes} />
       {actions.error ? <InlineStatus tone="danger" title={actions.error} /> : null}
 
-      {existing ? <DangerButton label="Cancel group run" icon={XCircle} onPress={() => setConfirmCancel(true)} /> : null}
+      {existing ? <DangerButton label={removing ? 'Remove group run' : 'Cancel group run'} icon={XCircle} onPress={() => setConfirmCancel(true)} /> : null}
       <ConfirmSheet
         visible={confirmCancel}
-        title="Cancel this group run?"
-        body="Everyone who said they’d come gets told."
-        confirmLabel="Cancel group run"
+        title={removing ? 'Remove this group run?' : 'Cancel this group run?'}
+        body={removing ? 'It’s taken down for everyone, and whoever said they’d come is told it’s off.' : 'Everyone who said they’d come gets told.'}
+        confirmLabel={removing ? 'Remove group run' : 'Cancel group run'}
         cancelLabel="Keep it"
         destructive
         busy={actions.busy}
         onConfirm={() => {
           if (!existingId) return;
-          void actions.cancelGroupRun(existingId).then((done) => {
+          void (removing ? actions.removeGroupRun(existingId) : actions.cancelGroupRun(existingId)).then((done) => {
             setConfirmCancel(false);
-            if (done) router.back();
+            if (done !== null) router.back();
           });
         }}
         onCancel={() => setConfirmCancel(false)}

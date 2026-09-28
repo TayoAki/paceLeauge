@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { CircleHelp, MessagesSquare, Newspaper, Plus, Settings2, Users } from 'lucide-react-native';
+import { CircleHelp, MessagesSquare, Newspaper, Plus, Settings2, Users, UsersRound } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Linking, RefreshControl, StyleSheet, View } from 'react-native';
 
@@ -23,11 +23,12 @@ import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 import { useNow } from '@/lib/use-now';
 
-/** The feed of runs from people you follow and your league (docs/ROADMAP.md 4.4). */
-function FeedRow({ onPress }: { onPress: () => void }) {
+/** The feed (docs/ROADMAP.md 4.4) and clubs (4.5). */
+function SocialRows({ onFeed, onClubs }: { onFeed: () => void; onClubs: () => void }) {
   return (
     <RowGroup>
-      <Row icon={Newspaper} label="Feed" hint="Runs your friends and league share, with kudos and comments" onPress={onPress} last testID="open-feed" />
+      <Row icon={Newspaper} label="Feed" hint="Runs your friends and league share, with kudos and comments" onPress={onFeed} testID="open-feed" />
+      <Row icon={UsersRound} label="Clubs" hint="Bigger groups with a weekly board and group runs" onPress={onClubs} last testID="open-clubs" />
     </RowGroup>
   );
 }
@@ -89,7 +90,7 @@ export default function LeagueScreen() {
       <Screen refreshControl={refresh}>
         <LargeHeader title="League" />
         {league.isError ? <InlineStatus tone="danger" title="Couldn’t load your league." body="Pull to try again." /> : null}
-        <FeedRow onPress={() => router.push('/feed')} />
+        <SocialRows onFeed={() => router.push('/feed')} onClubs={() => router.push('/league/clubs')} />
         <Card>
           <EmptyState icon={Users} title="A little friendly competition." body="Start a private league for your crew, or join one with an invite code. Your best three days each week count.">
             <PrimaryButton label="Create league" onPress={() => router.push('/league/create')} testID="create-league" />
@@ -151,7 +152,7 @@ export default function LeagueScreen() {
         />
       ) : null}
 
-      <FeedRow onPress={() => router.push('/feed')} />
+      <SocialRows onFeed={() => router.push('/feed')} onClubs={() => router.push('/league/clubs')} />
 
       <SegmentedControl
         label="Week"
@@ -214,7 +215,7 @@ export default function LeagueScreen() {
       {recap !== null && view.competition_enabled ? <RecapCard leagueId={leagueId} leagueName={view.league.name} weekOffset={recap} units={units} /> : null}
       <SeasonCard leagueId={leagueId} />
       <DuelsCard leagueId={leagueId} weekOffset={weekOffset} />
-      <GroupRunsCard leagueId={leagueId} now={now} />
+      <GroupRunsCard target={{ leagueId }} now={now} />
 
       {isOwner ? <PrimaryButton label="Invite friends" onPress={() => setInviteOpen(true)} testID="invite-friends" /> : null}
       <View style={styles.links}>

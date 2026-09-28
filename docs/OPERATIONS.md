@@ -566,8 +566,13 @@ reason and target in `private.moderation_actions`.
 | Runner | `dismiss`, `reset_alias` |
 | Run | `dismiss`, `hide_run` (only the runner sees it until they share it again; their data stays), `reset_alias` |
 | Comment | `dismiss`, `remove_comment`, `reset_alias` |
+| Club | `dismiss`, `reset_club` (a neutral name, no description; members stay), `close_club` |
+| Group run | `dismiss`, `remove_group_run`, `reset_alias` (its host) |
 
-Removing a comment or hiding a run closes every open report about it. What runners see:
+Removing a comment, hiding a run or taking down a club or group run closes every open report
+about it. Club owners and admins moderate their own clubs too: removing a member
+(`club_remove_member`) and removing someone else's group run (`group_run_removed`) are recorded
+in `private.moderation_actions` with the admin as the moderator. What runners see:
 
 - A runner who reports a run or a comment stops seeing it at once.
 - Three open reports from different runners hold a comment: only its author sees it until a

@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
 import { toApiError } from '@/api/errors';
+import type { GroupTarget } from '@/api/leagues-api';
 import type { PaceApi } from '@/api/pace-api';
 import { useAccount } from '@/features/account/account-provider';
 import { useCachedQuery } from '@/features/data/hooks';
@@ -16,8 +17,10 @@ export const useWeekRecap = (leagueId: string | null, weekOffset: 0 | -1, enable
     enabled: !!leagueId && enabled,
     staleTime: 60_000,
   });
-export const useGroupRuns = (leagueId: string | null) =>
-  useCachedQuery('group-runs', [leagueId ?? ''], (api) => api.listGroupRuns(leagueId ?? ''), { enabled: !!leagueId, staleTime: 15_000 });
+/** A league's or a club's group runs (docs/ROADMAP.md 4.1 and 4.5). */
+export const groupTargetKey = (target: GroupTarget | null) => (target === null ? '' : 'clubId' in target ? `club:${target.clubId}` : `league:${target.leagueId}`);
+export const useGroupRuns = (target: GroupTarget | null) =>
+  useCachedQuery('group-runs', [groupTargetKey(target)], (api) => api.listGroupRuns(target!), { enabled: target !== null, staleTime: 15_000 });
 
 export function describeLeagueError(error: unknown): string {
   const e = toApiError(error);
@@ -69,7 +72,8 @@ export function useLeagueActions() {
     respond: (duelId: string, accept: boolean) => run((a) => a.respondDuel(duelId, accept), ['duels']),
     cancelDuel: (duelId: string) => run((a) => a.cancelDuel(duelId), ['duels']),
     rsvp: (groupRunId: string, status: Parameters<PaceApi['rsvpGroupRun']>[1]) => run((a) => a.rsvpGroupRun(groupRunId, status), ['group-runs']),
-    createGroupRun: (leagueId: string, input: Parameters<PaceApi['createGroupRun']>[1]) => run((a) => a.createGroupRun(leagueId, input), ['group-runs']),
+    createGroupRun: (target: GroupTarget, input: Parameters<PaceApi['createGroupRun']>[1]) => run((a) => a.createGroupRun(target, input), ['group-runs']),
+    removeGroupRun: (groupRunId: string) => run((a) => a.removeGroupRun(groupRunId), ['group-runs']),
     updateGroupRun: (groupRunId: string, input: Parameters<PaceApi['updateGroupRun']>[1]) =>
       run((a) => a.updateGroupRun(groupRunId, input), ['group-runs']),
     cancelGroupRun: (groupRunId: string) => run((a) => a.cancelGroupRun(groupRunId), ['group-runs']),

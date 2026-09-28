@@ -39,7 +39,7 @@ export const commentsSchema = z.array(commentSchema);
 
 export const contentReportReasonSchema = z.enum(['harassment', 'offensive_content', 'spam', 'impersonation', 'cheating', 'private_info', 'offensive_name', 'other']);
 export type ContentReportReason = z.infer<typeof contentReportReasonSchema>;
-export type ReportKind = 'runner' | 'run' | 'comment';
+export type ReportKind = 'runner' | 'run' | 'comment' | 'club' | 'group_run';
 
 export const contentReportResultSchema = z.object({ report_id: z.string(), status: z.string(), due_at_ms: z.number() });
 export type ContentReportResult = z.infer<typeof contentReportResultSchema>;

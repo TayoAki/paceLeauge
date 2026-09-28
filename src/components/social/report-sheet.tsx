@@ -20,7 +20,9 @@ export interface ReportTarget {
   runId?: string;
 }
 
-const WHAT: Record<ReportKind, string> = { comment: 'comment', run: 'run', runner: 'runner' };
+const WHAT: Record<ReportKind, string> = { comment: 'comment', run: 'run', runner: 'runner', club: 'club', group_run: 'group run' };
+/** Reported runs and comments disappear for the reporter at once; the rest wait for a moderator. */
+const HIDES: ReportKind[] = ['run', 'comment'];
 
 /**
  * Report a runner, a run or a comment (docs/ROADMAP.md 4.4 and 4.9): a reason, never free text.
@@ -71,9 +73,9 @@ export function ReportSheet({ target, onClose, onBlocked }: { target: ReportTarg
       ) : (
         <>
           <Text variant="body" tone="secondary">
-            {target.kind === 'runner'
-              ? 'A moderator will look at it within 24 hours.'
-              : `You won’t see this ${WHAT[target.kind]} anymore. A moderator will look at it within 24 hours.`}
+            {HIDES.includes(target.kind)
+              ? `You won’t see this ${WHAT[target.kind]} anymore. A moderator will look at it within 24 hours.`
+              : 'A moderator will look at it within 24 hours.'}
             {env.supportEmail ? ` If someone is in danger, contact local emergency services, then email ${env.supportEmail}.` : ''}
           </Text>
           {owner && !blocked ? (

@@ -91,9 +91,9 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 **Progress (28 September 2026).** Phase 0's age check, Phases 1, 2 and 3, and the platform track
 (the Android app and the web app) are built and tested in code, and Phase 4 is under way: privacy
 zones and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and
-moderation (4.9), and Leagues 2.0 with seasons, duels and group runs (4.1) are built. The server
-is tested by 294 database and API tests, the app by 309 unit tests and browser walkthroughs of the
-new screens. What remains is on devices and with people: the Part C audio
+moderation (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), and clubs (4.5) are
+built. The server is tested by 301 database and API tests, the app by 309 unit tests and browser
+walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
 matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
 Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
 coach's review of plans and notes, the 30-runner pilot, counsel's review of health data, and the
@@ -750,6 +750,16 @@ is where other people start seeing more than a name and a number.
   existing moderation queue.
 - Done when: a club admin can remove a member and content, and the moderation queue shows club
   reports.
+- Built: clubs of up to 500 (League › Clubs), public (found by name, joined in one tap) or
+  invite-only (joined with a 14-day code), up to ten per runner; a club page with who runs it, a
+  weekly board scored like leagues (best three days, from when each member joined, members only,
+  blocked runners shown without a name), group runs with RSVPs (members see them on the page;
+  there's no push to hundreds of people, only reminders to those going) and the group-chat link.
+  The owner makes and removes admins and hands the club on; admins edit the description, invite,
+  remove members (who can't rejoin) and remove group runs, each recorded in
+  `private.moderation_actions`. Clubs and group runs can be reported, and moderators can reset a
+  club's name, close it or remove a group run. `tests/backend/clubs.test.ts` covers the admin
+  removals and club reports in the queue.
 
 **4.6 Challenges** · M
 - What: monthly challenges such as *run 12 days in October* or *best-3-days all month*, league

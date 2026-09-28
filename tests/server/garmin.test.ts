@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 
 import { loadConfig } from '../../server/src/config';
 import { activityRun, externalRunId, verifyTerraSignature, type TerraActivity, type TerraApi } from '../../server/src/garmin';
+import { competitionDate, startOfDay } from '@/domain/calendar';
 import { steadyRun } from '@/domain/synthetic';
 import type { TestUser } from '../backend/helpers/db';
 import { routelessRun, uploadRun } from '../backend/helpers/runs';
@@ -40,6 +41,13 @@ afterAll(async () => {
 });
 
 const hoursAgo = (h: number) => Date.now() - h * 3_600_000;
+
+/** `start`, or earlier so a run of `durationMs` ends on the competition day it starts. */
+function sameDayStart(start: number, durationMs: number): number {
+  const end = start + durationMs;
+  if (competitionDate(start) === competitionDate(end)) return start;
+  return startOfDay(competitionDate(end)) - durationMs - 60_000;
+}
 
 function sign(body: string, secret = SECRET, t = Math.floor(Date.now() / 1000)): string {
   return `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}`;
@@ -144,7 +152,8 @@ describe('Garmin activities', () => {
   it('uploads a Garmin run with its route, scores it once, and keeps it over the Apple Health copy', async () => {
     const runner = await linked('Garmin Gwen', 'terra-gwen');
     // Terra sends activities soon after the watch syncs; older ones would wait for review as late.
-    const start = hoursAgo(4);
+    // The run mustn't cross midnight in Chicago, or its XP is split over two days.
+    const start = sameDayStart(hoursAgo(4), 2_700_000);
     // Apple Health got the same workout first, without its route (Garmin doesn't share routes there).
     const health = await uploadRun(api.db, runner, routelessRun(start + 5_000, 8_000, 2_700), {
       extra: { p_source: 'health_import', p_external_id: 'HK-GARMIN-1', p_source_app: 'Garmin Connect', p_claimed_distance_m: 8_000 },

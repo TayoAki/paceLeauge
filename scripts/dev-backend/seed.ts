@@ -298,6 +298,31 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
   ]);
   if (jules && viewerMember.rows[0]) await rpc(pool, jules, 'challenge_duel', { p_member_id: viewerMember.rows[0].id });
 
+  // Clubs (docs/ROADMAP.md 4.5): Maya's public running club, with the viewer as an admin.
+  if (maya) {
+    const clubRow = await rpc<{ id: string }>(pool, maya, 'create_club', {
+      p_name: 'Lakefront Striders',
+      p_description: 'Easy miles on the lakefront, Tuesdays and Saturdays. Everyone welcome.',
+      p_visibility: 'public',
+    });
+    for (const claims of [viewer, ...friends.slice(1, 5).map((f) => f.claims)]) await rpc(pool, claims, 'join_club', { p_club_id: clubRow.id });
+    // Members for a few weeks, so this week's runs count on the board.
+    await pool.query('update private.club_members set joined_at = to_timestamp($2::bigint / 1000.0) where club_id = $1', [clubRow.id, joinedAt]);
+    const viewerInClub = await pool.query<{ id: string }>('select id from private.club_members where club_id = $1 and user_id = $2 and left_at is null', [
+      clubRow.id,
+      viewer.sub,
+    ]);
+    if (viewerInClub.rows[0]) await rpc(pool, maya, 'promote_club_admin', { p_club_id: clubRow.id, p_member_id: viewerInClub.rows[0].id });
+    let tuesday = weekStart + 1 * DAY_MS + 18 * 3_600_000;
+    while (tuesday < Date.now() + 3_600_000) tuesday += 7 * DAY_MS;
+    await rpc(pool, maya, 'create_group_run', {
+      p_title: 'Tuesday lakefront loop',
+      p_starts_at_ms: tuesday,
+      p_meeting_point: 'Diversey Harbor',
+      p_club_id: clubRow.id,
+    });
+  }
+
   console.log(
     `[seed] ${options.viewerEmail} ("${options.viewerAlias ?? 'Alex'}") owns "Friday Crew" with ${FRIENDS.length} friends and a family league; ${uploaded} runs uploaded${skipped ? `, ${skipped} future runs skipped` : ''}.`,
   );

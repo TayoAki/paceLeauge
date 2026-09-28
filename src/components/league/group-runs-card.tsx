@@ -4,6 +4,7 @@ import { CalendarPlus, MapPin, UsersRound } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
 import type { Rsvp } from '@/api/league-schemas';
+import type { GroupTarget } from '@/api/leagues-api';
 import { SecondaryButton, TextButton } from '@/components/ui/buttons';
 import { ChoiceChips, InlineStatus } from '@/components/ui/elements';
 import { Card } from '@/components/ui/layout';
@@ -25,12 +26,18 @@ function who(names: string[], count: number): string {
   return `${shown}${more > 0 ? ` and ${more} more` : ''} ${count === 1 ? 'is' : 'are'} going.`;
 }
 
-/** Group runs (docs/ROADMAP.md 4.1): a time, a meeting point and who's coming. */
-export function GroupRunsCard({ leagueId, now }: { leagueId: string; now: number }) {
+/** The group-run screen's params for a league or a club. */
+function targetParams(target: GroupTarget): { leagueId?: string; clubId?: string } {
+  return 'clubId' in target ? { clubId: target.clubId } : { leagueId: target.leagueId };
+}
+
+/** Group runs (docs/ROADMAP.md 4.1 and 4.5): a time, a meeting point and who's coming. */
+export function GroupRunsCard({ target, now, onReport }: { target: GroupTarget; now: number; onReport?: (groupRunId: string) => void }) {
   const router = useRouter();
   const uses24h = useCalendars()[0]?.uses24hourClock ?? false;
-  const runs = useGroupRuns(leagueId).data?.data ?? [];
+  const runs = useGroupRuns(target).data?.data ?? [];
   const actions = useLeagueActions();
+  const params = targetParams(target);
   return (
     <View style={styles.group}>
       <View style={styles.head}>
@@ -72,12 +79,15 @@ export function GroupRunsCard({ leagueId, now }: { leagueId: string; now: number
               disabled={actions.busy}
             />
           ) : null}
-          {run.can_edit && !run.cancelled ? (
-            <TextButton label="Edit or cancel" onPress={() => router.push({ pathname: '/league/group-run', params: { leagueId, id: run.id } })} />
-          ) : null}
+          <View style={styles.links}>
+            {run.can_edit && !run.cancelled ? (
+              <TextButton label={run.is_host ? 'Edit or cancel' : 'Edit or remove'} onPress={() => router.push({ pathname: '/league/group-run', params: { ...params, id: run.id } })} />
+            ) : null}
+            {!run.is_host && onReport ? <TextButton label="Report" onPress={() => onReport(run.id)} /> : null}
+          </View>
         </Card>
       ))}
-      <SecondaryButton label="Plan a group run" icon={CalendarPlus} onPress={() => router.push({ pathname: '/league/group-run', params: { leagueId } })} testID="plan-group-run" />
+      <SecondaryButton label="Plan a group run" icon={CalendarPlus} onPress={() => router.push({ pathname: '/league/group-run', params })} testID="plan-group-run" />
     </View>
   );
 }
@@ -87,5 +97,6 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   card: { gap: space.xs },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  links: { flexDirection: 'row', flexWrap: 'wrap', gap: space.lg },
   fill: { flex: 1 },
 });
