@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronRight, Play, Radio, Users } from 'lucide-react-native';
+import { ChevronRight, Play, Radio, Users, Watch } from 'lucide-react-native';
 import { useCallback, useMemo } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
@@ -8,10 +8,11 @@ import { RunRow, TierCard, WeeklyGoal } from '@/components/progress/progress-com
 import { PrimaryButton } from '@/components/ui/buttons';
 import { InlineStatus } from '@/components/ui/elements';
 import { Card, LargeHeader, Screen } from '@/components/ui/layout';
-import { ordinal } from '@/domain/format';
+import { formatDistance, formatDuration, ordinal } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
 import { useIndoorSession, useLeague, useLocalRuns, useMe, useRecorder, useRunHistory, useSyncStatus, useWeek } from '@/features/data/hooks';
 import { pendingInvite } from '@/features/leagues/pending-invite';
+import { useWatchWorkout } from '@/features/watch/use-watch';
 import { mergeRunViews } from '@/features/progress/run-views';
 import { useWeekGoalDays } from '@/features/progress/use-week-goal';
 import { Text } from '@/design/text';
@@ -39,6 +40,7 @@ export default function TodayScreen() {
   const local = useLocalRuns();
   const { session } = useRecorder();
   const indoor = useIndoorSession();
+  const watchRun = useWatchWorkout();
   const sync = useSyncStatus();
   const now = useNow(60_000);
   const days = useWeekGoalDays(week.data?.data, now);
@@ -104,6 +106,17 @@ export default function TodayScreen() {
       <TierCard lifetimeXp={me.data?.data.lifetime_xp ?? 0} />
       <WeeklyGoal days={days} goalDays={me.data?.data.profile?.goal_days ?? null} now={now} />
 
+      {watchRun ? (
+        <InlineStatus
+          icon={Watch}
+          title={watchRun.state === 'paused' ? 'Your Apple Watch run is paused.' : 'You’re running with your Apple Watch.'}
+          body={
+            watchRun.distance_m !== undefined && watchRun.elapsed_s !== undefined
+              ? `${formatDistance(watchRun.distance_m, units).value} ${formatDistance(watchRun.distance_m, units).unit} · ${formatDuration(watchRun.elapsed_s * 1000)}. It syncs here when you finish.`
+              : 'It syncs here when you finish.'
+          }
+        />
+      ) : null}
       {session ? (
         <PrimaryButton label="Return to run" icon={Radio} size="large" onPress={() => router.push('/run/active')} />
       ) : indoor ? (

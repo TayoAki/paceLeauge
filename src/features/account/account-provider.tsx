@@ -147,6 +147,28 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     };
   }, [runtime, engine, queryClient]);
 
+  // Runs from the PaceLeague Apple Watch app (docs/ROADMAP.md 2.2): saved as they arrive, and on
+  // open and on returning to the app, then synced like recorded runs.
+  useEffect(() => {
+    if (!runtime || !engine) return;
+    const inbox = runtime.watchRuns;
+    const pass = () => void inbox.drain().catch(() => 0);
+    const offReceived = inbox.received.subscribe(() => {
+      void engine.run();
+      void queryClient.invalidateQueries({ queryKey: [runtime.accountId] });
+    });
+    const stopWatching = inbox.watch();
+    pass();
+    const appState = AppState.addEventListener('change', (s) => {
+      if (s === 'active') pass();
+    });
+    return () => {
+      offReceived();
+      stopWatching?.();
+      appState.remove();
+    };
+  }, [runtime, engine, queryClient]);
+
   useEffect(() => {
     if (!engine || !accessToken) return;
     const network = Network.addNetworkStateListener((s) => {

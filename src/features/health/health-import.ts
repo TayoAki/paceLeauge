@@ -118,7 +118,13 @@ export function workoutPoints(segments: readonly ActiveSegment[], route: readonl
 const ACTIVITY_WORD: Record<ImportedActivity, string> = { run: 'run', walk: 'walk', hike: 'hike', ride: 'ride', other: 'workout' };
 
 /** The saved run and its origin for one Health workout. */
-export function importedRun(workout: HealthWorkout, route: readonly RoutePoint[]): { draft: SavedRunDraft; points: TrackPoint[]; origin: RunOrigin } {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+export function importedRun(
+  workout: HealthWorkout,
+  route: readonly RoutePoint[],
+  source: 'health_import' | 'watch' = 'health_import',
+): { draft: SavedRunDraft; points: TrackPoint[]; origin: RunOrigin } {
   const segments = workoutSegments(workout.start, workout.end, workout.pauses);
   const points = workoutPoints(segments, route);
   const validation = validateRun({ startedAt: workout.start, endedAt: workout.end, segments, points, receivedAt: null });
@@ -149,7 +155,7 @@ export function importedRun(workout: HealthWorkout, route: readonly RoutePoint[]
     },
     points,
     origin: {
-      source: 'health_import',
+      source,
       activityType: workout.activity,
       sourceApp: workout.sourceName,
       sourceDevice: workout.deviceName,
@@ -223,12 +229,18 @@ export class HealthImporter {
       try {
         if (workout.end > now) continue;
         newest = Math.max(newest ?? 0, workout.end);
-        const ours = (this.deps.ownBundleId && workout.sourceBundleId === this.deps.ownBundleId) || workout.externalUuid !== null;
-        if (ours) continue;
-        const runId = workout.uuid.toLowerCase();
+        const own = this.deps.ownBundleId;
+        // Runs this phone saved to Health (1.6) are already here.
+        if (own && workout.sourceBundleId === own) continue;
+        const external = workout.externalUuid && UUID.test(workout.externalUuid.toLowerCase()) ? workout.externalUuid.toLowerCase() : null;
+        if (external && (await journal.getSavedRun(external))) continue;
+        // The PaceLeague watch app (2.2) marks its workouts with the run's id, which its file
+        // transfer uses too, so the run is saved once whichever arrives first.
+        const fromWatch = !!own && workout.sourceBundleId === `${own}.watchkitapp`;
+        const runId = fromWatch && external ? external : workout.uuid.toLowerCase();
         if (await journal.getSavedRun(runId)) continue;
         const route = await workout.readRoute().catch(() => []);
-        const { draft, points, origin } = importedRun(workout, route);
+        const { draft, points, origin } = importedRun(workout, route, fromWatch ? 'watch' : 'health_import');
         const { created } = await journal.saveImportedRun(runId, draft, points, origin);
         if (created) imported += 1;
       } finally {

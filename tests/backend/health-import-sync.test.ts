@@ -7,6 +7,8 @@ import type { TrackPoint } from '@/domain/types';
 import { importActivityFile } from '@/features/files/file-import';
 import { HealthImporter, type HealthReaderPort, type HealthWorkout } from '@/features/health/health-import';
 import { IndoorRunService } from '@/features/indoor/indoor-run';
+import type { WatchLinkPort } from '@/features/watch/watch-link';
+import { WatchRunInbox } from '@/features/watch/watch-runs';
 import { RecorderService } from '@/features/recording/recorder-service';
 import type { LocationDriver } from '@/features/recording/types';
 import { serverRunOf, SyncEngine } from '@/features/sync/sync-engine';
@@ -15,7 +17,14 @@ import type { Clock } from '@/lib/clock';
 import { NodeSqliteDatabase } from '../support/node-sqlite';
 import { sqlTransport } from '../support/sql-transport';
 import { TestDb, type TestUser } from './helpers/db';
-import { inCurrentWeek } from './helpers/runs';
+import { currentWeekStartMs } from './helpers/runs';
+
+/**
+ * Runs here are uploaded by the real sync engine, so the server stamps them as received now: they
+ * must have ended in the past (a run "in the future" is a clock problem) and within 72 hours (or it
+ * waits for review as late). Times are counted back from now for that reason.
+ */
+const hoursAgo = (h: number) => Date.now() - h * 3_600_000;
 
 /**
  * Apple Health import end to end (docs/ROADMAP.md 2.1): the importer saves workouts to the journal,
@@ -76,8 +85,8 @@ async function device(user: TestUser, workouts: HealthWorkout[]) {
 describe('Apple Health import through sync', () => {
   it('scores an Apple Watch run like a phone run and keeps a Garmin workout as history', async () => {
     const runner = await db.createRunner('Import Ivy');
-    const watch = watchWorkout('A1B2C3D4-0000-4000-8000-000000000001', inCurrentWeek(0), 5_240, 1_888);
-    const garmin = watchWorkout('A1B2C3D4-0000-4000-8000-000000000002', inCurrentWeek(1), 8_000, 2_700, false);
+    const watch = watchWorkout('A1B2C3D4-0000-4000-8000-000000000001', hoursAgo(30), 5_240, 1_888);
+    const garmin = watchWorkout('A1B2C3D4-0000-4000-8000-000000000002', hoursAgo(26), 8_000, 2_700, false);
     const d = await device(runner, [watch, garmin]);
     expect(await d.importer.importNew()).toBe(2);
     const status = await d.engine.run();
@@ -93,7 +102,7 @@ describe('Apple Health import through sync', () => {
   it('credits an Apple Watch treadmill run up to the indoor cap', async () => {
     const runner = await db.createRunner('Treadmill Theo');
     // 7 km in 35 minutes at 170 steps a minute, with heart rate: it looks like running.
-    const treadmill: HealthWorkout = { ...watchWorkout('A1B2C3D4-0000-4000-8000-000000000004', inCurrentWeek(5), 7_000, 2_100, false), indoor: true, steps: 5_950, sourceName: 'Workout', sourceBundleId: 'com.apple.health.workout', deviceName: 'Apple Watch' };
+    const treadmill: HealthWorkout = { ...watchWorkout('A1B2C3D4-0000-4000-8000-000000000004', hoursAgo(40), 7_000, 2_100, false), indoor: true, steps: 5_950, sourceName: 'Workout', sourceBundleId: 'com.apple.health.workout', deviceName: 'Apple Watch' };
     const d = await device(runner, [treadmill]);
     expect(await d.importer.importNew()).toBe(1);
     const saved = await d.journal.getSavedRun(treadmill.uuid.toLowerCase());
@@ -105,7 +114,7 @@ describe('Apple Health import through sync', () => {
 
   it('counts a run once when the phone recorded it and Health brings in the watch copy', async () => {
     const runner = await db.createRunner('Both Devices');
-    const start = inCurrentWeek(2);
+    const start = hoursAgo(12);
     const d = await device(runner, []);
     // The phone recorded the run (with the signal dropping out for a minute every five) …
     const phonePoints = steadyRun(start, 6_000, 2_000).points.filter((_, i) => i % 300 < 200 || i % 300 >= 260);
@@ -144,7 +153,7 @@ describe('file import through sync', () => {
   it('keeps a GPX file as history, once however often it is imported', async () => {
     const runner = await db.createRunner('File Finn');
     const d = await device(runner, []);
-    const start = inCurrentWeek(3);
+    const start = hoursAgo(50);
     const pts = steadyRun(start, 7_000, 2_400).points.filter((_, i) => i % 5 === 0);
     const gpx = `<gpx creator="Old Watch"><trk><name>Tempo</name><type>running</type><trkseg>${pts
       .map((p) => `<trkpt lat="${p.lat}" lon="${p.lon}"><time>${new Date(p.t).toISOString()}</time></trkpt>`)
@@ -166,7 +175,7 @@ describe('indoor runs through sync', () => {
   it('keeps a treadmill run as history with its steps, and counts it for the week', async () => {
     const runner = await db.createRunner('Treadmill Tia');
     const d = await device(runner, []);
-    const start = inCurrentWeek(4);
+    const start = hoursAgo(3);
     d.clock.wall = start;
     const indoor = new IndoorRunService({
       kv: d.journal,
@@ -188,6 +197,57 @@ describe('indoor runs through sync', () => {
     const server = serverRunOf((await d.journal.getSavedRun(runId))!);
     expect(server).toMatchObject({ status: 'personal_only', reason_codes: ['indoor'], source: 'indoor', distance_m: 5000, active_ms: 1_800_000, steps: 5_040 });
     expect((await d.api.getMe()).lifetime_xp).toBe(0);
-    expect((await d.api.getStreak()).this_week.active_days).toBe(1);
+    // The day counts for the goal in whichever week it fell.
+    const week = await d.api.getWeekSummary(start >= currentWeekStartMs() ? 0 : -1);
+    expect(week.active_days).toBe(1);
   });
 });
+
+describe('Apple Watch app runs through sync', () => {
+  it('scores a run from the PaceLeague watch app once, however it reaches the phone', async () => {
+    const runner = await db.createRunner('Watch App Wu');
+    const start = hoursAgo(60);
+    const runId = randomUUID();
+    const route = steadyRun(start, 6_000, 2_000).points;
+    const file = {
+      version: 1,
+      run_id: runId,
+      started_at: start,
+      ended_at: start + 2_000_000,
+      segments: [[start, start + 2_000_000]],
+      points: route.map((p) => [p.t, p.lat, p.lon, p.accuracyM ?? 5]),
+      distance_m: 6_020,
+      indoor: false,
+      avg_heart_rate: 149,
+      max_heart_rate: 170,
+      steps: 5_600,
+      device: 'Watch7,1',
+    };
+    const pending = new Map([[`${runId}.json`, JSON.stringify(file)]]);
+    const link: WatchLinkPort = {
+      status: () => ({ supported: true, paired: true, installed: true, reachable: true }),
+      updateContext: () => true,
+      pendingRuns: () => [...pending.entries()].map(([name, json]) => ({ name, json })),
+      ackRun: (name) => void pending.delete(name),
+      onRun: () => () => undefined,
+      onWorkout: () => () => undefined,
+    };
+    // The watch also saved the workout to Apple Health, marked with the same run id.
+    const healthCopy: HealthWorkout = {
+      ...watchWorkout('A1B2C3D4-0000-4000-8000-000000000009', start, 6_020, 2_000),
+      sourceName: 'PaceLeague',
+      sourceBundleId: 'com.tayoaki.paceleague.watchkitapp',
+      externalUuid: runId.toUpperCase(),
+    };
+    const d = await device(runner, [healthCopy]);
+    const inbox = new WatchRunInbox({ journal: d.journal, link });
+    expect(await inbox.drain()).toBe(1);
+    expect(await d.importer.importNew()).toBe(0);
+    expect(await d.engine.run()).toMatchObject({ pending: 0, needsAttention: 0 });
+
+    const server = serverRunOf((await d.journal.getSavedRun(runId))!);
+    expect(server).toMatchObject({ status: 'accepted', source: 'watch', source_app: 'PaceLeague', avg_heart_rate: 149, xp_award: { total_xp: 85 } });
+    expect((await d.api.listMyRuns(null, 20)).runs.map((r) => r.id)).toEqual([server!.id]);
+  });
+});
+

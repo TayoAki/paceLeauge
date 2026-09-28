@@ -16,6 +16,8 @@ import { AppleHealthSync, deviceHealthKit, healthRunFrom } from '@/features/heal
 import { deviceHealthReader, HealthImporter } from '@/features/health/health-import';
 import { IndoorRunService } from '@/features/indoor/indoor-run';
 import { devicePedometer } from '@/features/indoor/pedometer';
+import { deviceWatchLink } from '@/features/watch/watch-link';
+import { WatchRunInbox } from '@/features/watch/watch-runs';
 import { deviceRunActivity, LiveActivityController } from '@/features/run-activity/live-activity';
 import { CueController } from '@/features/voice/cue-controller';
 import { RunSettingsStore } from '@/features/voice/run-settings';
@@ -42,6 +44,8 @@ export interface AccountRuntime {
   healthImport: HealthImporter;
   /** Treadmill and indoor runs. */
   indoor: IndoorRunService;
+  /** Runs from the PaceLeague Apple Watch app. */
+  watchRuns: WatchRunInbox;
 }
 
 let current: AccountRuntime | null = null;
@@ -124,7 +128,8 @@ async function create(accountId: string): Promise<AccountRuntime> {
     ownBundleId: Application.applicationId,
   });
   await indoor.restore();
-  return { accountId, journal, recorder, telemetry, runSettings, cues, health, liveActivity, healthImport, indoor };
+  const watchRuns = new WatchRunInbox({ journal, link: deviceWatchLink() });
+  return { accountId, journal, recorder, telemetry, runSettings, cues, health, liveActivity, healthImport, indoor, watchRuns };
 }
 
 export async function openAccountRuntime(accountId: string): Promise<AccountRuntime> {

@@ -115,11 +115,41 @@ describe('Apple Health importer', () => {
 
   it('never imports PaceLeague’s own workouts back, and does nothing while switched off', async () => {
     const ours = workout({ uuid: '6F1D2C3B-0000-4000-8000-00000000000B', sourceBundleId: 'com.tayoaki.paceleague' });
-    const exported = workout({ uuid: '6F1D2C3B-0000-4000-8000-00000000000C', externalUuid: 'run-1' });
-    const { importer } = await setup([ours, exported]);
+    const { importer } = await setup([ours]);
     expect(await importer.importNew()).toBe(0);
+    // A workout whose external id is a run already on this phone (saved without a bundle id).
+    const runId = '0b0b0b0b-0000-4000-8000-000000000001';
+    const exported = workout({ uuid: '6F1D2C3B-0000-4000-8000-00000000000C', sourceBundleId: null, externalUuid: runId.toUpperCase() });
+    const again = await setup([exported]);
+    await again.journal.saveImportedRun(runId, importedRun(workout(), []).draft, [], { source: 'indoor' });
+    expect(await again.importer.importNew()).toBe(0);
     const off = await setup([workout()], false);
     expect(await off.importer.importNew()).toBe(0);
+  });
+
+  it('imports other apps’ workouts even when they carry an external id', async () => {
+    const strava = workout({ uuid: '6F1D2C3B-0000-4000-8000-00000000000E', sourceBundleId: 'com.strava.stravaride', externalUuid: 'strava-123' });
+    const { importer, journal } = await setup([strava]);
+    expect(await importer.importNew()).toBe(1);
+    expect((await journal.getSavedRun(strava.uuid.toLowerCase()))?.origin).toMatchObject({ source: 'health_import' });
+  });
+
+  it('imports the PaceLeague watch app’s workouts under the watch’s run id, as watch runs', async () => {
+    const runId = '1c1c1c1c-0000-4000-8000-000000000002';
+    const fromWatch = workout({
+      uuid: '6F1D2C3B-0000-4000-8000-00000000000F',
+      sourceBundleId: 'com.tayoaki.paceleague.watchkitapp',
+      sourceName: 'PaceLeague',
+      externalUuid: runId.toUpperCase(),
+    });
+    const { importer, journal } = await setup([fromWatch]);
+    expect(await importer.importNew()).toBe(1);
+    expect(await journal.getSavedRun(fromWatch.uuid.toLowerCase())).toBeNull();
+    expect((await journal.getSavedRun(runId))?.origin).toMatchObject({ source: 'watch', sourceDevice: 'Apple Watch' });
+    // The watch's file transfer got there first: nothing more to do.
+    const second = await setup([fromWatch]);
+    await second.journal.saveImportedRun(runId, importedRun(fromWatch, []).draft, [], { source: 'watch' });
+    expect(await second.importer.importNew()).toBe(0);
   });
 
   it('runs one pass at a time', async () => {

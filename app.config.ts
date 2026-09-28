@@ -24,6 +24,13 @@ const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '605e184b-7dc5-4cf9-b0a6-87
  */
 const WITH_WIDGETS = process.env.PL_WIDGETS !== '0';
 const WITH_HEALTHKIT = process.env.PL_HEALTHKIT !== '0';
+/**
+ * Phase 2 (docs/ROADMAP.md 2.2): the Apple Watch app and its complication (targets/watch and
+ * targets/watch-complication). Off unless PL_WATCH=1 until it has been built and tested on devices.
+ */
+const WITH_WATCH = process.env.PL_WATCH === '1';
+/** Which folders under targets/ @bacons/apple-targets builds. */
+const TARGETS = [...(WITH_WIDGETS ? ['widgets'] : []), ...(WITH_WATCH ? ['watch', 'watch-complication'] : [])];
 /** Shared by the app and its widget extension (the widget derives the same name from its bundle id). */
 const APP_GROUP = `group.${BUNDLE_ID}`;
 
@@ -109,7 +116,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         isAccessMediaLocationEnabled: false,
       },
     ],
-    ...(WITH_WIDGETS ? ['@bacons/apple-targets'] : []),
+    ...(TARGETS.length > 0 ? [['@bacons/apple-targets', { match: TARGETS.length === 1 ? TARGETS[0] : `@(${TARGETS.join('|')})` }] as [string, unknown]] : []),
     ...(WITH_HEALTHKIT
       ? [
           [
