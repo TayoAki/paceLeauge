@@ -1,6 +1,7 @@
 # PaceLeague roadmap after V1
 
-Status: **draft for the founder's review**, 28 September 2026.
+Status: **draft for the founder's review**, 28 September 2026. The seven open questions were
+decided the same day; see [Decisions](#decisions-28-september-2026).
 Evidence: the gap analysis *PaceLeague vs the Field* (a private page; its data is summarized
 here). It compares 46 features across Runify, Strava, Runna, Nike Run Club and Garmin Connect and
 tags 2,112 US App Store reviews by theme. Review counts below are unique reviews raising a theme.
@@ -81,10 +82,10 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 |---|---|---|---|
 | 0 | Beta ready | Prove recording on real iPhones, support email, clear privacy copy, explain held runs | 1–2 weeks |
 | 1 | Better runs (V1.1) | Voice cues, live pace, auto-pause, personal records, fix a run, save to Apple Health, stats, badges, league cheers, run log, widgets | 14–20 weeks |
-| 2 | Every run counts | Apple Health import, PaceLeague Apple Watch app, Strava export, file import, treadmill, sync status | 14–22 weeks |
+| 2 | Every run counts | Apple Health import, PaceLeague Apple Watch app, Strava export, file import and Garmin sync, treadmill, sync status | 15–26 weeks |
 | 3 | Coach | Training plans, adaptive coaching, coach feedback, guided runs, health and training data, Pro | 18–28 weeks |
 | Platform track | Android, web | Android app from the start of Phase 2; web app lands with Phase 4 | 6–10 + 3–6 weeks |
-| 4 | Friends, family and everyone | Leagues 2.0, privacy zones, follow, feed, clubs, challenges, global leaderboards, live location, push | 20–30 weeks |
+| 4 | Friends, family and everyone | Leagues 2.0 with group runs, privacy zones, follow, feed, clubs, challenges, opt-in leaderboards, live location, push, teen family accounts | 23–36 weeks |
 | 5 | Maps | Route planning, offline maps and navigation, segments, heatmaps | 18–28 weeks |
 
 Sizes are rough engineer-weeks for one engineer working with Claude, before testing on devices.
@@ -110,14 +111,15 @@ at scale.
    Privacy zones exist before any map is shown to anyone else. Health data is never shown to
    other people.
 4. **The free core stays free.** The list in [Free and Pro](#free-and-pro) is published in the app,
-   and nothing on it moves behind Pro later. Strava gets 145 complaints for doing exactly that.
+   and nothing on it moves behind Pro later. Paywalls, upsells and billing are Strava's biggest
+   complaint theme (145 reviews).
 5. **Don't reshuffle screens.** New features arrive in the places listed under
    [Screens](#screens-where-new-features-go). Nothing is removed without a replacement.
 6. **Release safety.** Every update goes to TestFlight testers first, then out through the App
    Store's phased release. A phase ships only when the release before it has crash-free sessions
    of at least 99.5%, and runs sync without the runner doing anything at least 99.5% of the time.
-7. **Adults only** (18+) until a separate decision on teens. Family leagues mean adult family
-   members for now.
+7. **Adults only** (18+) through Phase 3, checked with Apple's age signal from Phase 0. From
+   Phase 4, 13–17 year olds can join family leagues only, with a parent's consent (4.10).
 
 ## Scope changes this plan makes
 
@@ -187,15 +189,10 @@ the phone, and duplicates. The plan avoids building any pairing of our own.
 | Coros, Polar, Suunto and others | Apple Health import when their app writes a route; otherwise personal history | Only with a route |
 | Android and Wear OS | Health Connect import (P.1), which provides routes with the runner's consent | Yes, with a route |
 
-**The Garmin decision (2.4).** Getting Garmin routes needs one of three things:
-
-- Garmin's business-only developer program. Third parties report that new sign-ups were paused in
-  2026, so this can't be relied on.
-- A paid data aggregator such as Terra or Spike.
-- A PaceLeague Connect IQ app on the Garmin that uploads over HTTPS through Garmin's phone app.
-
-Recommendation: apply to Garmin's program now; prototype the Connect IQ app if there's no answer
-in 8 weeks. Garmin runners get history and goal credit from day one either way.
+**Garmin (decided; see decision 1 under [Decisions](#decisions-28-september-2026)).** Garmin runs count for history and
+goals from day one through Apple Health. League credit comes through a data aggregator that
+already has Garmin access, switched on once enough runners use Garmin (2.4). Later it moves to
+Garmin's own API when that reopens to new developers. There is no Connect IQ app.
 
 **Failure tests before Phase 2 ships.** Airplane mode for the whole run. Phone left at home. Watch
 battery dies mid-run. App force-quit on either device. Phone restarted before sync. Watch and phone
@@ -224,9 +221,9 @@ move sessions freely.
    review: small weekly increases, a lighter week every third or fourth week, no more than two
    hard sessions a week, a hard day never followed by another, and run/walk intervals for new
    runners. When a runner's edit breaks a rule, the app warns rather than blocks.
-4. **Paces as ranges.** Pace ranges come from recent best efforts (1.4). Runners can train by
-   effort or heart rate instead of pace. In hot weather the day's range slows down, using the
-   forecast from Apple WeatherKit.
+4. **Paces as ranges.** Pace ranges come from recent best efforts (1.4), and runners can train
+   by effort instead of pace. With Pro, they can train by heart rate, and in hot weather the
+   day's range slows down using the forecast from Apple WeatherKit (decision 4).
 5. **It listens.** After each session, one tap: *easy*, *about right*, *hard* or *too hard*,
    plus an optional pain flag.
    - Two *too hard* answers in a week lighten the next week.
@@ -314,6 +311,9 @@ From the gap analysis, before inviting testers:
 - **Say where routes go**: one line in onboarding and on the App Store page. Only you see your route.
 - **Explain held runs**: when the validator holds a run for review, say why and how to ask for
   another look.
+- **Check age at sign-up**: use Apple's Declared Age Range API and turn away under-18 accounts,
+  alongside the existing adult self-declaration. Texas has required age assurance for new Apple
+  accounts since 1 January 2026 (decision 3).
 
 ## Phase 1: better runs (V1.1)
 
@@ -373,12 +373,17 @@ From the gap analysis, before inviting testers:
 - Done when: totals match the run log exactly for any range.
 
 **1.8 Badges and achievements** · M
-- What: milestones (first run; 10, 50 and 100 runs), distance totals, tier-ups, personal records,
-  league wins, and weeks in a row meeting your weekly goal. The last is the consistency reward;
-  rest days never break it. Daily streaks stay undecided (see [open decisions](#open-decisions)).
+- What: milestones (first run; 10, 50 and 100 runs), distance totals, tier-ups, personal records
+  and league wins. Plus a **weekly streak**: weeks in a row meeting your weekly goal, or running at
+  least once if you haven't set one. There are no daily streaks (decision 2), so rest days never
+  break anything.
 - How: a badge table and rules evaluated when scoring is applied, so badges reverse if a run is
   deleted. Badges never award XP.
-- Done when: every badge rule has a test, and deleting the run that earned a badge removes it.
+  - The streak counts by each run's start date, so a late sync or import never breaks it.
+  - Pausing a plan for illness or travel freezes it.
+  - No "you're about to lose your streak" notifications (REQ-012).
+- Done when: every badge rule has a test, deleting the run that earned a badge removes it, and a
+  run synced days late still extends the streak for the week it was run.
 
 **1.9 League cheers** · S
 - What: tap to cheer a league-mate's day or week. A notification-light version of kudos inside
@@ -448,13 +453,17 @@ TestFlight, and the new features are in the data export.
   Strava's agreement forbids showing a runner's Strava data to others.
 - Done when: a run appears in Strava once, and disconnecting stops further posts.
 
-**2.4 File import and the Garmin path** · M, plus Connect IQ if chosen (L)
-- What: import GPX, FIT or TCX files from the share sheet. Imported files are personal history,
-  because a file can be edited and so can't be trusted for the league. For Garmin league credit,
-  follow the decision in Part A.
-- How: file parsing on the server, the same run pipeline, and `source` of `file_import`
-  (history only).
-- Done when: a FIT file from a Garmin shows its route and splits in the log.
+**2.4 File import and Garmin sync** · M, plus M for the aggregator
+- What: import GPX, FIT or TCX files from the share sheet as personal history. A file can be
+  edited, so it can't be trusted for the league. Garmin gets automatic sync with routes through a
+  data aggregator once the trigger in decision 1 is met.
+- How:
+  - Files: parsed on the server, with `source` of `file_import` (history only).
+  - Garmin: activities arrive by webhook from the aggregator with `source` of `garmin` and go
+    through the validator using their GPS samples.
+  - The Apple Health copy of the same Garmin workout is detected as a duplicate (Part A).
+- Done when: a FIT file shows its route and splits in the log, and a Garmin run synced through
+  the aggregator scores once, even though Apple Health has it too.
 
 **2.5 Treadmill and indoor runs** · M
 - What: record indoor runs. Distance comes from the phone's step counter, calibrated against the
@@ -514,7 +523,7 @@ least 20 Apple Watch users and at least 5 Garmin users.
   Apple Music.
 
 **3.5 Health and training data** · L
-- What: heart-rate zones per run, and trends in:
+- What: heart-rate zones per run (free), and these trends (Pro, decision 4):
   - Resting heart rate, heart rate variability, VO2 max (Apple's estimate) and sleep, from
     Apple Health.
   - Training load, and a fitness and fatigue chart (7-day against 42-day load).
@@ -529,12 +538,13 @@ least 20 Apple Watch users and at least 5 Garmin users.
 - Done when: counsel signs off, and each metric has a written definition in the app.
 
 **3.6 Pro subscription** · M
-- What: the Pro tier in [Free and Pro](#free-and-pro) at the planned $29.99 a year
-  (REQ-013).
-- How: App Store subscriptions through RevenueCat, as the packet planned, with a clear free list,
-  a reminder before a trial converts, and a *Manage subscription* link. Account deletion never
-  requires cancelling first (REQ-010).
-- Done when: purchase, restore, expiry, refund and deletion are tested in the sandbox.
+- What: the Pro tier in [Free and Pro](#free-and-pro): $29.99 a year or $4.99 a month (REQ-013).
+- How: App Store subscriptions through RevenueCat, as the packet planned.
+  - A 7-day free trial on the annual plan only, and a reminder two days before it converts.
+  - A *Manage subscription* link in Profile.
+  - Account deletion never requires cancelling first (REQ-010).
+- Done when: purchase, restore, expiry, refund, trial reminder and deletion are tested in the
+  sandbox.
 
 ## Platform track
 
@@ -565,8 +575,11 @@ is where other people start seeing more than a name and a number.
 
 **4.1 Leagues 2.0** · L
 - What: up to five leagues per runner (family, friends, work), four-week seasons with a champion,
-  one-on-one weekly duels, a Sunday recap of the week, and a family-league template (adults for
-  now).
+  one-on-one weekly duels, a Sunday recap of the week, and a family-league template. Teens can
+  join family leagues under 4.10.
+  - **Group runs**: a league event with a time, a meeting point and RSVPs.
+  - **Group-chat link**: the owner can add the crew's existing WhatsApp, iMessage or Discord
+    link, visible only to members. There is no in-app chat (decision 6).
 - How: lift the one-league-per-runner rule (D-008). Standings stay capped best-3-days everywhere.
 - Done when: the existing league tests pass per league, and seasons settle correctly across
   daylight-saving changes.
@@ -589,7 +602,8 @@ is where other people start seeing more than a name and a number.
 
 **4.4 Feed with kudos and comments** · L
 - What: runs from people you follow and your leagues. Posts are stats-only cards unless the
-  runner shares the map. Kudos and comments.
+  runner shares the map. Kudos, and comments with replies (Strava reviewers ask to reply to
+  comments). No direct messages (decision 6).
 - How:
   - Pull-based feed queries; this scale doesn't need fan-out.
   - Comments pass the blocked-terms filter and a rate limit, and can be reported.
@@ -597,8 +611,9 @@ is where other people start seeing more than a name and a number.
 - Done when: reporting, blocking and deleting all remove content everywhere it appears.
 
 **4.5 Clubs** · L
-- What: larger groups (up to a few hundred) with a club page, a weekly club board and
-  events. Clubs can be public or invite-only.
+- What: larger groups (up to a few hundred) with a club page, a weekly club board, group runs
+  with RSVPs and a group-chat link. Clubs can be public or invite-only. No in-app chat
+  (decision 6).
 - How: club roles (owner, admins), moderation tools for admins, and reports that reach the
   existing moderation queue.
 - Done when: a club admin can remove a member and content, and the moderation queue shows club
@@ -615,7 +630,11 @@ is where other people start seeing more than a name and a number.
 - What: weekly boards by tier (Seed to Elite) and by country, scored with the capped best-3-days
   XP.
 - How:
-  - Only accepted runs count, and visibility is opt-in.
+  - Opt-in (decision 7). Runners are invited at natural moments, such as after their first
+    full league week or when they win their league, and join with one tap.
+  - Boards show the runner's name, tier and weekly score, never a route. Runners can leave at
+    any time.
+  - Only accepted runs count.
   - Results are provisional until a review window after the week closes. The top of each board
     gets extra automated checks.
   - Runners can report a result.
@@ -639,6 +658,22 @@ is where other people start seeing more than a name and a number.
   tables are extended to comments, clubs and challenges.
 - Done when: every notification type can be switched off, and a report is acted on within the
   response target in a drill.
+
+**4.10 Teen accounts in family leagues** · L
+- What: 13–17 year olds can join a family league created by an adult, with a parent's consent
+  (decision 3).
+- How:
+  - Age from Apple's Declared Age Range API. Parent consent through Apple's tools, with
+    Significant Change requests when features change.
+  - Teens see only their family leagues:
+    - No follows from outside the family.
+    - No feed, comments, clubs, global leaderboards or public sharing.
+    - Live location only to family members.
+    - No health data under 16.
+  - The adult who created the league sees the teen's league activity and can remove them.
+  - Counsel reviews state age laws (Texas, Utah and others) before launch.
+- Done when: a teen account can't reach any feature outside its family league, tested
+  through the API as well as the screens.
 
 ## Phase 5: maps
 
@@ -681,25 +716,47 @@ is where other people start seeing more than a name and a number.
 
 ## Free and Pro
 
-**Free, forever:**
-- Recording (phone and watch), imports and export, voice cues and auto-pause.
-- The run log, personal records, basic stats and badges.
-- Leagues, cheers, follows, the feed, clubs, challenges and leaderboards.
-- Training plans with editing and basic adjustments, and starter guided runs.
-- Live location sharing and every privacy and safety setting.
+Decided 28 September 2026 (decision 4).
 
-**Pro** ($29.99 a year planned):
-- Advanced plan adaptation: heat, heart rate and check-in-driven load changes.
+**Free, forever**
+- Recording on phone and watch, imports, export, voice cues, auto-pause and live pace.
+- The complete run log, personal records, and weekly, monthly and yearly stats with
+  comparisons.
+- Heart-rate zones per run, badges and weekly streaks.
+- Leagues, cheers, group runs, follows, the feed, clubs, challenges and leaderboards.
+- Training plans for every distance, with full editing, check-ins, illness pauses and
+  adjustments after *too hard* feedback.
+- A starter set of guided runs.
+- Live location sharing, and every privacy and safety setting.
+
+**Pro: $29.99 a year or $4.99 a month** (7-day trial on the annual plan)
 - The full guided-run library.
-- Health and training analytics.
-- Offline maps and navigation, and advanced route planning.
+- Plan adjustments for heat and heart rate.
+- Training analytics: training load, fitness and fatigue, race predictions, aerobic efficiency,
+  health trends and year-over-year comparisons.
+- Offline maps, navigation and route planning.
 - Extra share-card styles.
 
 **Never paid:** anything that changes XP or rank, safety features, data export and account
 deletion.
 
-This split is a recommendation for the founder to confirm. Advanced adaptation is the choice
-most likely to draw complaints: Runna's price is its biggest complaint (50 reviews).
+## Content budget
+
+Decided 28 September 2026 (decision 5): plan on about **$30,000**, mostly in Phase 3.
+
+| Item | Phase | Assumptions | Estimate |
+|---|---|---|---|
+| Voice-cue clips | 1 | Two voices, about 1,500 words each (numbers, units, phrases), full buyout for in-app use, editing | $1,000–2,000 |
+| Running coach | 3 | 7 plan types at 3 levels, progression rules, post-run notes, 16 guided-run scripts, pilot review: about 160 hours at $75–125 an hour, rights assigned to PaceLeague | $12,000–20,000 |
+| Guided-run recording | 3 | 16 runs with about 10 minutes of speech each, at $30–55 per finished minute (e-learning rates), plus editing and mastering | $6,000–12,000 |
+| Navigation cue clips | 5 | One session for turn and off-route phrases | $500–1,000 |
+| **Total** | | | **$19,500–35,000** |
+
+Rates: coaches charge $50–120 an hour for private sessions in 2026 (specialists more); product
+and rights work is assumed at $75–125. Voice-over rates from Voice Crafters' 2026 guide:
+e-learning $0.20–0.35 a word or $30–55 per finished minute; phone-prompt work $0.08–0.25 a word,
+with a $100–200 minimum. If the coach records the guided runs, as Nike's coaches do, the
+recording line shrinks to studio time and editing.
 
 ## Measures
 
@@ -708,6 +765,7 @@ most likely to draw complaints: Runna's price is its biggest complaint (50 revie
 | All | Confirmed lost runs | 0 |
 | All | Crash-free sessions | ≥ 99.5% |
 | 1 | Music back to full volume after a cue (test matrix) | 100% |
+| 1 | Weekly streaks broken by a late sync or import | 0 |
 | 2 | Runs synced without the runner doing anything | ≥ 99.5% |
 | 2 | Median time from watch finish to synced (phone nearby) | < 60 s |
 | 3 | Sessions rated *too hard* | < 15% |
@@ -724,23 +782,148 @@ most likely to draw complaints: Runna's price is its biggest complaint (50 revie
 | Moderation load from comments and clubs | Blocked terms, rate limits, reports, club admins, a staff tool and response targets before the feed ships |
 | Health-data rules | Counsel review before 3.5; consent screens; no ads; data minimization |
 | Content costs (coach, voice talent) | Budget per phase; starter library first |
-| Garmin access | The three routes in Part A; Garmin runners get history and goals meanwhile |
+| Garmin access and cost | Aggregator switched on by a user-count trigger, Garmin's own API when it reopens; Garmin runners get history and goals meanwhile. Confirm the aggregator's terms allow league scoring |
+| Minors and state age laws | Adults only until Phase 4; Apple's age check from Phase 0; teen accounts limited to family leagues; counsel review before 4.10 |
 | Apple review: background audio, HealthKit wording, user-generated content | Use each capability only for its stated purpose, write the permission text carefully, add a review note per release |
 | Battery (watch app, live location) | Measure on real devices; published targets per feature |
 | Map and routing costs | Price check before Phase 5; features limited to the screens that need them |
 
-## Open decisions
+## Decisions (28 September 2026)
 
-1. **Garmin route access:** Garmin's program, an aggregator, or a Connect IQ app (Part A).
-2. **Daily streaks:** keep only weekly-goal streaks (1.8), or add daily streaks too? The
-   reviews are thin: 8 of 2,112 mention streaks.
-3. **Teens in family leagues:** stays 18+ unless a separate safety and consent review says
-   otherwise.
-4. **Free and Pro split:** confirm the table above.
-5. **Coach and voice budget** for plans and guided runs.
-6. **Chat:** runners ask for run groups with chat. League or club chat adds moderation load;
-   decide in Phase 4.
-7. **Leaderboard visibility:** opt-in (recommended) or opt-out.
+The founder asked for the best answer to each open question, based on the market and on what
+runners ask for in the reviews. Each decision cites both.
+
+### 1. Garmin: automatic sync through a data aggregator, then Garmin's own API
+
+**Decision.** Garmin runs count for history and goals from day one through Apple Health. For
+league credit, connect Garmin through a data aggregator that already has Garmin access, such as
+Terra or Spike. Switch it on when about 50 active runners, or 15% of weekly active runners, use
+Garmin. Move to Garmin's own developer program when it reopens. No Connect IQ app.
+
+**Why.**
+- Every rival syncs Garmin automatically: Strava, Runna, Nike Run Club and Runify all connect to a
+  Garmin account. A Connect IQ app would make Garmin owners start every run from our app instead
+  of Garmin's own run mode, which no rival asks of them.
+- Sync friction is the top complaint in the reviews (463). Two of Runify's 22 reviews say runs
+  from a connected watch or Garmin never arrived.
+- Garmin stopped reviewing new developer applications in spring 2026 for a redesign and has given
+  no reopening date. Existing partners, including aggregators, keep working.
+- Apple Health can't carry league credit, because Garmin sends workouts there without the route.
+
+**Cost and checks.**
+- Terra starts at $399 a month billed annually. That includes 100,000 credits, and each connected
+  runner uses 200 a month, so about 500 runners. Spike prices per active user; get a quote.
+- Before signing, confirm the feed includes GPS samples.
+- Also confirm its terms allow using a runner's activities in scores their league-mates see.
+  Strava's terms, for comparison, do not.
+
+### 2. Streaks: weekly, not daily
+
+**Decision.** No daily streaks. A weekly streak counts the weeks in a row a runner meets their
+weekly goal, or runs at least once if they haven't set one (1.8).
+
+**Why.**
+- Strava's free streak is weekly (one activity a week), and Runna has none. Runify shows streaks
+  without saying whether they're daily. Otherwise, daily streaks appear only as Garmin step
+  streaks and Nike Run Club's run-day achievements.
+- Runners barely mention streaks: 8 of 2,112 reviews. Three like them, four are angry that a bug
+  or a failed sync broke theirs, and one dislikes the pressure.
+- A daily streak pushes people to skip rest days. That works against plans that fit the runner
+  (Part B) and against PaceLeague's rule that rest days never cost you.
+
+**Guardrails.**
+- The streak counts by each run's start date, so a late sync or import never breaks it.
+- Pausing a plan for illness or travel freezes it.
+- There are no "you're about to lose your streak" notifications (REQ-012).
+
+### 3. Teens: adults only until Phase 4, then family leagues only
+
+**Decision.** 18+ for the beta and Phases 1–3. In Phase 4, 13–17 year olds can join only a family
+league an adult creates, with a parent's consent and restricted features (4.10).
+
+**Why.**
+- The market is split. Strava and Nike accept 13+ with extra protections. Strava tightens privacy
+  defaults for under-18s and holds back heart-rate data under 16. Runna is 18+.
+- The demand is real: Runify's happiest reviewers describe whole families competing, and a Nike
+  Run Club reviewer mentions being 16.
+- The rules are tightening. Texas now requires age assurance, and a parent's consent for minors,
+  for apps downloaded on new Texas Apple accounts. Apple supports this with its Declared Age Range
+  and Significant Change APIs, and Utah and other states have passed similar laws.
+- Teens need the Phase 4 safety work first: privacy zones, blocking and moderation at scale.
+
+**Also now (Phase 0).** Check Apple's age range at sign-up and turn away under-18 accounts,
+alongside the existing adult self-declaration.
+
+### 4. Free and Pro: a generous free tier, $29.99 a year
+
+**Decision.** Pro costs $29.99 a year or $4.99 a month, with a 7-day free trial on the annual
+plan only. A reminder comes two days before the trial converts, along with a cancel link. The
+tiers are listed in [Free and Pro](#free-and-pro).
+
+**Why.**
+- Paywalls are the fourth-biggest complaint (220 reviews). Strava accounts for 145 of them:
+  once-free features moved behind the paywall, constant upgrade prompts and billing problems.
+  Among those, 45 complain about trials that roll into yearly charges, hidden cancellation or hard
+  account deletion.
+- The *keep the basics free* requests name best efforts, progress and leaderboards. A Garmin
+  reviewer objects to paying for heart-rate zones that rivals include as standard. Nike Run Club's free plans are loved (100
+  reviews), while Runna's price is its top complaint (50).
+- Market prices: Runify $39.99 a year ($4.99 a month), Garmin Connect+ $69.99, Strava $79.99 and
+  Runna $119.99. Nike Run Club is free. At $29.99, PaceLeague is the cheapest paid tier.
+- Pro holds what costs money to run or goes beyond the basics:
+  - The full guided-run library (voice talent).
+  - Advanced training analytics.
+  - Weather and heart-rate plan adjustments (weather data).
+  - Offline maps and route planning (map fees).
+
+### 5. Coach and voice: about $30,000, human voices
+
+**Decision.** Plan on about $30,000, mostly in Phase 3; the breakdown is in
+[Content budget](#content-budget). Use human voices. If the coach has a good voice, the coach
+records the guided runs and a voice actor records only the short cue clips.
+
+**Why.** Runna's synthetic voice draws complaints: "It sounds like Mii's from Wii/DS," and 31
+reviews complain about its audio. Nike Run Club's human coaches are its most-praised feature (182
+reviews), and its guided runs are voiced by real coaches.
+
+### 6. Chat: none; link to the chats crews already use
+
+**Decision.** No chat and no direct messages. Leagues and clubs get:
+- Comments with replies on shared runs.
+- Cheers and reactions.
+- Group runs with RSVPs.
+- A group-chat link the owner can add (WhatsApp, iMessage, Discord), visible only to members.
+
+**Why.**
+- Chat is barely requested: one Nike Run Club review asks for run groups with chat.
+- Messaging draws complaints where it exists:
+  - A Strava reviewer: "it is easier for me to message a stranger than to find my summary
+    statistics."
+  - Another Strava reviewer says strangers found and messaged them.
+  - A Garmin reviewer was harassed through its chat and asks it to "get rid of chat."
+  - A Strava reviewer found it easier to organize a group run on WhatsApp.
+- Runna, Nike Run Club and Runify have no chat. Crews already have group chats, and linking to
+  them needs no moderation.
+- Chat would make teen accounts (decision 3) much riskier.
+
+**Revisit** if more than a quarter of active leagues ask for in-app chat after Phase 4.
+
+### 7. Leaderboards: opt-in
+
+**Decision.** Opt-in. Runners are invited at natural moments, such as after their first full
+league week or when they win their league, and join with one tap. Boards are by tier division
+and country, and show only the runner's name, tier and weekly score, never a route. Runners can
+leave at any time (4.7).
+
+**Why.**
+- Strava shows activities publicly by default and draws privacy and stalking complaints. Garmin
+  ranks only activities a runner made public. Nike Run Club's boards include only runners who
+  joined that challenge.
+- Public boards attract cheating: Nike Run Club's are topped by accounts claiming 5,000 miles a
+  month.
+- Open boards can put beginners off: a Runify reviewer quit after seeing the leader's mileage.
+  Tier divisions keep beginners competing with beginners.
+- Opt-in keeps PaceLeague's private-by-default promise.
 
 ## Sources
 
@@ -754,5 +937,11 @@ most likely to draw complaints: Runna's price is its biggest complaint (50 revie
 - [Garmin forums: Garmin Connect doesn't sync routes to Apple Health](https://forums.garmin.com/apps-software/mobile-apps-web/f/garmin-connect-mobile-ios/352961/garmin-connect-does-not-sync-workout-routes-i-e-gps-data-to-apple-health-app)
 - [Garmin Connect Developer Program FAQ](https://developer.garmin.com/gc-developer-program/program-faq/) and a [report that onboarding paused in 2026](https://aifitnessapi.com/fix/garmin-api-approval)
 - [Garmin Connect IQ](https://developer.garmin.com/connect-iq/)
+- [the5krunner: Garmin freezes developer API access (September 2026)](https://the5krunner.com/2026/09/14/garmin-developer-api-access-paused/)
+- [Terra pricing](https://tryterra.co/pricing) and [Spike pricing](https://www.spikeapi.com/pricing)
+- [Apple: next steps for apps distributed in Texas](https://developer.apple.com/news/?id=2ezb6jhj)
+- [Strava: using Strava under 16](https://support.strava.com/en-us/articles/15401925-can-i-use-strava-if-i-m-under-the-age-of-16) and [Runna: age requirements](https://support.runna.com/en/articles/14102837-age-requirements-for-using-runna)
+- [Voice Crafters: 2026 voice-over rates](https://www.voicecrafters.com/industry-standard-voice-over-rates/)
+- [CoachIQ: private training session pricing, 2026](https://www.coachiq.io/blog/how-to-price-private-training-sessions-2026-guide)
 - [Strava: how data appears on third-party apps](https://support.strava.com/en-us/articles/15401608-api-agreement-update-how-data-appears-on-3rd-party-apps)
 - Packet: `docs/packet/specs/DECISION_LOG.md`, `FACTORY_PRD.md`, `TECHNICAL_SPEC.md`, `SOURCES.md` (S11–S13)
