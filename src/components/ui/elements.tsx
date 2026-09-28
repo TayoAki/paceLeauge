@@ -1,4 +1,4 @@
-import { ChevronRight, CircleAlert, CircleCheck, Info, TriangleAlert, type LucideIcon } from 'lucide-react-native';
+import { Check, ChevronRight, CircleAlert, CircleCheck, Info, TriangleAlert, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode, Ref } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 
@@ -66,6 +66,54 @@ export function Row({ icon: Icon, label, value, valueTone = 'secondary', onPress
       testID={testID}
       style={({ pressed }) => pressed && { backgroundColor: colors.surfaceElevated }}>
       {content}
+    </Pressable>
+  );
+}
+
+/** A settings row with an on/off switch; the whole row toggles. */
+export function SwitchRow({
+  icon: Icon,
+  label,
+  hint,
+  value,
+  onChange,
+  disabled,
+  last,
+  testID,
+}: {
+  icon?: LucideIcon;
+  label: string;
+  hint?: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+  last?: boolean;
+  testID?: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityHint={hint}
+      accessibilityState={{ checked: value, disabled: !!disabled }}
+      disabled={disabled}
+      onPress={() => onChange(!value)}
+      testID={testID}
+      style={({ pressed }) => [pressed && { backgroundColor: colors.surfaceElevated }, disabled && { opacity: 0.5 }]}>
+      <View style={[styles.row, !last && styles.rowDivider]}>
+        {Icon ? <Icon size={22} color={value ? colors.textPrimary : colors.textSecondary} strokeWidth={2} /> : null}
+        <View style={styles.rowText}>
+          <Text variant="body">{label}</Text>
+          {hint ? (
+            <Text variant="caption" tone="secondary">
+              {hint}
+            </Text>
+          ) : null}
+        </View>
+        <View style={[styles.switchTrack, value && styles.switchTrackOn]}>
+          <View style={[styles.switchThumb, value && styles.switchThumbOn]} />
+        </View>
+      </View>
     </Pressable>
   );
 }
@@ -231,6 +279,44 @@ export function SegmentedControl<T extends string>({
   );
 }
 
+/** A wrapping row of single-choice chips, for choices with more options than a segmented control fits. */
+export function ChoiceChips<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  disabled,
+}: {
+  options: { value: T; label: string; accessibilityLabel?: string }[];
+  value: T;
+  onChange: (value: T) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <View style={styles.chips} accessibilityRole="radiogroup" accessibilityLabel={label}>
+      {options.map((option) => {
+        const selected = option.value === value;
+        return (
+          <Pressable
+            key={option.value}
+            accessibilityRole="radio"
+            accessibilityLabel={option.accessibilityLabel ?? option.label}
+            accessibilityState={{ checked: selected, disabled: !!disabled }}
+            disabled={disabled}
+            onPress={() => onChange(option.value)}
+            style={({ pressed }) => [styles.chip, selected && styles.chipOn, pressed && { opacity: 0.8 }, disabled && { opacity: 0.5 }]}>
+            {selected ? <Check size={16} color={colors.onAccent} strokeWidth={3} /> : null}
+            <Text variant="labelStrong" style={{ color: selected ? colors.onAccent : colors.textPrimary }}>
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function TextField({
   label,
   error,
@@ -292,6 +378,19 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.decorativeDivider,
   },
   rowText: { flex: 1, gap: 2 },
+  switchTrack: {
+    width: 52,
+    height: 32,
+    borderRadius: 16,
+    padding: 3,
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1.5,
+    borderColor: colors.controlOutline,
+  },
+  switchTrackOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  switchThumb: { width: 23, height: 23, borderRadius: 12, backgroundColor: colors.textPrimary },
+  switchThumbOn: { alignSelf: 'flex-end', backgroundColor: colors.onAccent },
   rowValue: { maxWidth: '45%' },
   statusMain: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   statusAction: { paddingLeft: 20 + space.md, alignItems: 'flex-start' },
@@ -340,6 +439,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.control - 4,
   },
   segmentSelected: { backgroundColor: colors.surfaceElevated },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    minHeight: layout.minimumTapTarget,
+    paddingHorizontal: space.lg,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: colors.controlOutline,
+  },
+  chipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   field: { gap: space.sm },
   input: {
     minHeight: 56,

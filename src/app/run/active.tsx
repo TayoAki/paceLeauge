@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { ChevronDown, Flag, Play, RotateCcw, Save } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, Flag, Play, RotateCcw, Save, Volume2, VolumeX } from 'lucide-react-native';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
 
 import { GpsStatus, MetricBlock, RecordingControls, TouchLockOverlay, useAnnounce } from '@/components/run/run-components';
@@ -29,8 +29,10 @@ export default function ActiveRunScreen() {
   const router = useRouter();
   const { runtime } = useAccountServices();
   const recorder = runtime.recorder;
-  const { session, metrics, lastSaved } = useRecorder();
-  const units = useMe().data?.data.profile?.units ?? 'metric';
+  const { session, metrics, lastSaved, autoPaused } = useRecorder();
+  const runSettings = runtime.runSettings;
+  const cuesOn = useSyncExternalStore(runSettings.subscribe, () => runSettings.getSnapshot().cues.enabled);
+  const units = useMe().data?.data.profile?.units ?? runSettings.units;
   const [locked, setLocked] = useState(false);
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,15 @@ export default function ActiveRunScreen() {
   const lines = useMemo(() => routeLines(points), [points]);
   const last = points[points.length - 1];
 
-  useAnnounce(session ? { recording: 'Recording', paused: 'Paused', interrupted: 'Recording stopped' }[session.status] : null);
+  useAnnounce(session ? { recording: 'Recording', paused: autoPaused ? 'Auto-paused' : 'Paused', interrupted: 'Recording stopped' }[session.status] : null);
+
+  // Cues speak in the runner's units, even when the run was started before the profile loaded.
+  useEffect(() => runSettings.setUnits(units), [runSettings, units]);
+
+  const toggleCues = () => {
+    const current = runSettings.get();
+    void runSettings.save({ ...current, cues: { ...current.cues, enabled: !current.cues.enabled } }).catch(() => undefined);
+  };
 
   // Leaving is only possible through explicit controls while a run exists.
   useEffect(() => {
@@ -112,8 +122,10 @@ export default function ActiveRunScreen() {
 
   const distance = formatDistance(metrics.distanceM, units);
   const pace = formatPace(metrics.activeMs, metrics.distanceM, units);
+  const current = metrics.currentPaceSPerKm;
+  const currentPace = current === null ? null : formatPace(current * 1000, 1000, units);
   const recording = session.status === 'recording';
-  const title = recording ? 'Running' : session.status === 'paused' ? 'Paused' : 'Recording stopped';
+  const title = recording ? 'Running' : session.status === 'paused' ? (autoPaused ? 'Auto-paused' : 'Paused') : 'Recording stopped';
 
   const metricsBlock = (
     <View style={styles.metrics}>
@@ -131,7 +143,17 @@ export default function ActiveRunScreen() {
       <View style={styles.row}>
         <MetricBlock value={formatDuration(metrics.activeMs)} label="Time" accessibilityLabel={`Active time, ${describeDuration(metrics.activeMs)}`} />
         <View style={styles.divider} />
-        <MetricBlock value={pace.value} label={pace.unit.replace('/', '/ ')} accessibilityLabel={`Average pace, ${describePace(metrics.activeMs, metrics.distanceM, units)}`} />
+        <MetricBlock
+          value={recording && currentPace ? currentPace.value : '--:--'}
+          label={`Now ${pace.unit.replace('/', '/ ')}`}
+          accessibilityLabel={
+            recording && current !== null
+              ? `Current pace, ${describePace(current * 1000, 1000, units)}`
+              : 'Current pace not available'
+          }
+        />
+        <View style={styles.divider} />
+        <MetricBlock value={pace.value} label={`Avg ${pace.unit.replace('/', '/ ')}`} accessibilityLabel={`Average pace, ${describePace(metrics.activeMs, metrics.distanceM, units)}`} />
       </View>
     </View>
   );
@@ -166,6 +188,13 @@ export default function ActiveRunScreen() {
             {title}
           </Text>
           {recording ? <GpsStatus quality={metrics.quality} /> : null}
+          <IconButton
+            icon={cuesOn ? Volume2 : VolumeX}
+            label={cuesOn ? 'Mute voice cues' : 'Turn on voice cues'}
+            tone="plain"
+            onPress={toggleCues}
+            testID="cues-toggle"
+          />
         </View>
 
         {session.status === 'interrupted' ? (
@@ -179,7 +208,12 @@ export default function ActiveRunScreen() {
             }
           />
         ) : null}
-        {session.status === 'paused' ? <InlineStatus title="Paused — time and distance aren’t counting." /> : null}
+        {session.status === 'paused' ? (
+          <InlineStatus
+            title={autoPaused ? 'Auto-paused — you stopped moving.' : 'Paused — time and distance aren’t counting.'}
+            body={autoPaused ? 'Recording resumes as soon as you run again. Time stopped doesn’t count.' : undefined}
+          />
+        ) : null}
 
         {metricsBlock}
 

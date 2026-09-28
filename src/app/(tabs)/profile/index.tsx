@@ -1,8 +1,8 @@
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Ban, Bell, LifeBuoy, LogIn, LogOut, ShieldCheck, UserPen } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
+import { Ban, Bell, Footprints, LifeBuoy, LogIn, LogOut, ShieldCheck, UserPen } from 'lucide-react-native';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Profile } from '@/api/schemas';
@@ -18,6 +18,7 @@ import { RunInProgressError } from '@/features/account/runtime';
 import { useLocalRuns, useMe, useRecorder } from '@/features/data/hooks';
 import { clearExportFiles } from '@/features/privacy/export-data';
 import { notificationsAllowed, parseReminderSettings, REMINDER_KEY } from '@/features/reminders/reminders';
+import type { RunSettings } from '@/features/voice/run-settings';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
 
@@ -28,6 +29,13 @@ function profileSummary(profile: Profile | null): string | undefined {
   if (!profile) return undefined;
   const units = profile.units === 'imperial' ? 'mi' : 'km';
   return `${units} · ${profile.goal_days ? `${profile.goal_days}-day goal` : 'No goal'}`;
+}
+
+const noopSubscribe = () => () => undefined;
+
+function runSettingsSummary(settings: RunSettings | null): string | undefined {
+  if (!settings) return undefined;
+  return `Cues ${settings.cues.enabled ? 'on' : 'off'} · Auto-pause ${settings.autoPause ? 'on' : 'off'}`;
 }
 
 function unsyncedWarning(count: number): string {
@@ -45,6 +53,8 @@ export default function ProfileScreen() {
   const { session } = useRecorder();
   const local = useLocalRuns();
   const journal = state.status === 'ready' ? state.runtime.journal : null;
+  const runSettingsStore = state.status === 'ready' ? state.runtime.runSettings : null;
+  const runSettings = useSyncExternalStore(runSettingsStore?.subscribe ?? noopSubscribe, () => runSettingsStore?.getSnapshot() ?? null);
   const [reminderOn, setReminderOn] = useState<boolean | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -140,6 +150,13 @@ export default function ProfileScreen() {
 
       <RowGroup>
         <Row icon={UserPen} label="Edit profile" value={profileSummary(profile)} onPress={() => router.push('/profile/edit')} testID="profile-edit" />
+        <Row
+          icon={Footprints}
+          label="Run settings"
+          value={runSettingsSummary(runSettings)}
+          onPress={() => router.push('/profile/run-settings')}
+          testID="profile-run-settings"
+        />
         <Row
           icon={Bell}
           label="Notifications"

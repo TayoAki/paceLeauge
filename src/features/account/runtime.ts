@@ -9,6 +9,9 @@ import { RecorderService } from '@/features/recording/recorder-service';
 import { setActiveRecorder } from '@/features/recording/registry';
 import type { CreditedDays } from '@/features/recording/run-draft';
 import { countBucket, createTelemetry, durationBucket, type Telemetry } from '@/features/telemetry/telemetry';
+import { CueController } from '@/features/voice/cue-controller';
+import { RunSettingsStore } from '@/features/voice/run-settings';
+import { deviceVoiceOutput } from '@/features/voice/voice-output';
 
 /**
  * One open journal + recorder per account per process, shared by the UI and by the
@@ -20,6 +23,9 @@ export interface AccountRuntime {
   journal: Journal;
   recorder: RecorderService;
   telemetry: Telemetry;
+  /** Voice cue and auto-pause choices for this account, kept on this phone. */
+  runSettings: RunSettingsStore;
+  cues: CueController;
 }
 
 let current: AccountRuntime | null = null;
@@ -40,11 +46,14 @@ async function creditedDaysFrom(journal: Journal): Promise<CreditedDays> {
 async function create(accountId: string): Promise<AccountRuntime> {
   const journal = await Journal.open(await openAccountDatabase(accountId));
   const telemetry = createTelemetry(journal);
+  const runSettings = new RunSettingsStore(journal);
+  await runSettings.load();
   const recorder = new RecorderService({
     journal,
     location: locationDriver,
     newRunId: newId,
     heartbeatMs: 5_000,
+    autoPause: () => runSettings.get().autoPause,
     creditedDays: () => creditedDaysFrom(journal),
     onRecordingChange: async (active) => {
       if (active) await deviceStore.set(RECORDING_ACCOUNT_KEY, accountId);
@@ -65,9 +74,12 @@ async function create(accountId: string): Promise<AccountRuntime> {
       // Pause and resume events drive voice cues only; they are not telemetry.
     },
   });
+  // Cues listen before recovery so a run resumed after a relaunch is picked up mid-way.
+  const cues = new CueController(recorder, deviceVoiceOutput(), runSettings);
+  cues.start();
   await recorder.init();
   setActiveRecorder(recorder);
-  return { accountId, journal, recorder, telemetry };
+  return { accountId, journal, recorder, telemetry, runSettings, cues };
 }
 
 export async function openAccountRuntime(accountId: string): Promise<AccountRuntime> {
@@ -102,6 +114,7 @@ export async function closeAccountRuntime(): Promise<void> {
   const runtime = current;
   if (!runtime) return;
   if (await runtime.journal.getSession()) throw new RunInProgressError();
+  runtime.cues.stop();
   runtime.recorder.dispose();
   setActiveRecorder(null);
   current = null;

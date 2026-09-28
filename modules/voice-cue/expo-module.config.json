@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["VoiceCueModule"]
+  },
+  "android": {
+    "modules": ["com.tayoaki.paceleague.voicecue.VoiceCueModule"]
+  }
+}

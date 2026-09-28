@@ -41,7 +41,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSLocationWhenInUseUsageDescription: LOCATION_WHEN_IN_USE_COPY,
       NSLocationAlwaysAndWhenInUseUsageDescription: LOCATION_ALWAYS_COPY,
       NSPhotoLibraryAddUsageDescription: 'Save your stats-only share image to your photo library.',
-      UIBackgroundModes: ['location'],
+      // audio: voice cues speak while the phone is locked in a pocket (docs/ROADMAP.md Part C).
+      UIBackgroundModes: ['location', 'audio'],
     },
   },
   android: {
