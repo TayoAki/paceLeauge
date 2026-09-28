@@ -6,6 +6,7 @@ import type { ActiveSegment } from '@/domain/types';
 import { ApiError } from './errors';
 import { challengesApi, type ChallengesApi } from './challenges-api';
 import { clubsApi, type ClubsApi } from './clubs-api';
+import { familyApi, type FamilyApi } from './family-api';
 import { feedApi, type FeedApi } from './feed-api';
 import { leaderboardsApi, type LeaderboardsApi } from './leaderboards-api';
 import { liveApi, type LiveApi } from './live-api';
@@ -116,7 +117,7 @@ export interface ProfileInput {
   notificationTz: string | null;
   ackEligibility: boolean;
   /** What the App Store / Google Play age check said (features/account/age-check.ts). */
-  ageSignal?: 'adult' | 'not_required';
+  ageSignal?: 'adult' | 'not_required' | 'teen_13_15' | 'teen_16_17';
   ageSource?: string;
 }
 
@@ -174,13 +175,13 @@ export interface TelemetryEvent {
   props: Record<string, string | boolean>;
 }
 
-export interface PaceApi extends SocialApi, FeedApi, LeaguesApi, ClubsApi, ChallengesApi, LeaderboardsApi, LiveApi {
+export interface PaceApi extends SocialApi, FeedApi, LeaguesApi, ClubsApi, ChallengesApi, LeaderboardsApi, LiveApi, FamilyApi {
   getAppConfig(): Promise<AppConfig>;
   getMe(): Promise<Me>;
   checkAlias(alias: string): Promise<{ available: boolean; problem: 'invalid' | 'not_allowed' | 'taken' | null }>;
   saveProfile(input: ProfileInput): Promise<Me>;
   /** Records an age check for an existing profile; a minor answer locks the account. */
-  recordAgeSignal(signal: 'adult' | 'not_required' | 'minor', source: string | null): Promise<Me>;
+  recordAgeSignal(signal: 'adult' | 'not_required' | 'minor' | 'teen_13_15' | 'teen_16_17', source: string | null): Promise<Me>;
 
   startRunUpload(input: StartUploadInput): Promise<UploadState>;
   putRouteChunk(runId: string, seq: number, body: string, checksum: string): Promise<void>;
@@ -484,5 +485,6 @@ export function createPaceApi(rpc: RpcTransport): PaceApi {
     ...challengesApi(call),
     ...leaderboardsApi(call),
     ...liveApi(call),
+    ...familyApi(call),
   };
 }

@@ -6,6 +6,7 @@ import { Linking, RefreshControl, StyleSheet, View } from 'react-native';
 import type { Standing } from '@/api/schemas';
 import { GroupChallengesCard } from '@/components/league/challenge-card';
 import { DuelsCard } from '@/components/league/duels-card';
+import { FamilyAdminCard, FamilyJoinCard } from '@/components/league/family-cards';
 import { GroupRunsCard } from '@/components/league/group-runs-card';
 import { LeaderboardInvite } from '@/components/league/leaderboard-invite';
 import { LeagueRow } from '@/components/league/league-row';
@@ -17,6 +18,7 @@ import { Card, LargeHeader, Screen } from '@/components/ui/layout';
 import { formatXp, ordinal } from '@/domain/format';
 import { useLeague, useLeagueCheers, useMe } from '@/features/data/hooks';
 import { useAccount } from '@/features/account/account-provider';
+import { useTeen } from '@/features/account/teen';
 import { InviteSheet, MemberSheet } from '@/features/leagues/league-sheets';
 import { recapWeek } from '@/features/leagues/recap';
 import { useSelectedLeague } from '@/features/leagues/selected-league';
@@ -25,8 +27,18 @@ import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 import { useNow } from '@/lib/use-now';
 
-/** The feed (docs/ROADMAP.md 4.4), clubs (4.5), challenges (4.6) and leaderboards (4.7). */
-function SocialRows({ open }: { open: (path: '/feed' | '/league/clubs' | '/league/challenges' | '/league/leaderboards') => void }) {
+/**
+ * The feed (docs/ROADMAP.md 4.4), clubs (4.5), challenges (4.6) and leaderboards (4.7). A teen
+ * account (4.10) has only its family league's challenges.
+ */
+function SocialRows({ open, teen }: { open: (path: '/feed' | '/league/clubs' | '/league/challenges' | '/league/leaderboards') => void; teen: boolean }) {
+  if (teen) {
+    return (
+      <RowGroup>
+        <Row icon={Flag} label="Challenges" hint="Your family league’s goals, with a badge each" onPress={() => open('/league/challenges')} last testID="open-challenges" />
+      </RowGroup>
+    );
+  }
   return (
     <RowGroup>
       <Row icon={Newspaper} label="Feed" hint="Runs your friends and league share, with kudos and comments" onPress={() => open('/feed')} testID="open-feed" />
@@ -54,6 +66,7 @@ export default function LeagueScreen() {
   const units = useMe().data?.data.profile?.units ?? 'metric';
   const now = useNow(60_000);
   const { api } = useAccount();
+  const { isTeen } = useTeen();
   const [cheerError, setCheerError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [member, setMember] = useState<Standing | null>(null);
@@ -101,13 +114,19 @@ export default function LeagueScreen() {
       <Screen refreshControl={refresh}>
         <LargeHeader title="League" />
         {league.isError ? <InlineStatus tone="danger" title="Couldn’t load your league." body="Pull to try again." /> : null}
-        <SocialRows open={(path) => router.push(path)} />
-        <Card>
+        {isTeen ? (
+          <FamilyJoinCard inLeague={false} />
+        ) : (
+          <>
+            <SocialRows open={(path) => router.push(path)} teen={false} />
+            <Card>
           <EmptyState icon={Users} title="A little friendly competition." body="Start a private league for your crew, or join one with an invite code. Your best three days each week count.">
             <PrimaryButton label="Create league" onPress={() => router.push('/league/create')} testID="create-league" />
             <SecondaryButton label="Join with code" onPress={() => router.push('/league/join')} testID="join-league" />
           </EmptyState>
-        </Card>
+            </Card>
+          </>
+        )}
         <TextButton label="How scoring works" icon={CircleHelp} onPress={() => router.push('/league/rules')} />
       </Screen>
     );
@@ -163,7 +182,7 @@ export default function LeagueScreen() {
         />
       ) : null}
 
-      <SocialRows open={(path) => router.push(path)} />
+      <SocialRows open={(path) => router.push(path)} teen={isTeen} />
 
       <SegmentedControl
         label="Week"
@@ -223,7 +242,8 @@ export default function LeagueScreen() {
         </Text>
       ) : null}
 
-      <LeaderboardInvite />
+      {view.league.kind === 'family' && isOwner ? <FamilyAdminCard leagueId={leagueId} /> : null}
+      {!isTeen ? <LeaderboardInvite /> : null}
       {recap !== null && view.competition_enabled ? <RecapCard leagueId={leagueId} leagueName={view.league.name} weekOffset={recap} units={units} /> : null}
       <SeasonCard leagueId={leagueId} />
       <DuelsCard leagueId={leagueId} weekOffset={weekOffset} />
@@ -235,7 +255,9 @@ export default function LeagueScreen() {
         <TextButton label="How scoring works" icon={CircleHelp} onPress={() => router.push('/league/rules')} />
         {isOwner ? <TextButton label="Manage league" onPress={() => router.push('/league/manage')} /> : null}
       </View>
-      {leagues.length < (view.max_leagues ?? 5) ? (
+      {isTeen ? (
+        <FamilyJoinCard inLeague />
+      ) : leagues.length < (view.max_leagues ?? 5) ? (
         <View style={styles.links}>
           <TextButton label="Start another league" icon={Plus} onPress={() => router.push('/league/create')} testID="another-league" />
           <TextButton label="Join with code" onPress={() => router.push('/league/join')} />

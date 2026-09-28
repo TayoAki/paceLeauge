@@ -92,8 +92,9 @@ Every requested item, and where it is planned. Epic numbers refer to the phase s
 (the Android app and the web app) are built and tested in code, and Phase 4 is under way: privacy
 zones and per-run sharing (4.2), follows (4.3), the feed (4.4), push notifications and
 moderation (4.9), Leagues 2.0 with seasons, duels and group runs (4.1), clubs (4.5),
-challenges (4.6), opt-in leaderboards (4.7) and live location (4.8) are built. The server is
-tested by 320 database and API tests, the app by 322 unit tests and browser
+challenges (4.6), opt-in leaderboards (4.7), live location (4.8) and teen accounts in family
+leagues (4.10, switched off until counsel's review) are built. The server is tested by 327
+database and API tests, the app by 326 unit tests and browser
 walkthroughs of the new screens. What remains is on devices and with people: the Part C audio
 matrix and the Part A failure tests (DEVICE_TEST_PROTOCOL.md), the first native builds of the new
 Swift and Kotlin code (the watch app is off until then), the recorded voice and guided runs, the
@@ -869,6 +870,22 @@ is where other people start seeing more than a name and a number.
   - Counsel reviews state age laws (Texas, Utah and others) before launch.
 - Done when: a teen account can't reach any feature outside its family league, tested
   through the API as well as the screens.
+- Built, behind the `teen_accounts_enabled` flag (off: under 18 stays locked, as in the beta):
+  the age check asks the store for 13, 16 and 18 and makes a teen account for 13–15 or 16–17
+  (under 13 is locked). A teen asks to join a family league with its code, and the adult who runs
+  it approves them as their parent or guardian, which is recorded as the consent. Teens can't
+  create or invite to leagues, and can't be made owners; if the league's adult leaves, it passes
+  to another adult or closes. Every profile-scoped API call from a teen account is checked against
+  an allowlist of what they may reach (their running, their family leagues, live location,
+  blocking and reporting), and triggers keep them out of clubs, follows, leaderboards and Strava,
+  keep their runs to "only me" or "my leagues", keep comments and kudos off their runs, and keep
+  heart rate and health data out under 16. Their live-location links open only for family members
+  who are signed in. The adult sees each teen's week and can remove them. An adult account the
+  store later reports as a teen steps back to its family leagues, and a store answer can't undo a
+  teen account. `tests/backend/teens.test.ts` calls every API function as a teen: each is either
+  on the allowlist, one of the runner's own (runs, records, plans, export, deletion) or refused.
+  The policy and terms text to publish when it's switched on is in
+  `docs/legal-drafts/teen-accounts.md`, for counsel.
 
 ## Phase 5: maps
 

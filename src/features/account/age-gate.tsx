@@ -63,8 +63,11 @@ export function AgeNeededScreen({ check, onRetry }: { check: NeedsAge; onRetry: 
   );
 }
 
-/** The store reports the account holder as under 18: the account is locked (they can still delete it). */
-export function AgeRestrictedScreen() {
+/**
+ * The store reports the account holder as too young: under 13, or under 18 while teen accounts
+ * are off. The account is locked (they can still delete it).
+ */
+export function AgeRestrictedScreen({ teenAccounts = false }: { teenAccounts?: boolean }) {
   const { api, signOut } = useAccount();
   const [status, setStatus] = useState<{ tone: 'info' | 'danger'; title: string; body?: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -91,8 +94,8 @@ export function AgeRestrictedScreen() {
   const contact = env.supportEmail ? ` If this is wrong, email ${env.supportEmail}.` : '';
   return (
     <AppMessage
-      title="PaceLeague is for adults"
-      body={`The App Store or Google Play says this account belongs to someone under 18, so we’ve paused it and removed it from its league.${contact}`}>
+      title={teenAccounts ? 'PaceLeague is for 13 and up' : 'PaceLeague is for adults'}
+      body={`The App Store or Google Play says this account belongs to someone under ${teenAccounts ? 13 : 18}, so we’ve paused it and removed it from its league.${contact}`}>
       <View style={{ gap: space.md }}>
         {status ? <InlineStatus tone={status.tone} title={status.title} body={status.body} /> : null}
         <DangerButton label="Delete my account" onPress={() => void requestDeletion()} loading={busy} testID="age-delete" />

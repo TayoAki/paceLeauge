@@ -10,8 +10,10 @@ import { PrimaryButton, TextButton } from '@/components/ui/buttons';
 import { EmptyState, InlineStatus } from '@/components/ui/elements';
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { useAccount } from '@/features/account/account-provider';
+import { teenInfo } from '@/features/account/teen';
 import { useAuth } from '@/features/account/auth-provider';
 import { useMe } from '@/features/data/hooks';
+import { describeFamilyError } from '@/features/leagues/use-family';
 import { useSelectedLeague } from '@/features/leagues/selected-league';
 import { formatCode } from '@/features/leagues/league-sheets';
 import { pendingInvite } from '@/features/leagues/pending-invite';
@@ -54,6 +56,9 @@ export default function InviteScreen() {
   const [busy, setBusy] = useState(false);
   const signedIn = auth.status === 'signed_in';
   const onboarded = signedIn && !!me.data?.data.profile;
+  // A teen account asks to join a family league; the adult who runs it approves (docs/ROADMAP.md 4.10).
+  const { isTeen } = teenInfo(me.data?.data.profile?.age_signal);
+  const [asked, setAsked] = useState(false);
 
   const preview = useQuery({
     queryKey: ['invite-preview', code, signedIn],
@@ -66,6 +71,22 @@ export default function InviteScreen() {
     await pendingInvite.clear();
     if (router.canGoBack()) router.back();
     else router.replace('/');
+  };
+
+  const askToJoin = async () => {
+    if (!api) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.requestFamilyJoin(code);
+      await pendingInvite.clear();
+      await queryClient.invalidateQueries();
+      setAsked(true);
+    } catch (e) {
+      setError(describeFamilyError(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const join = async () => {
@@ -95,7 +116,18 @@ export default function InviteScreen() {
   const usable = data && (data.status === 'valid' || data.status === 'league_limit' || data.status === 'already_member');
 
   let footer: React.ReactNode = <TextButton label="Not now" onPress={leave} />;
-  if (data?.status === 'valid') {
+  if (data?.status === 'valid' && onboarded && isTeen) {
+    footer = asked ? (
+      <PrimaryButton label="Done" onPress={() => router.dismissTo('/league')} />
+    ) : data.kind === 'family' ? (
+      <>
+        <PrimaryButton label="Ask to join" onPress={askToJoin} loading={busy} testID="family-ask-invite" />
+        <TextButton label="Not now" onPress={leave} />
+      </>
+    ) : (
+      <TextButton label="Close" onPress={leave} />
+    );
+  } else if (data?.status === 'valid') {
     footer = (
       <>
         {signedIn ? (
@@ -134,6 +166,16 @@ export default function InviteScreen() {
             {data.member_count} of {data.capacity} runners
           </Text>
           {data.status === 'already_member' ? <InlineStatus tone="success" title="You’re already in this league." /> : null}
+          {isTeen && data.status === 'valid' && data.kind !== 'family' ? (
+            <InlineStatus tone="warning" title="Teen accounts can join family leagues only." />
+          ) : null}
+          {isTeen && asked ? (
+            <InlineStatus tone="success" title="Asked to join." body="The adult who runs this league has been told. You’re in once they approve you." />
+          ) : isTeen && data.status === 'valid' && data.kind === 'family' ? (
+            <Text variant="caption" tone="secondary" align="center">
+              The adult who runs it approves you, as your parent or guardian.
+            </Text>
+          ) : null}
           {data.status === 'league_limit' ? (
             <InlineStatus tone="warning" title="You’re in 5 leagues, the most at once." body="Leave one first (League › League options) to join this one." />
           ) : null}

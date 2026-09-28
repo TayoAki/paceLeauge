@@ -287,6 +287,21 @@ export async function seedDemo(pool: pg.Pool, options: { viewerEmail: string; vi
   const familyInvite = await rpc<{ code: string }>(pool, viewer, 'create_league_invite', { p_league_id: family.league.id });
   const sam = byAlias.get('Sam');
   if (sam) await rpc(pool, sam, 'join_league', { p_code: familyInvite.code });
+  // Teen accounts (docs/ROADMAP.md 4.10), switched on for development only: Kai (16) is in the
+  // family league, approved by the viewer; Noa (14) is waiting for approval.
+  await pool.query(`select private.set_flag('teen_accounts_enabled', true, 'Development seed', 'dev-seed')`);
+  for (const [alias, signal, approve] of [
+    ['Kai', 'teen_16_17', true],
+    ['Noa', 'teen_13_15', false],
+  ] as const) {
+    const claims = await ensureRunner(pool, { alias, email: `${alias.toLowerCase()}@demo.paceleague.test` });
+    await rpc(pool, claims, 'record_age_signal', { p_signal: signal, p_source: 'guardianDeclared' });
+    const request = await rpc<{ id: string }>(pool, claims, 'request_family_join', { p_code: familyInvite.code });
+    if (approve) {
+      await rpc(pool, viewer, 'decide_family_request', { p_request_id: request.id, p_approve: true });
+      await upload(pool, claims, [-1, km(3.1), 1150, 'Sunday run'], weekStart);
+    }
+  }
   if (maya) {
     // The next Saturday at 08:00 in Chicago that's at least an hour away.
     let saturday = weekStart + 5 * DAY_MS + 8 * 3_600_000;

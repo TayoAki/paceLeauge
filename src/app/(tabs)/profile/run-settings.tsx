@@ -7,6 +7,7 @@ import { ChoiceChips, InlineStatus, RowGroup, SegmentedControl, SwitchRow, TextF
 import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { cueText, type CueField, type CueSettings } from '@/domain/cues';
 import { useAccountServices } from '@/features/account/account-provider';
+import { useTeen } from '@/features/account/teen';
 import { useMe } from '@/features/data/hooks';
 import { deviceHealthData } from '@/features/health/health-data';
 import { HEALTH } from '@/features/health/health-names';
@@ -86,6 +87,13 @@ export default function RunSettingsScreen() {
   const [maxHrError, setMaxHrError] = useState<string | null>(null);
 
   useEffect(() => store.setUnits(units), [store, units]);
+
+  // Under 16 (docs/ROADMAP.md 4.10): no heart rate or health data, whatever was on before.
+  const { underSixteen } = useTeen();
+  const healthOn = settings.healthImport || settings.appleHealth || settings.heartRateZones;
+  useEffect(() => {
+    if (underSixteen && healthOn) void store.save({ ...store.get(), healthImport: false, appleHealth: false, heartRateZones: false }).catch(() => undefined);
+  }, [underSixteen, healthOn, store]);
 
   const save = (next: RunSettings) => {
     setError(null);
@@ -306,6 +314,8 @@ export default function RunSettingsScreen() {
         />
       </RowGroup>
 
+      {underSixteen ? <InlineStatus title="Heart rate and health data stay off until you’re 16." /> : null}
+      {!underSixteen ? (
       <View style={styles.group}>
         <Text variant="labelStrong" accessibilityRole="header">
           Heart rate
@@ -344,8 +354,9 @@ export default function RunSettingsScreen() {
           testID="max-hr"
         />
       </View>
+      ) : null}
 
-      {health.available ? (
+      {health.available && !underSixteen ? (
         <RowGroup>
           <SwitchRow
             icon={HeartPulse}
@@ -358,7 +369,7 @@ export default function RunSettingsScreen() {
           />
         </RowGroup>
       ) : null}
-      {importer.available ? (
+      {importer.available && !underSixteen ? (
         <RowGroup>
           <SwitchRow
             icon={Download}

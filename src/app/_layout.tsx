@@ -104,7 +104,7 @@ function RootNavigator() {
   }
 
   const onboarded = signedIn && ready && profile !== null;
-  if (onboarded && profile.age_signal === 'minor') return <AgeRestrictedScreen />;
+  if (onboarded && profile.age_signal === 'minor') return <AgeRestrictedScreen teenAccounts={me.data?.data.config.teen_accounts_enabled ?? false} />;
   if (onboarded && ageGate.needsAge) return <AgeNeededScreen check={ageGate.needsAge} onRetry={ageGate.retry} />;
   const inApp = onboarded || (sessionLapsed && ready);
 

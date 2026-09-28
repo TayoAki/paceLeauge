@@ -49,6 +49,15 @@ export default function LiveRunScreen() {
           />
         </Card>
       ) : null}
+      {data?.state === 'family_only' ? (
+        <Card>
+          <EmptyState
+            icon={Radio}
+            title="This live run is for family."
+            body="The runner shares their location with their family league only. If you’re in it, sign in to PaceLeague on this device and open the link again."
+          />
+        </Card>
+      ) : null}
       {data?.state === 'live' ? (
         <>
           <View style={styles.head}>

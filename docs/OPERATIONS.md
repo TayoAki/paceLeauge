@@ -146,6 +146,28 @@ select private.clear_age_restriction('<user uuid>', 'Checked ID by email, ticket
 
 The action is recorded in `private.audit_log`. The runner rejoins a league with a new invite.
 
+### Teen accounts (4.10)
+
+The age check asks the store for 13, 16 and 18, and records `teen_13_15` or `teen_16_17` for a
+teen. While `teen_accounts_enabled` is off (the default), a teen answer is treated as under 18:
+no profile at sign-up, and an existing account is locked, exactly as above. Turn it on only after
+counsel has reviewed state age laws and `docs/legal-drafts/teen-accounts.md`, and publish those
+policy and terms changes in the same release:
+
+```sql
+select private.set_flag('teen_accounts_enabled', true, 'Counsel review <ref>; policy v<n> published', 'ops:alex');
+```
+
+With it on, teens join only family leagues, approved by the adult who runs them, and the
+database refuses everything else for a teen account (`private.teen_allowed_rpcs()` lists what they
+may call; a new API function is closed to teens until it's added there). A teen who turns 18 stays
+a teen account until staff check their age another way and change it (recorded in
+`private.audit_log`):
+
+```sql
+select private.clear_teen_account('<user uuid>', 'Turned 18, checked ID by email, ticket 123', 'ops:alex');
+```
+
 ## Email delivery
 
 Not needed for the beta. You need an email provider to turn emailed sign-in codes back on
@@ -511,6 +533,7 @@ select private.set_flag('registration_enabled', false, 'Pilot cohort full', 'ops
 | `competition_enabled` | **off** (staging: turned on once by the bootstrap) | Runs are still recorded, uploaded, validated and kept; XP and standings are deferred (`scoring_state = 'pending'`). Turning it on applies pending scoring immediately. |
 | `invites_enabled` | on | New invites and joins are refused; existing leagues keep working. |
 | `registration_enabled` | on | New runners can't complete onboarding; existing runners are unaffected. |
+| `teen_accounts_enabled` | **off** | Under 18 is locked, as in the beta. On: 13–17 year olds get teen accounts in family leagues (see "Age assurance"). Turn on only after counsel's review. |
 
 The bootstrap never runs twice, so a flag you change is never overridden by a later deploy.
 

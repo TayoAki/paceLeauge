@@ -88,6 +88,8 @@ export const appConfigSchema = z.object({
   competition_enabled: z.boolean(),
   invites_enabled: z.boolean(),
   registration_enabled: z.boolean(),
+  /** 13–17 year olds in family leagues (docs/ROADMAP.md 4.10); off until counsel's review. */
+  teen_accounts_enabled: z.boolean().default(false),
   rule_version: z.number(),
   validator_version: z.number(),
   competition_time_zone: z.string(),
@@ -104,8 +106,10 @@ export const profileSchema = z.object({
   status: z.enum(['active', 'deleting']),
   created_at_ms: z.number(),
   /** Absent from servers older than the age-assurance migration. */
-  age_signal: z.enum(['adult', 'not_required', 'minor']).nullable().optional(),
+  age_signal: z.enum(['adult', 'not_required', 'minor', 'teen_13_15', 'teen_16_17']).nullable().optional(),
   age_checked_at_ms: z.number().nullable().optional(),
+  /** When the adult who runs the teen's family league approved them (docs/ROADMAP.md 4.10). */
+  teen_consent_at_ms: z.number().nullable().optional(),
 });
 export type Profile = z.infer<typeof profileSchema>;
 

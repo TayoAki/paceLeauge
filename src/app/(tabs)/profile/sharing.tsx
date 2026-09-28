@@ -10,12 +10,12 @@ import { Card, NavHeader, Screen } from '@/components/ui/layout';
 import { fromCompact } from '@/domain/route-codec';
 import { useAccount } from '@/features/account/account-provider';
 import { useMe } from '@/features/data/hooks';
+import { useTeen, visibilityChoices } from '@/features/account/teen';
 import { useSocialActions, useSocialSettings, VISIBILITY_HINTS, VISIBILITY_NAMES } from '@/features/social/use-social';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
 
 const RADII = [100, 200, 400, 800];
-const VISIBILITIES: Visibility[] = ['only_me', 'leagues', 'followers', 'everyone'];
 
 function radiusLabel(m: number, imperial: boolean): string {
   return imperial ? `${Math.round((m * 3.28084) / 50) * 50} ft` : `${m} m`;
@@ -31,6 +31,8 @@ export default function SharingScreen() {
   const settings = useSocialSettings();
   const actions = useSocialActions();
   const data = settings.data?.data;
+  // Teen accounts (docs/ROADMAP.md 4.10): their family league at most, and no followers.
+  const { isTeen } = useTeen();
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState('Home');
   const [radius, setRadius] = useState(200);
@@ -105,7 +107,7 @@ export default function SharingScreen() {
               label="Who sees new runs"
               value={data.default_visibility}
               onChange={(v) => void actions.setSettings({ defaultVisibility: v })}
-              options={VISIBILITIES.map((v) => ({ value: v, label: VISIBILITY_NAMES[v] }))}
+              options={visibilityChoices(isTeen).map((v) => ({ value: v, label: VISIBILITY_NAMES[v] }))}
               disabled={actions.busy}
             />
             <Text variant="caption" tone="secondary">
@@ -121,8 +123,11 @@ export default function SharingScreen() {
               value={data.default_map_shared}
               onChange={(on) => void actions.setSettings({ defaultMapShared: on })}
               disabled={actions.busy}
+              last={isTeen}
               testID="share-maps-switch"
             />
+            {!isTeen ? (
+              <>
             <SwitchRow
               label="Approve followers"
               hint="Off: anyone with your link can follow you straight away."
@@ -139,6 +144,8 @@ export default function SharingScreen() {
               last
               testID="discoverable-switch"
             />
+              </>
+            ) : null}
           </RowGroup>
 
           <View style={styles.group}>

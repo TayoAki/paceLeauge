@@ -15,6 +15,8 @@ export const liveEndSchema = z.object({ ended: z.number() });
 /** What a link shows: the runner's name and latest position while it's live, and nothing after. */
 export const liveLocationSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('ended') }),
+  /** A teen's link (docs/ROADMAP.md 4.10): only for their family league, signed in. */
+  z.object({ state: z.literal('family_only') }),
   z.object({
     state: z.literal('live'),
     alias: z.string(),

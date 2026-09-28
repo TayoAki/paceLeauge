@@ -16,6 +16,7 @@ import { formatDateShort, formatXp } from '@/domain/format';
 import { useAccount } from '@/features/account/account-provider';
 import { useAuth } from '@/features/account/auth-provider';
 import { RunInProgressError } from '@/features/account/runtime';
+import { teenInfo } from '@/features/account/teen';
 import { useLocalRuns, useMe, useRecorder, useStravaStatus } from '@/features/data/hooks';
 import { clearExportFiles } from '@/features/privacy/export-data';
 import { MANAGE_SUBSCRIPTIONS_URL } from '@/features/pro/purchases';
@@ -59,6 +60,8 @@ export default function ProfileScreen() {
   const auth = useAuth();
   const { state, signOut, sessionLapsed } = useAccount();
   const me = useMe();
+  // Teen accounts (docs/ROADMAP.md 4.10): no follows or third-party connections.
+  const { isTeen } = teenInfo(me.data?.data.profile?.age_signal);
   const strava = useStravaStatus().data?.data;
   const entitlements = useEntitlements().data?.data ?? null;
   const { session } = useRecorder();
@@ -177,6 +180,7 @@ export default function ProfileScreen() {
           onPress={() => router.push('/profile/sync')}
           testID="profile-sync"
         />
+        {!isTeen ? (
         <Row
           icon={Link2}
           label="Connections"
@@ -184,13 +188,14 @@ export default function ProfileScreen() {
           onPress={() => router.push('/profile/connections')}
           testID="profile-connections"
         />
+        ) : null}
         <Row
           icon={Bell}
           label="Notifications"
           value={reminderOn === null ? undefined : reminderOn ? 'On' : 'Off'}
           onPress={() => router.push('/profile/notifications')}
         />
-        <Row icon={Users} label="People" onPress={() => router.push('/profile/people')} testID="profile-people" />
+        {!isTeen ? <Row icon={Users} label="People" onPress={() => router.push('/profile/people')} testID="profile-people" /> : null}
         <Row icon={MapPinOff} label="Sharing and privacy zones" onPress={() => router.push('/profile/sharing')} testID="profile-sharing" />
         <Row icon={ShieldCheck} label="Privacy" onPress={() => router.push('/profile/privacy')} testID="profile-privacy" />
         <Row icon={Ban} label="Blocked runners" onPress={() => router.push('/profile/blocked')} />

@@ -25,7 +25,10 @@ describe('classifyRange', () => {
   it.each([
     [{ lowerBound: 18, upperBound: null }, 'adult'],
     [{ lowerBound: 21, upperBound: 25 }, 'adult'],
-    [{ lowerBound: 13, upperBound: 17 }, 'minor'],
+    [{ lowerBound: 13, upperBound: 15 }, 'teen_13_15'],
+    [{ lowerBound: 16, upperBound: 17 }, 'teen_16_17'],
+    [{ lowerBound: 13, upperBound: 17 }, 'teen_13_15'],
+    [{ lowerBound: null, upperBound: 12 }, 'minor'],
     [{ lowerBound: null, upperBound: 17 }, 'minor'],
     [{ lowerBound: null, upperBound: null }, null],
     [{ lowerBound: 16, upperBound: null }, null],
@@ -39,9 +42,16 @@ describe('checkAge on iOS', () => {
     await expect(checkAge(port(), 'sign_up')).resolves.toEqual({ outcome: 'allowed', signal: 'adult', source: 'selfDeclared' });
   });
 
-  it('refuses a minor', async () => {
-    const p = port({ requestRange: async () => ({ lowerBound: 13, upperBound: 17, source: 'guardianDeclared' }) });
+  it('refuses a child under 13', async () => {
+    const p = port({ requestRange: async () => ({ lowerBound: null, upperBound: 12, source: 'guardianDeclared' }) });
     await expect(checkAge(p, 'sign_up')).resolves.toEqual({ outcome: 'minor', source: 'guardianDeclared' });
+  });
+
+  it('makes a teen account for 13 to 17, in two bands', async () => {
+    const older = port({ requestRange: async () => ({ lowerBound: 16, upperBound: 17, source: 'guardianDeclared' }) });
+    await expect(checkAge(older, 'sign_up')).resolves.toEqual({ outcome: 'teen', signal: 'teen_16_17', source: 'guardianDeclared' });
+    const younger = port({ requestRange: async () => ({ lowerBound: 13, upperBound: 15, source: 'selfDeclared' }) });
+    await expect(checkAge(younger, 'sign_up')).resolves.toEqual({ outcome: 'teen', signal: 'teen_13_15', source: 'selfDeclared' });
   });
 
   it('skips the prompt where the OS says age rules do not apply', async () => {
@@ -117,9 +127,11 @@ describe('checkAge on Android', () => {
     await expect(checkAge(p, 'sign_up')).resolves.toEqual({ outcome: 'allowed', signal: 'adult', source: 'TIER_C' });
   });
 
-  it('refuses a minor reported by Play', async () => {
-    const p = android({ signalsAccess: async () => 'SHARED', requestRange: async () => ({ lowerBound: 13, upperBound: 15, source: 'TIER_B' }) });
-    await expect(checkAge(p, 'sign_up')).resolves.toEqual({ outcome: 'minor', source: 'TIER_B' });
+  it('makes a teen account for a teen reported by Play, and refuses a child', async () => {
+    const teen = android({ signalsAccess: async () => 'SHARED', requestRange: async () => ({ lowerBound: 13, upperBound: 15, source: 'TIER_B' }) });
+    await expect(checkAge(teen, 'sign_up')).resolves.toEqual({ outcome: 'teen', signal: 'teen_13_15', source: 'TIER_B' });
+    const child = android({ signalsAccess: async () => 'SHARED', requestRange: async () => ({ lowerBound: 0, upperBound: 12, source: 'TIER_B' }) });
+    await expect(checkAge(child, 'sign_up')).resolves.toEqual({ outcome: 'minor', source: 'TIER_B' });
   });
 
   it('asks the runner to verify when Play requires it', async () => {

@@ -8,16 +8,18 @@ import type { Visibility } from '@/api/social-schemas';
 import { TextButton } from '@/components/ui/buttons';
 import { ChoiceChips, InlineStatus, RowGroup, SwitchRow } from '@/components/ui/elements';
 import { Card } from '@/components/ui/layout';
+import { useTeen, visibilityChoices } from '@/features/account/teen';
 import { useSocialActions, VISIBILITY_HINTS, VISIBILITY_NAMES } from '@/features/social/use-social';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
-const VISIBILITIES: Visibility[] = ['only_me', 'leagues', 'followers', 'everyone'];
 
 /** Who sees this run, and whether its map is shared (docs/ROADMAP.md 4.2). Owner only. */
 export function RunSharingCard({ run, hasRoute }: { run: ServerRun; hasRoute: boolean }) {
   const router = useRouter();
   const actions = useSocialActions();
+  // A teen's runs go to their family league at most (docs/ROADMAP.md 4.10).
+  const { isTeen } = useTeen();
   // Shown straight away; the server's answer follows.
   const [visibility, setVisibility] = useState<Visibility>(run.visibility ?? 'only_me');
   const [mapShared, setMapShared] = useState(run.map_shared ?? false);
@@ -45,7 +47,7 @@ export function RunSharingCard({ run, hasRoute }: { run: ServerRun; hasRoute: bo
         label="Who sees this run"
         value={visibility}
         onChange={(v) => void save(v, mapShared)}
-        options={VISIBILITIES.map((v) => ({ value: v, label: VISIBILITY_NAMES[v] }))}
+        options={visibilityChoices(isTeen).map((v) => ({ value: v, label: VISIBILITY_NAMES[v] }))}
         disabled={actions.busy}
       />
       <Text variant="caption" tone="secondary">

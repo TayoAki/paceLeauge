@@ -7,6 +7,7 @@ import { DangerButton, PrimaryButton, SecondaryButton, TextButton } from '@/comp
 import { ChoiceChips, InlineStatus } from '@/components/ui/elements';
 import { Sheet } from '@/components/ui/sheet';
 import { env } from '@/config/env';
+import { useTeen } from '@/features/account/teen';
 import { LIVE_DURATIONS_MIN, liveLink, type LiveShareController } from '@/features/live-share/live-share';
 import { Text } from '@/design/text';
 
@@ -28,6 +29,9 @@ export function LiveShareSheet({ controller, visible, onClose }: { controller: L
   const [minutes, setMinutes] = useState<number>(120);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A teen's link opens only for their family league, signed in (docs/ROADMAP.md 4.10).
+  const { isTeen } = useTeen();
+  const who = isTeen ? 'Only people in your family league can open it, signed in to PaceLeague.' : 'Nobody else can find it.';
 
   const send = async (token: string) => {
     await Share.share({ message: liveMessage(liveLink(env.webUrl, token)) }).catch(() => undefined);
@@ -65,7 +69,7 @@ export function LiveShareSheet({ controller, visible, onClose }: { controller: L
       {current ? (
         <>
           <Text variant="body" tone="secondary">
-            Anyone with the link sees where you are, updated about every 30 seconds. It stops when you finish this run, or at {until}.
+            {isTeen ? 'Your family league sees' : 'Anyone with the link sees'} where you are, updated about every 30 seconds. It stops when you finish this run, or at {until}.
           </Text>
           <SecondaryButton label="Send the link again" icon={Send} onPress={() => void send(current.token)} />
           <DangerButton label="Stop sharing" icon={XCircle} onPress={() => void stop()} loading={busy} testID="live-stop" />
@@ -73,8 +77,7 @@ export function LiveShareSheet({ controller, visible, onClose }: { controller: L
       ) : (
         <>
           <Text variant="body" tone="secondary">
-            Send a link to people you choose, so they can see where you are on this run. It stops when you finish, or after the time below. Nobody else can find it,
-            and it’s free.
+            Send a link to people you choose, so they can see where you are on this run. It stops when you finish, or after the time below. {who} It’s free.
           </Text>
           <Text variant="labelStrong">Stop sharing after</Text>
           <ChoiceChips

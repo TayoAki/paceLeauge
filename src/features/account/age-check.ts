@@ -2,16 +2,20 @@ import * as AgeRange from 'expo-age-range';
 import { Platform } from 'react-native';
 
 /**
- * Age assurance (docs/ROADMAP.md Phase 0, decision 3). PaceLeague is for adults, and Texas and
- * other states require apps to use the app store's age signal. The store answer is recorded with
- * the profile; outside regulated regions the runner's own adult declaration stands.
+ * Age assurance (docs/ROADMAP.md Phase 0 and 4.10, decision 3). PaceLeague is for adults, and for
+ * 13–17 year olds in a family league an adult runs; Texas and other states require apps to use
+ * the app store's age signal. The store answer is recorded with the profile; outside regulated
+ * regions the runner's own adult declaration stands.
  */
-export type AgeSignal = 'adult' | 'not_required' | 'minor';
+export type TeenSignal = 'teen_13_15' | 'teen_16_17';
+export type AgeSignal = 'adult' | 'not_required' | 'minor' | TeenSignal;
 
 export type AgeCheck =
   /** Continue: the store says 18+, or age rules don't apply / the store has no answer outside a regulated region. */
   | { outcome: 'allowed'; signal: 'adult' | 'not_required'; source: string }
-  /** The store says the runner is under 18. */
+  /** The store says 13–17: a teen account, for the runner's own running and family leagues. */
+  | { outcome: 'teen'; signal: TeenSignal; source: string }
+  /** The store says under 13 (or under 18 without saying how young). */
   | { outcome: 'minor'; source: string }
   /** A regulated region, but no usable answer: the runner has to share (or verify) their age first. */
   | { outcome: 'needs_age'; reason: 'declined' | 'unavailable' | 'verification_required' };
@@ -41,18 +45,33 @@ export interface AgePort {
 }
 
 export const ADULT_AGE = 18;
+export const TEEN_AGE = 13;
+/** Under 16, no health data (heart rate, Apple Health, Health Connect). */
+export const OLDER_TEEN_AGE = 16;
 
 /** Store sources are enum-like tokens; anything else is dropped rather than sent to the server. */
 function sourceToken(value: string | null | undefined, fallback: string): string {
   return value && /^[A-Za-z0-9_]{1,32}$/.test(value) ? value : fallback;
 }
 
-/** What a store answer means for an adults-only app. Null when the answer is empty. */
-export function classifyRange(answer: AgeRangeAnswer): 'adult' | 'minor' | null {
-  if (answer.lowerBound !== null && answer.lowerBound >= ADULT_AGE) return 'adult';
-  if (answer.upperBound !== null && answer.upperBound < ADULT_AGE) return 'minor';
-  if (answer.lowerBound !== null && answer.upperBound !== null && answer.upperBound < ADULT_AGE) return 'minor';
+/**
+ * What a store answer means. Under 18 is a teen only when the store says 13 or older; a range that
+ * straddles 16 is treated as the younger band (no health data). Null when the answer is empty.
+ */
+export function classifyRange(answer: AgeRangeAnswer): 'adult' | TeenSignal | 'minor' | null {
+  const { lowerBound: low, upperBound: high } = answer;
+  if (low !== null && low >= ADULT_AGE) return 'adult';
+  if (high !== null && high < ADULT_AGE) {
+    if (low === null || low < TEEN_AGE) return 'minor';
+    return low >= OLDER_TEEN_AGE ? 'teen_16_17' : 'teen_13_15';
+  }
   return null;
+}
+
+function outcomeFor(kind: 'adult' | TeenSignal | 'minor', source: string): AgeCheck {
+  if (kind === 'adult') return { outcome: 'allowed', signal: 'adult', source };
+  if (kind === 'minor') return { outcome: 'minor', source };
+  return { outcome: 'teen', signal: kind, source };
 }
 
 function errorCode(error: unknown): string {
@@ -83,8 +102,7 @@ export async function checkAge(port: AgePort, mode: AgeCheckMode): Promise<AgeCh
     try {
       const answer = await port.requestRange();
       const kind = classifyRange(answer);
-      if (kind === 'adult') return { outcome: 'allowed', signal: 'adult', source: sourceToken(answer.source, 'play') };
-      if (kind === 'minor') return { outcome: 'minor', source: sourceToken(answer.source, 'play') };
+      if (kind) return outcomeFor(kind, sourceToken(answer.source, 'play'));
       return notRequired('unavailable');
     } catch {
       return notRequired('unavailable');
@@ -100,8 +118,7 @@ export async function checkAge(port: AgePort, mode: AgeCheckMode): Promise<AgeCh
   try {
     const answer = await port.requestRange();
     const kind = classifyRange(answer);
-    if (kind === 'adult') return { outcome: 'allowed', signal: 'adult', source: sourceToken(answer.source, 'declared') };
-    if (kind === 'minor') return { outcome: 'minor', source: sourceToken(answer.source, 'declared') };
+    if (kind) return outcomeFor(kind, sourceToken(answer.source, 'declared'));
     return eligible === true ? { outcome: 'needs_age', reason: 'unavailable' } : notRequired('unavailable');
   } catch (error) {
     const declined = errorCode(error) === 'ERR_AGE_RANGE_USER_DECLINED';
@@ -117,7 +134,7 @@ export const devicePort: AgePort = {
   isEligible: () => AgeRange.isEligibleForAgeFeaturesAsync(),
   signalsAccess: () => AgeRange.requestAgeSignalsAccessAsync(),
   requestRange: async () => {
-    const response = await AgeRange.requestAgeRangeAsync({ threshold1: ADULT_AGE });
+    const response = await AgeRange.requestAgeRangeAsync({ threshold1: TEEN_AGE, threshold2: OLDER_TEEN_AGE, threshold3: ADULT_AGE });
     return {
       lowerBound: response.lowerBound,
       upperBound: response.upperBound,
