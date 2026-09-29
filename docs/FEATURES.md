@@ -74,32 +74,32 @@ That makes 52 features: 9 in V1 and 43 from the roadmap.
 
 | Feature | What it does | Waits on |
 |---|---|---|
-| Android app | Recording in a foreground service, Health Connect, and Android's own wording | First Android build |
-| Web app | Everything but recording, in any browser | |
+| Android app | Recording in a foreground service, Health Connect, and Android's own wording | First Android build; Google Play developer account |
+| Web app | Everything but recording, in any browser | A Railway service for it |
 
 ## Phase 4: friends, family and everyone
 
 | Feature | What it does | Waits on |
 |---|---|---|
 | Leagues 2.0 | Up to five leagues, four-week seasons, duels, group runs and a group-chat link | |
-| Privacy zones and sharing | Choose who sees each run and its map; shared maps drop your zones and each end | |
+| Privacy zones and sharing | Choose who sees each run and its map; shared maps drop your zones and each end | Counsel review (wording) |
 | Follows and profiles | Follow requests, follow links, opt-in name search, mute and block | |
 | Feed | Runs friends and league-mates share, with kudos and comments | |
 | Clubs | Public or invite-only, up to 500 runners, a weekly board and group runs | |
 | Challenges | Monthly challenges for everyone and your league's or club's own, a badge each | |
 | Leaderboards | Opt-in weekly boards by tier and country, with the top results checked for cheating | |
 | Live location | A link for the people you choose, until the run ends | |
-| Push notifications and moderation | Kudos, comments, follows, cheers and results, quiet at night; a 24-hour report queue | Push credentials |
+| Push notifications and moderation | Kudos, comments, follows, cheers and results, quiet at night; a 24-hour report queue | Push credentials; a moderation rota |
 | Teen accounts | For 13 to 17, in a family league an adult approves | Counsel review (off until then) |
 
 ## Phase 5: maps
 
 | Feature | What it does | Waits on |
 |---|---|---|
-| Route planning | Loops of a set distance or routes drawn along paths, with GPX and Apple Watch | Routing service |
+| Route planning | Loops of a set distance or routes drawn along paths, with GPX and Apple Watch | Routing service; Google Maps key (Android) |
 | Navigation and offline maps | Spoken turns and off-route alerts with no signal; map areas kept on the phone | Mapbox account (maps) |
 | Segments | Curated stretches of path with opt-in boards and a local regular | |
-| Heatmap and suggested loops | Popular paths once 5 runners use them, and loops through them | |
+| Heatmap and suggested loops | Popular paths once 5 runners use them, and loops through them | Routing service (for the loops) |
 
 ## Free and Pro
 
