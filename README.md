@@ -106,6 +106,7 @@ docs/               Architecture, status/evidence, device protocol, operations, 
 
 ## Documentation
 
+- [FEATURES.md](docs/FEATURES.md) — every feature built so far, what each still waits on, Free and Pro, and how it compares with five running apps
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — how recording, sync, scoring and privacy fit together
 - [STATUS.md](docs/STATUS.md) — requirement-by-requirement status and the evidence behind it
 - [DEVICE_TEST_PROTOCOL.md](docs/DEVICE_TEST_PROTOCOL.md) — the physical-iPhone checks still required (F01 and EV-001–015)
