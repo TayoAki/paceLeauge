@@ -6,14 +6,42 @@
 //   • no tracked file contains a private key block or a Supabase secret API key.
 // Exits non-zero with a list of findings. Run by `npm run check:secrets` and in CI.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative, resolve, sep } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8' })
-  .split('\n')
-  .filter(Boolean)
-  .filter((f) => existsSync(resolve(root, f)) && statSync(resolve(root, f)).isFile());
+
+/** Folders .gitignore leaves out, for builds without git (the web app's Docker image). */
+const UNTRACKED_DIRS = new Set(['node_modules', 'dist', 'dist-web', 'web-build', 'coverage', 'artifacts', 'playwright-report', 'test-results']);
+/** Generated native projects, ignored only at the root: the ios and android folders in modules/ are source. */
+const UNTRACKED_ROOT_DIRS = new Set(['ios', 'android']);
+
+/** The files git would commit; where there's no git or repository, every file outside those folders and hidden ones. */
+function listFiles() {
+  try {
+    return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      .split('\n')
+      .filter(Boolean);
+  } catch {
+    const found = [];
+    const walk = (dir) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        const skipped =
+          UNTRACKED_DIRS.has(entry.name) || (dir === root && UNTRACKED_ROOT_DIRS.has(entry.name)) || (entry.name.startsWith('.') && entry.name !== '.github');
+        if (entry.isDirectory()) {
+          if (!skipped) walk(path);
+        } else if (entry.isFile()) {
+          found.push(relative(root, path).split(sep).join('/'));
+        }
+      }
+    };
+    walk(root);
+    return found;
+  }
+}
+
+const files = listFiles().filter((f) => existsSync(resolve(root, f)) && statSync(resolve(root, f)).isFile());
 
 const isAppCode = (f) => (/^src\/.*\.(ts|tsx|js|jsx)$/.test(f) && !/__tests__\//.test(f)) || f === 'app.config.ts' || f === 'index.ts';
 const isText = (f) => !/\.(png|jpe?g|gif|webp|ico|ttf|otf|woff2?|zip|pdf|mp4|db|sqlite)$/i.test(f);
