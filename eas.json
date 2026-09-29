@@ -28,7 +28,8 @@
         "EXPO_PUBLIC_API_URL": "https://api-staging-753f.up.railway.app",
         "EXPO_PUBLIC_API_KEY": "pl_stg_jbc7CrDKpVir0z0eqkPc_AJv",
         "EXPO_PUBLIC_PRIVACY_URL": "https://api-staging-753f.up.railway.app/legal/privacy",
-        "EXPO_PUBLIC_TERMS_URL": "https://api-staging-753f.up.railway.app/legal/terms"
+        "EXPO_PUBLIC_TERMS_URL": "https://api-staging-753f.up.railway.app/legal/terms",
+        "EXPO_PUBLIC_WEB_URL": "https://web-staging-ba3b.up.railway.app"
       }
     },
     "production": {

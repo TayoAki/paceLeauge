@@ -399,12 +399,21 @@ and shows saved routes on a plain grid; drawing a route needs the phone app's ma
 | `EXPO_PUBLIC_API_KEY` | The API's `PUBLIC_API_KEY` for that environment |
 | `EXPO_PUBLIC_APP_ENV` | `staging` or `production` |
 | `EXPO_PUBLIC_PRIVACY_URL`, `EXPO_PUBLIC_TERMS_URL`, `EXPO_PUBLIC_SUPPORT_EMAIL` | As for the app builds |
+| `EXPO_PUBLIC_WEB_URL` | The web service's own address, for the follow links it makes |
 | `API_ORIGIN` | The API's origin again (no path), used at run time for the Content-Security-Policy |
+| `PORT` | `8080`, the port its domain targets |
 
 3. Generate a domain (or add the operator's, for example `app.` next to `api.`), then add that
    origin to the **API's** `CORS_ORIGINS` (comma-separated, no trailing slash) and deploy the API.
    Without it, the browser refuses every call.
 4. Health check path: `/healthz`.
+
+Staging's web app is the `web` service at `https://web-staging-ba3b.up.railway.app`, built from
+the same branch as the API; it redeploys when app code changes (its watch paths are `src/`,
+`assets/`, `public/`, `modules/`, `web/`, `scripts/web/` and the root build files). The `pilot`
+build profile's `EXPO_PUBLIC_WEB_URL` points at it, so follow and live-location links from the
+phone open there. Staging's API allows any origin (`CORS_ORIGINS=*`), so step 3's CORS change is
+only for production.
 
 `scripts/web/serve.mjs` serves the build: the app's page for every route, hashed bundles cached
 for a year, and strict headers: a Content-Security-Policy that allows only the app's own scripts
