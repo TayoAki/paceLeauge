@@ -18,7 +18,7 @@ import { useAccount } from '@/features/account/account-provider';
 import { useAuth } from '@/features/account/auth-provider';
 import { RunInProgressError } from '@/features/account/runtime';
 import { teenInfo } from '@/features/account/teen';
-import { useLocalRuns, useMe, useRecorder, useStravaStatus } from '@/features/data/hooks';
+import { useGarminStatus, useLocalRuns, useMe, useRecorder, useStravaStatus } from '@/features/data/hooks';
 import { clearExportFiles } from '@/features/privacy/export-data';
 import { MANAGE_SUBSCRIPTIONS_URL } from '@/features/pro/purchases';
 import { useEntitlements } from '@/features/pro/use-pro';
@@ -64,6 +64,9 @@ export default function ProfileScreen() {
   // Teen accounts (docs/ROADMAP.md 4.10): no follows or third-party connections.
   const { isTeen } = teenInfo(me.data?.data.profile?.age_signal);
   const strava = useStravaStatus().data?.data;
+  // Connections only once the API offers Strava or Garmin (docs/OPERATIONS.md, "Integrations").
+  const garminAvailable = useGarminStatus().data?.data.available ?? false;
+  const connections = (strava?.available ?? false) || garminAvailable;
   const entitlements = useEntitlements().data?.data ?? null;
   const { session } = useRecorder();
   const local = useLocalRuns();
@@ -182,14 +185,14 @@ export default function ProfileScreen() {
           onPress={() => router.push('/profile/sync')}
           testID="profile-sync"
         />
-        {!isTeen ? (
-        <Row
-          icon={Link2}
-          label="Connections"
-          value={strava?.connected ? 'Strava' : undefined}
-          onPress={() => router.push('/profile/connections')}
-          testID="profile-connections"
-        />
+        {!isTeen && connections ? (
+          <Row
+            icon={Link2}
+            label="Connections"
+            value={strava?.connected ? 'Strava' : undefined}
+            onPress={() => router.push('/profile/connections')}
+            testID="profile-connections"
+          />
         ) : null}
         <Row
           icon={Bell}

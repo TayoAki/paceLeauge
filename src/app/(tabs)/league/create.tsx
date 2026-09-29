@@ -9,6 +9,7 @@ import { ChoiceChips, TextField } from '@/components/ui/elements';
 import { NavHeader, Screen } from '@/components/ui/layout';
 import { LEAGUE_RULES } from '@/domain/config';
 import { useAccount } from '@/features/account/account-provider';
+import { useMe } from '@/features/data/hooks';
 import { useSelectedLeague } from '@/features/leagues/selected-league';
 import { Text } from '@/design/text';
 
@@ -22,7 +23,7 @@ const errorCopy: Record<string, string> = {
 
 const KINDS: { value: LeagueKind; label: string; about: string; placeholder: string }[] = [
   { value: 'friends', label: 'Friends', about: 'A crew of friends. Best three days each week, and a champion every four weeks.', placeholder: 'Friday Crew' },
-  { value: 'family', label: 'Family', about: 'For your family. Teens will be able to join family leagues with a parent’s consent.', placeholder: 'The Rivera family' },
+  { value: 'family', label: 'Family', about: 'For your family. Best three days each week, and a champion every four weeks.', placeholder: 'The Rivera family' },
   { value: 'work', label: 'Work', about: 'For colleagues. Only runner names, tiers and weekly XP are shared, never routes.', placeholder: 'Office Striders' },
 ];
 
@@ -37,6 +38,9 @@ export default function CreateLeagueScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const template = KINDS.find((k) => k.value === kind) ?? KINDS[0]!;
+  // Teen accounts (docs/ROADMAP.md 4.10) aren't mentioned until they're switched on.
+  const teenAccounts = useMe().data?.data.config.teen_accounts_enabled ?? false;
+  const about = kind === 'family' && teenAccounts ? 'For your family. Teens can join with a parent’s or guardian’s consent.' : template.about;
 
   const create = async () => {
     if (!api) return;
@@ -62,7 +66,7 @@ export default function CreateLeagueScreen() {
       </Text>
       <ChoiceChips<LeagueKind> label="Kind of league" value={kind} onChange={setKind} options={KINDS.map((k) => ({ value: k.value, label: k.label }))} />
       <Text variant="caption" tone="secondary">
-        {template.about}
+        {about}
       </Text>
       <TextField
         label="League name"

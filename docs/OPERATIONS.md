@@ -154,7 +154,8 @@ The action is recorded in `private.audit_log`. The runner rejoins a league with 
 
 The age check asks the store for 13, 16 and 18, and records `teen_13_15` or `teen_16_17` for a
 teen. While `teen_accounts_enabled` is off (the default), a teen answer is treated as under 18:
-no profile at sign-up, and an existing account is locked, exactly as above. Turn it on only after
+no profile at sign-up, and an existing account is locked, exactly as above; the app doesn't
+mention teen accounts anywhere (the development seed turns the flag on, for testing). Turn it on only after
 counsel has reviewed state age laws and `docs/legal-drafts/teen-accounts.md`, and publish those
 policy and terms changes in the same release:
 
@@ -424,7 +425,9 @@ npm run e2e:web-app      # signs in, opens 13 screens at phone and desktop width
 
 ## Integrations (Phase 2)
 
-Both are off until their variables are set on the `api` service. Nothing about them is in the app.
+Both are off until their variables are set on the `api` service, and until then the app doesn't
+show them: Profile › Connections appears once either is on, with only the ones that are, and the
+Privacy screen mentions Strava and Garmin only then. No secret about them is in the app.
 
 ### Strava export (2.3)
 
@@ -659,11 +662,14 @@ code, its times and why it stopped) for 7 days; positions are never logged.
 
 ## Route planning (5.1)
 
-Runners can always draw a route point to point and save it. Loops of a chosen distance, and
-drawing that follows paths, need a routing service with walking rules: the API calls
-[GraphHopper's Routing API](https://docs.graphhopper.com/) itself (`server/src/routing.ts`), so its
-key never reaches the app. Until `ROUTING_URL` is set, the app says planning isn't switched on and
-`plan_route` answers `not_available`.
+Loops of a chosen distance, and drawing that follows paths, need a routing service with walking
+rules: the API calls [GraphHopper's Routing API](https://docs.graphhopper.com/) itself
+(`server/src/routing.ts`), so its key never reaches the app. Until `ROUTING_URL` is set,
+`plan_route` answers `not_available` and the app hides everything built on planned routes: Train ›
+Routes (the planner, drawing, saved routes, popular paths and suggested loops), *Add my runs to
+the heatmap* in Profile › Sharing, and League › Segments, since staff make segments from saved
+routes. Setting it brings them all back without a new app build (the app reads
+`planning_available` from `list_routes`).
 
 | Variable | Value |
 |---|---|
@@ -721,6 +727,8 @@ terms for offline use (the SDK enforces a tile limit per phone). Test with P5-OF
 ## Segments (5.3)
 
 Segments are curated: only staff with the moderator role make them, from their own saved routes.
+League › Segments shows only once route planning is switched on (5.1), because that's when
+routes can be made.
 
 1. Plan the segment as a route (Train › Routes › Plan a route) along a path, trail, track or
    through a park, never along a road (a safety call), drawn in the direction it's timed: from its
@@ -751,8 +759,8 @@ within a minute or two), and to match one run again by hand,
 ## Heatmap and suggested loops (5.4)
 
 Train › Routes › Popular paths shows the heatmap around the runner and plans loops through the
-busiest places nearby (with route planning switched on, 5.1). Nothing needs configuring: the
-tiles come from the API service itself.
+busiest places nearby. It shows, with the switch to add runs to it, once route planning is
+switched on (5.1); nothing else needs configuring: the tiles come from the API service itself.
 
 - **Who's on it.** Only runners who add their runs (Popular paths, or Profile › Sharing; teens
   can't), and only their accepted runs shared with everyone with the map, from the last 365 days,

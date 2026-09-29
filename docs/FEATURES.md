@@ -101,6 +101,21 @@ That makes 52 features: 9 in V1 and 43 from the roadmap.
 | Segments | Curated stretches of path with opt-in boards and a local regular | |
 | Heatmap and suggested loops | Popular paths once 5 runners use them, and loops through them | Routing service (for the loops) |
 
+## Hidden until switched on
+
+These are built but don't appear in the app until their account or review is in place. All but
+offline maps and the watch app come back without a new app build.
+
+| Feature | Appears once |
+|---|---|
+| Strava export | Its variables are set on the API ([OPERATIONS.md](OPERATIONS.md#strava-export-23)) |
+| Garmin sync | The Terra variables are set on the API ([OPERATIONS.md](OPERATIONS.md#garmin-through-terra-24)) |
+| Route planning, saved routes, popular paths, suggested loops and segments | `ROUTING_URL` is set on the API ([OPERATIONS.md](OPERATIONS.md#route-planning-51)) |
+| Offline maps | A build with `PL_MAPBOX=1` and a Mapbox token |
+| Apple Watch app | A build with `PL_WATCH=1` |
+| Push notifications | Push credentials in EAS and `PUSH_ENABLED=true` on the API |
+| Teen accounts | The `teen_accounts_enabled` flag is turned on, after counsel's review |
+
 ## Free and Pro
 
 Pro costs $29.99 a year with a 7-day free trial, or $4.99 a month. It adds:

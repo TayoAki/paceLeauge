@@ -9,6 +9,7 @@ import { NavHeader, Screen } from '@/components/ui/layout';
 import { env } from '@/config/env';
 import { useAccount } from '@/features/account/account-provider';
 import { useAuth } from '@/features/account/auth-provider';
+import { useGarminStatus, useStravaStatus } from '@/features/data/hooks';
 import {
   clearExportFiles,
   describeExportError,
@@ -30,20 +31,23 @@ type ExportState =
   | { status: 'failed'; message: string }
   | { status: 'ready'; files: SavedExportFile[] };
 
-const DATA_HANDLING = [
-  'Your runs, routes and scores are stored in the cloud so they sync and stay safe. That data is processed by the operator of PaceLeague and its service providers under access controls. It isn’t end-to-end encrypted.',
-  'Your league sees your runner name, tier and weekly XP, never your email. Runs and their maps stay yours unless you share them (Profile › Sharing), and shared maps leave out your privacy zones and the first and last 200 m.',
-  'Run summaries and routes stay until you delete them or delete your account.',
-  'Deleting your account hides you from your league right away and removes your primary data within 7 days.',
-  'App analytics never include your routes, locations, email or run titles.',
-  `Runs you bring in from ${HEALTH.name}, a file, Garmin or a watch are stored the same way, with the app and device that recorded them and, when they have it, heart rate and steps.`,
-  'If you connect Strava, the runs you post there include their routes and follow your Strava settings.',
-  'A training plan keeps your setup answers, its sessions, your changes and how each session felt, including whether something hurt. Only you can see it.',
-  `Heart-rate zones and health trends from ${HEALTH.name} are worked out on this phone and never sent to PaceLeague.`,
-  `Pro purchases go through ${STORE.name} and RevenueCat; PaceLeague never sees your payment details.`,
-  'Kudos and comments you give are seen by everyone who can see the run. Reports go to moderators with what you reported, never who you are.',
-  'If you turn on notifications, they go through Expo’s push service and Apple or Google, with the name of the runner involved and the first words of a comment.',
-];
+/** How data is handled; Strava and Garmin appear once the API has them switched on. */
+function dataHandling(connections: { strava: boolean; garmin: boolean }): string[] {
+  return [
+    'Your runs, routes and scores are stored in the cloud so they sync and stay safe. That data is processed by the operator of PaceLeague and its service providers under access controls. It isn’t end-to-end encrypted.',
+    'Your league sees your runner name, tier and weekly XP, never your email. Runs and their maps stay yours unless you share them (Profile › Sharing), and shared maps leave out your privacy zones and the first and last 200 m.',
+    'Run summaries and routes stay until you delete them or delete your account.',
+    'Deleting your account hides you from your league right away and removes your primary data within 7 days.',
+    'App analytics never include your routes, locations, email or run titles.',
+    `Runs you bring in from ${HEALTH.name}, a file${connections.garmin ? ', Garmin' : ''} or a watch are stored the same way, with the app and device that recorded them and, when they have it, heart rate and steps.`,
+    ...(connections.strava ? ['If you connect Strava, the runs you post there include their routes and follow your Strava settings.'] : []),
+    'A training plan keeps your setup answers, its sessions, your changes and how each session felt, including whether something hurt. Only you can see it.',
+    `Heart-rate zones and health trends from ${HEALTH.name} are worked out on this phone and never sent to PaceLeague.`,
+    `Pro purchases go through ${STORE.name} and RevenueCat; PaceLeague never sees your payment details.`,
+    'Kudos and comments you give are seen by everyone who can see the run. Reports go to moderators with what you reported, never who you are.',
+    'If you turn on notifications, they go through Expo’s push service and Apple or Google, with the name of the runner involved and the first words of a comment.',
+  ];
+}
 
 function runDate(ms: number | null): string | undefined {
   return ms === null ? undefined : new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -58,6 +62,10 @@ export default function PrivacyScreen() {
   const [exportState, setExportState] = useState<ExportState>({ status: 'idle' });
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const connections = {
+    strava: useStravaStatus().data?.data.available ?? false,
+    garmin: useGarminStatus().data?.data.available ?? false,
+  };
   const mounted = useRef(true);
 
   // Exported files contain private routes: remove them from the phone when leaving.
@@ -220,7 +228,7 @@ export default function PrivacyScreen() {
         </Pressable>
         {detailsOpen ? (
           <View style={styles.details}>
-            {DATA_HANDLING.map((line) => (
+            {dataHandling(connections).map((line) => (
               <Text key={line} variant="label" tone="secondary">
                 {line}
               </Text>

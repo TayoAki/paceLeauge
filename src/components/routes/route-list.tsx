@@ -32,11 +32,6 @@ export function RouteList() {
       {!isTeen ? (
         <SecondaryButton label="Popular paths" icon={Flame} onPress={() => router.push('/train/routes/popular')} testID="popular-paths" />
       ) : null}
-      {data && !data.planning_available ? (
-        <Text variant="caption" tone="secondary">
-          Routes are drawn point to point for now; loops of a set distance and routes along paths come when route planning is switched on.
-        </Text>
-      ) : null}
       {data && data.routes.length === 0 ? (
         <Card>
           <EmptyState icon={RouteIcon} title="No routes yet." body="Plan a loop of the distance you want, or draw one point to point. Then follow it on a run, or send it to your watch." />

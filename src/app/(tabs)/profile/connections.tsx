@@ -50,10 +50,24 @@ function useConnectionAction(refetch: () => unknown) {
   return { busy, error, run };
 }
 
-/** Connections (docs/ROADMAP.md 2.3 and 2.4): post runs to Strava, bring runs in from Garmin. */
+/** Who owns the names of the connections shown. */
+function trademarks(strava: boolean, garmin: boolean): string | null {
+  if (strava && garmin) return 'Strava is a trademark of Strava, Inc., and Garmin of Garmin Ltd. PaceLeague isn’t made or endorsed by either.';
+  if (strava) return 'Strava is a trademark of Strava, Inc. PaceLeague isn’t made or endorsed by Strava.';
+  if (garmin) return 'Garmin is a trademark of Garmin Ltd. PaceLeague isn’t made or endorsed by Garmin.';
+  return null;
+}
+
+/**
+ * Connections (docs/ROADMAP.md 2.3 and 2.4): post runs to Strava, bring runs in from Garmin. Each
+ * shows only once the API has it switched on (docs/OPERATIONS.md, "Integrations").
+ */
 export default function ConnectionsScreen() {
   const strava = useStravaStatus();
   const garmin = useGarminStatus();
+  const showStrava = strava.data?.data.available ?? false;
+  const showGarmin = garmin.data?.data.available ?? false;
+  const notice = trademarks(showStrava, showGarmin);
   const refreshing = (strava.isFetching && !strava.isPending) || (garmin.isFetching && !garmin.isPending);
   return (
     <Screen
@@ -72,11 +86,18 @@ export default function ConnectionsScreen() {
       {(strava.isError && !strava.data) || (garmin.isError && !garmin.data) ? (
         <InlineStatus tone="danger" title="Couldn’t load your connections." body="Pull to try again." />
       ) : null}
-      <StravaCard />
-      <GarminCard />
-      <Text variant="caption" tone="secondary">
-        Strava is a trademark of Strava, Inc., and Garmin of Garmin Ltd. PaceLeague isn’t made or endorsed by either.
-      </Text>
+      {showStrava ? <StravaCard /> : null}
+      {showGarmin ? <GarminCard /> : null}
+      {strava.data && garmin.data && !showStrava && !showGarmin ? (
+        <Text variant="body" tone="secondary">
+          No connections are switched on yet.
+        </Text>
+      ) : null}
+      {notice ? (
+        <Text variant="caption" tone="secondary">
+          {notice}
+        </Text>
+      ) : null}
     </Screen>
   );
 }
@@ -105,11 +126,7 @@ function StravaCard() {
         <Text variant="section" accessibilityRole="header">
           Strava
         </Text>
-        {data && !data.available ? (
-          <Text variant="body" tone="secondary">
-            Posting to Strava isn’t set up on this server yet.
-          </Text>
-        ) : data && !data.connected ? (
+        {data && !data.connected ? (
           <>
             <Text variant="body" tone="secondary">
               Post each run you record with PaceLeague to your Strava account, with its route. Your Strava privacy settings decide who sees it there.
@@ -201,20 +218,6 @@ function GarminCard() {
       const result = await WebBrowser.openAuthSessionAsync(url, returnTo);
       if (result.type === 'success') setOutcome(garminOutcome(result.url));
     });
-
-  // Until the aggregator is switched on, Garmin runs still arrive through Apple Health as history.
-  if (data && !data.available) {
-    return (
-      <Card>
-        <Text variant="section" accessibilityRole="header">
-          Garmin
-        </Text>
-        <Text variant="body" tone="secondary">
-          Garmin runs come in through {HEALTH.name}, without their routes, so they count for your weekly goal and streak but not league XP. Direct Garmin sync with routes isn’t switched on yet.
-        </Text>
-      </Card>
-    );
-  }
 
   return (
     <>

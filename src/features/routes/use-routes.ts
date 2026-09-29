@@ -17,6 +17,13 @@ export const useRoutes = () => useCachedQuery('routes', [], (api) => api.listRou
 export const useRoute = (routeId: string | null) =>
   useCachedQuery('route', [routeId ?? ''], (api) => api.getRoute(routeId ?? ''), { enabled: !!routeId, staleTime: 60_000 });
 
+/**
+ * Whether the API has a routing service (docs/OPERATIONS.md, "Route planning"). Until it does, what
+ * is built on planned routes stays hidden: Train › Routes with popular paths and suggested loops,
+ * adding runs to the heatmap, and segments, which staff make from saved routes.
+ */
+export const useRoutePlanning = (): boolean => useRoutes().data?.data.planning_available ?? false;
+
 export function describeRouteError(error: unknown): string {
   const e = toApiError(error);
   if (e.code === 'network' || e.code === 'timeout') return 'You’re offline. Planning and saving routes need a connection.';

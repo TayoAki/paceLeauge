@@ -26,6 +26,7 @@ import {
   type PlanState,
 } from '@/features/plans/plan-client';
 import { usePlanActions, usePlanState } from '@/features/plans/use-plan';
+import { useRoutePlanning } from '@/features/routes/use-routes';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 
@@ -36,6 +37,9 @@ import { colors, space } from '@/design/tokens';
 export default function TrainScreen() {
   const { state, query, offline } = usePlanState();
   const [section, setSection] = useState<'plan' | 'guided' | 'routes'>('plan');
+  // Routes only once route planning is switched on (useRoutePlanning).
+  const planning = useRoutePlanning();
+  const shown = section === 'routes' && !planning ? 'plan' : section;
   const refreshing = query.isFetching && !query.isPending;
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void query.refetch()} tintColor={colors.textSecondary} />}>
@@ -44,13 +48,13 @@ export default function TrainScreen() {
         options={[
           { value: 'plan', label: 'Plan' },
           { value: 'guided', label: 'Guided' },
-          { value: 'routes', label: 'Routes' },
+          ...(planning ? [{ value: 'routes' as const, label: 'Routes' }] : []),
         ]}
-        value={section}
+        value={shown}
         onChange={setSection}
         label="Train"
       />
-      {section === 'guided' ? <GuidedList /> : section === 'routes' ? <RouteList /> : <PlanSection state={state} query={query} offline={offline} />}
+      {shown === 'guided' ? <GuidedList /> : shown === 'routes' ? <RouteList /> : <PlanSection state={state} query={query} offline={offline} />}
     </Screen>
   );
 }

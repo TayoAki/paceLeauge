@@ -45,7 +45,7 @@ export default function RulesScreen() {
       <Section
         title="Runs from your watch and other apps"
         lines={[
-          'Runs from Apple Health, Health Connect, a watch or Garmin earn XP the same way when they come with a GPS route.',
+          'Runs from Apple Health, Health Connect or a watch earn XP the same way when they come with a GPS route.',
           'Workouts without a route, runs typed in by hand and imported files are kept as history. They count for your weekly goal and streak, not league XP.',
           'If two devices record the same run, it counts once — we keep the copy with the better GPS record.',
         ]}

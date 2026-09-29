@@ -23,17 +23,20 @@ import { InviteSheet, MemberSheet } from '@/features/leagues/league-sheets';
 import { recapWeek } from '@/features/leagues/recap';
 import { useSelectedLeague } from '@/features/leagues/selected-league';
 import { deviceTimeZone, weekStateLine } from '@/features/leagues/week-copy';
+import { useRoutePlanning } from '@/features/routes/use-routes';
 import { Text } from '@/design/text';
 import { colors, space } from '@/design/tokens';
 import { useNow } from '@/lib/use-now';
 
 /**
  * The feed (docs/ROADMAP.md 4.4), clubs (4.5), challenges (4.6), leaderboards (4.7) and segments
- * (5.3). A teen account (4.10) has only its family league's challenges.
+ * (5.3), which staff make from planned routes, so only once route planning is on. A teen account
+ * (4.10) has only its family league's challenges.
  */
 type SocialPath = '/feed' | '/league/clubs' | '/league/challenges' | '/league/leaderboards' | '/league/segments';
 
 function SocialRows({ open, teen }: { open: (path: SocialPath) => void; teen: boolean }) {
+  const segments = useRoutePlanning();
   if (teen) {
     return (
       <RowGroup>
@@ -51,9 +54,12 @@ function SocialRows({ open, teen }: { open: (path: SocialPath) => void; teen: bo
         label="Leaderboards"
         hint="Weekly boards for your tier and country, if you join"
         onPress={() => open('/league/leaderboards')}
+        last={!segments}
         testID="open-leaderboards"
       />
-      <Row icon={Timer} label="Segments" hint="Timed stretches of path with a board each, if you join" onPress={() => open('/league/segments')} last testID="open-segments" />
+      {segments ? (
+        <Row icon={Timer} label="Segments" hint="Timed stretches of path with a board each, if you join" onPress={() => open('/league/segments')} last testID="open-segments" />
+      ) : null}
     </RowGroup>
   );
 }

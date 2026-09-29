@@ -12,6 +12,7 @@ import { useAccount } from '@/features/account/account-provider';
 import { useMe } from '@/features/data/hooks';
 import { useTeen, visibilityChoices } from '@/features/account/teen';
 import { useHeatmap, useHeatmapActions } from '@/features/heatmap/use-heatmap';
+import { useRoutePlanning } from '@/features/routes/use-routes';
 import { useSocialActions, useSocialSettings, VISIBILITY_HINTS, VISIBILITY_NAMES } from '@/features/social/use-social';
 import { Text } from '@/design/text';
 import { space } from '@/design/tokens';
@@ -59,6 +60,8 @@ export default function SharingScreen() {
   const data = settings.data?.data;
   // Teen accounts (docs/ROADMAP.md 4.10): their family league at most, and no followers.
   const { isTeen } = useTeen();
+  // The heatmap is shown with the routes it sits in (useRoutePlanning).
+  const planning = useRoutePlanning();
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState('Home');
   const [radius, setRadius] = useState(200);
@@ -174,7 +177,7 @@ export default function SharingScreen() {
             ) : null}
           </RowGroup>
 
-          {!isTeen ? <HeatmapSwitch /> : null}
+          {!isTeen && planning ? <HeatmapSwitch /> : null}
 
           <View style={styles.group}>
             <Text variant="labelStrong" accessibilityRole="header">
