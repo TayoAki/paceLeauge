@@ -75,7 +75,7 @@ That makes 52 features: 9 in V1 and 43 from the roadmap.
 | Feature | What it does | Waits on |
 |---|---|---|
 | Android app | Recording in a foreground service, Health Connect, and Android's own wording | First Android build; Google Play developer account |
-| Web app | Everything but recording, in any browser | A Railway service for it |
+| Web app | Everything but recording, in any browser; on staging at web-staging-ba3b.up.railway.app | |
 
 ## Phase 4: friends, family and everyone
 
