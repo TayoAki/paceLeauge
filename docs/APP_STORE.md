@@ -21,7 +21,8 @@ production addresses before submitting.
 | To do | Production server: a Railway production environment with its own database, an email provider for trial reminders, a RevenueCat webhook for real purchases, and the `production` build profile’s settings. It adds a monthly Railway cost, and sending email needs a Resend account and a domain. |
 | To do | Production build: `eas build --platform ios --profile production --auto-submit`, then pick it under Build. |
 | To do | Review account on the production server, with a league and a few weeks of runs, for Sign-In Information. |
-| To do | Screenshots from the app on an iPhone (list below). |
+| Done | Six screenshots at 1284 × 2778, from the current app with the demo league, in [app-store/screenshots](app-store/screenshots). |
+| To do | Upload the six screenshots to the 6.5-inch slot, in order. Retake the two run screens on an iPhone when possible, where the route is drawn on Apple Maps. |
 | To do | Business → Paid Apps agreement shows Active, and each subscription’s review screenshot is a real one. |
 | To do | Swap the staging links for the production ones: Support URL, Privacy Policy URL, and the links at the end of the description. |
 
@@ -29,18 +30,18 @@ production addresses before submitting.
 
 ### Previews and Screenshots
 
-The page asks for the 6.5-inch size: 1284 × 2778 or 1242 × 2688, portrait. Screenshots from an
-iPhone 12 Pro Max, 13 Pro Max or 14 Plus are already 1284 × 2778. From another iPhone, put them in
-a folder in the repository and they can be resized. Use real screens from the app (the product
-packet rules out concept boards), from the review account or a league whose runners agreed to
-appear, with a clean status bar. Six screens, in this order:
+Six screenshots for the 6.5-inch slot (1284 × 2778, portrait) are in
+[app-store/screenshots](app-store/screenshots), in upload order:
 
-1. League: your league’s standings this week
-2. Today: your week, today’s session and Start run
-3. A run in progress, with live pace
-4. A finished run, with its splits and XP
-5. Progress: stats, records and badges
-6. Train: this week of a plan
+1. `01-league.png`: League: this week’s standings
+2. `02-today.png`: Today: the week, today’s plan and Start run
+3. `03-run.png`: A run in progress, with live pace
+4. `04-summary.png`: The finished run, with its coach note and XP
+5. `05-progress.png`: Progress: rank, active days, streak and distance
+6. `06-train.png`: Train: a 10K plan
+
+They’re the app’s real screens with the demo league from the development seed (no real people), drawn from the web build at iPhone 14 Plus size (428 × 926 points at 3x), with the iPhone’s safe areas and Inter standing in for the iPhone’s system font. On the two run screens the route sits on a plain grid; on the iPhone it’s drawn on Apple Maps. Retake the two run screens on an iPhone when possible. As the product packet
+says, store screenshots are real screens, never the concept boards.
 
 ### Promotional Text (168/170)
 
