@@ -487,6 +487,17 @@ Pro is sold through the App Store with RevenueCat. Until the variables below are
 answers 404 and nobody has Pro except through `grant-pro` (below). Everything here needs the
 operator's App Store Connect and RevenueCat accounts; nothing is created by the code.
 
+**Set up on 2 October 2026:** the RevenueCat project *PaceLeague* (`proj15dd51d6`) with its iOS
+app (`com.tayoaki.paceleague`), the entitlement `pro`, the products `paceleague_pro_yearly` and
+`paceleague_pro_monthly` attached to it, the current offering `default` holding them as
+`$rc_annual` and `$rc_monthly`, and a webhook *PaceLeague staging API* to staging's
+`/integrations/revenuecat/webhook` for **sandbox** events only (TestFlight purchases are sandbox
+ones). The `pilot` build profile has the app's public key. Still to do, below: the App Store
+Connect side (step 1), the In-App Purchase key in RevenueCat (step 2), and the webhook's
+Authorization value in RevenueCat with `REVENUECAT_WEBHOOK_AUTH` on `api` (steps 3 and 4).
+Production gets its own webhook to the production API, with sandbox *and* production events,
+because App Review buys with sandbox accounts on the release build.
+
 1. **App Store Connect:** create a subscription group (for example "PaceLeague Pro") with two
    auto-renewable subscriptions: yearly at $29.99 with a 7-day free trial as its introductory
    offer, and monthly at $4.99 with no trial (decision 4). Add the review screenshot and the

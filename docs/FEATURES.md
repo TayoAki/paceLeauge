@@ -68,7 +68,7 @@ That makes 52 features: 9 in V1 and 43 from the roadmap.
 | Coach notes | A note after each run from 13 written rules, not AI | Coach review |
 | Guided runs | 18 coached runs, 6 of them free, spoken over your music | Recorded voice |
 | Heart-rate zones and training analytics | Zones on every run for free; load, fitness and fatigue, predictions and efficiency with Pro | Counsel review |
-| Pro | $4.99 a month or $29.99 a year, with a 7-day trial on the annual plan; nothing paid changes XP or rank | App Store and RevenueCat |
+| Pro | $4.99 a month or $29.99 a year, with a 7-day trial on the annual plan; nothing paid changes XP or rank | App Store Connect subscriptions (RevenueCat is set up) |
 
 ## Platforms: Android and the web
 
