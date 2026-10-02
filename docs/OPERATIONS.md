@@ -498,9 +498,14 @@ app (`com.tayoaki.paceleague`), the entitlement `pro`, the products `paceleague_
 `/integrations/revenuecat/webhook` for **sandbox** events only (TestFlight purchases are sandbox
 ones). The `pilot` build profile has the app's public key, and staging's `api` has
 `REVENUECAT_WEBHOOK_AUTH` (checked: no or a wrong Authorization value gets 401, the right one
-200). Still to do, below: the App Store Connect side (step 1), the In-App Purchase key in
-RevenueCat (step 2), and the same value as the webhook's Authorization header in RevenueCat
-(step 3).
+200). RevenueCat has the In-App Purchase key and an App Store Connect API key (both validated),
+and its product editor created the App Store Connect side: the subscription group *PaceLeague
+Pro* with `paceleague_pro_yearly` ($29.99 a year with a one-week free trial) and
+`paceleague_pro_monthly` ($4.99 a month), in all 175 storefronts at Apple's equalized prices, both
+*Ready to Submit*. Their review screenshots are blank placeholders: replace them with a screenshot
+of the Pro screen before submitting for review. Still to do: the Paid Apps agreement (step 1),
+the same value as the webhook's Authorization header in RevenueCat (step 3), and the sandbox
+tests (below).
 Production gets its own webhook to the production API, with sandbox *and* production events,
 because App Review buys with sandbox accounts on the release build.
 
