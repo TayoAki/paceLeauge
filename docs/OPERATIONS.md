@@ -137,9 +137,13 @@ and when; never a birth date.
 - **Regulated region, no answer:** the app asks the runner to share their age range (or verify it
   with Google Play) and can't be used until they do.
 
-The iOS entitlement `com.apple.developer.declared-age-range` is set in `app.config.ts`; EAS enables
-the capability on the App ID during the build. Test on a real iPhone: the simulator has no age
-answer.
+The iOS entitlement `com.apple.developer.declared-age-range` is set in `app.config.ts`. EAS doesn't
+turn this capability on by itself: the first build with it (2 October 2026) failed because the
+provisioning profile lacked "Declared Age Range". Turn it on once in the Apple Developer portal
+(Identifiers → `com.tayoaki.paceleague` → Capabilities → Declared Age Range), then delete the old
+profile (`eas credentials --platform ios` → the build profile → Build Credentials → Provisioning
+Profile: Delete one from your project) and build again; EAS makes a new profile that includes it.
+Test on a real iPhone: the simulator has no age answer.
 
 A store signal can be wrong (for example, a family sharing one Apple Account). After checking the
 holder's age another way, a staff operator clears the lock:
