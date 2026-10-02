@@ -492,9 +492,11 @@ app (`com.tayoaki.paceleague`), the entitlement `pro`, the products `paceleague_
 `paceleague_pro_monthly` attached to it, the current offering `default` holding them as
 `$rc_annual` and `$rc_monthly`, and a webhook *PaceLeague staging API* to staging's
 `/integrations/revenuecat/webhook` for **sandbox** events only (TestFlight purchases are sandbox
-ones). The `pilot` build profile has the app's public key. Still to do, below: the App Store
-Connect side (step 1), the In-App Purchase key in RevenueCat (step 2), and the webhook's
-Authorization value in RevenueCat with `REVENUECAT_WEBHOOK_AUTH` on `api` (steps 3 and 4).
+ones). The `pilot` build profile has the app's public key, and staging's `api` has
+`REVENUECAT_WEBHOOK_AUTH` (checked: no or a wrong Authorization value gets 401, the right one
+200). Still to do, below: the App Store Connect side (step 1), the In-App Purchase key in
+RevenueCat (step 2), and the same value as the webhook's Authorization header in RevenueCat
+(step 3).
 Production gets its own webhook to the production API, with sandbox *and* production events,
 because App Review buys with sandbox accounts on the release build.
 
