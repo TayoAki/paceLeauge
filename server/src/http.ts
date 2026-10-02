@@ -455,9 +455,9 @@ export function createApi(deps: ApiDeps): { server: Server; handle: (req: Incomi
         await pool.query('select 1');
         return send(res, 200, { ok: true });
       }
-      const legalMatch = /^\/legal\/(privacy|terms)$/.exec(path);
-      if (legalMatch && (req.method === 'GET' || req.method === 'HEAD')) {
-        const html = deps.legal?.[legalMatch[1] as LegalDoc];
+      const legalDoc = path === '/support' ? 'support' : (/^\/legal\/(privacy|terms)$/.exec(path)?.[1] as LegalDoc | undefined);
+      if (legalDoc && (req.method === 'GET' || req.method === 'HEAD')) {
+        const html = deps.legal?.[legalDoc];
         if (!html) throw new HttpError(404, { message: 'Not found' });
         res.setHeader('Cache-Control', 'public, max-age=300');
         res.setHeader('Content-Security-Policy', LEGAL_CSP);

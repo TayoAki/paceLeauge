@@ -27,7 +27,9 @@ migrations. Staging runs on Railway (API + PostgreSQL 18). During the beta, runn
 email and a password, so no email service is needed. Still to do there: the Privacy Policy and
 Terms it serves are drafts with placeholders for the operator's details (see
 [OPERATIONS.md](OPERATIONS.md)). The iOS app is `com.tayoaki.paceleague` in the Expo project
-`@tayom/paceleague`; no build has run yet.
+`@tayom/paceleague`. App Store Connect has build 4 (version 0.1.0) from the `pilot` profile; the
+app's version is now 1.0.0 for the App Store release, whose listing, review notes and privacy
+answers are in [APP_STORE.md](APP_STORE.md).
 
 ## Requirements
 
@@ -158,7 +160,9 @@ environment), so the first EAS build is their compile check. If it fails,
    plans, Pro and the new Apple Health reads, with an `[Email provider]` placeholder for trial
    reminders), have counsel review the health-data parts, then the load checks (NFR-005,
    NFR-009).
-3. **Operations** — support/reviewer contacts, moderation rota, alerting on
-   `private.health_report()` and the API's error logs, Railway backups (daily + weekly), the
-   production environment, and legal pages (terms/privacy URLs).
+3. **Operations** — the support email (the API's `/support` page is a draft until it's filled
+   in), the App Store review account, moderation rota, alerting on `private.health_report()` and
+   the API's error logs, Railway backups (daily + weekly), the production environment, and legal
+   pages (terms/privacy URLs). [APP_STORE.md](APP_STORE.md) lists what the App Store submission
+   still needs.
 4. **Human accessibility review** — VoiceOver, 200 % text and outdoor legibility on device.

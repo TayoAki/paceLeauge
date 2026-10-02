@@ -1,6 +1,6 @@
 {
   "name": "paceleague",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "PaceLeague — a private running league: record runs, earn permanent XP, compete with your crew's best three days.",
   "main": "index.ts",

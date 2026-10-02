@@ -260,6 +260,10 @@ build for Beta App Review. The build declares no non-exempt encryption; the app 
 database with SQLCipher, so confirm that declaration against Apple's export-compliance guidance
 before external testing.
 
+For the App Store release itself, [APP_STORE.md](APP_STORE.md) has every field App Store Connect
+asks for (listing, review notes, age rating and privacy answers) and the steps still to do. The
+Support URL is the API's `/support` page, served like the legal pages from `legal/support.md`.
+
 ### Native extras (Phase 1)
 
 The app has three native pieces beyond V1, all in this repository and switched on by default:

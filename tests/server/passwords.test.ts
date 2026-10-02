@@ -204,20 +204,24 @@ describe('legal pages', () => {
       '<h1>Title</h1>\n<p>Some <strong>bold</strong> text, a <a href="https://example.com">link</a> and &lt;script&gt;.</p>\n<ul>\n<li>one</li>\n<li>two continued</li>\n</ul>\n<h2>Next</h2>',
     );
     expect(renderMarkdown('[x](javascript:alert(1))')).not.toContain('<a');
+    expect(renderMarkdown('[Terms](/legal/terms)')).toBe('<p><a href="/legal/terms">Terms</a></p>');
+    expect(renderMarkdown('[x](//example.com)')).not.toContain('<a');
   });
 
   it('marks a document that still has placeholders as a draft', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pl-legal-'));
     writeFileSync(join(dir, 'privacy-policy.md'), '# Privacy\n\nOperated by [Operator legal name].');
     writeFileSync(join(dir, 'terms.md'), '# Terms\n\nSee the [privacy policy](https://example.com/privacy).');
+    writeFileSync(join(dir, 'support.md'), '# Support\n\nEmail us at [Contact email].');
     const pages = loadLegalPages(dir);
     expect(pages.privacy).toContain('class="draft"');
     expect(pages.terms).not.toContain('class="draft"');
+    expect(pages.support).toContain('This page still has details to fill in.');
   });
 
-  it('serves both pages without an API key, under a strict content policy', async () => {
-    for (const doc of ['privacy', 'terms']) {
-      const res = await fetch(`${api.url}/legal/${doc}`);
+  it('serves the legal and support pages without an API key, under a strict content policy', async () => {
+    for (const path of ['/legal/privacy', '/legal/terms', '/support']) {
+      const res = await fetch(`${api.url}${path}`);
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
       expect(res.headers.get('content-security-policy')).toContain("default-src 'none'");

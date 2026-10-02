@@ -22,7 +22,7 @@ function build(): { supabase: SupabaseClient; api: PaceApi } | null {
       persistSession: true,
       detectSessionInUrl: false,
     },
-    global: { headers: { 'x-client-info': 'paceleague-app/0.1.0' } },
+    global: { headers: { 'x-client-info': 'paceleague-app/1.0.0' } },
   });
   if (Platform.OS !== 'web') {
     // Refresh tokens only while the app is in the foreground (Supabase React Native guidance).

@@ -62,7 +62,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: 'paceleague',
   owner: 'tayom',
   scheme: 'paceleague',
-  version: '0.1.0',
+  version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   userInterfaceStyle: 'dark',

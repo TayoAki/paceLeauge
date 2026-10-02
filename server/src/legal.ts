@@ -3,15 +3,17 @@ import { dirname, join } from 'node:path';
 
 /**
  * The Privacy Policy and Terms, written in Markdown under legal/ and served as plain HTML pages
- * at /legal/privacy and /legal/terms (the app and App Store Connect link to them). Only a small
- * Markdown subset is used — headings, paragraphs, lists, bold and links — and all text is escaped
- * first. A document that still contains [placeholders] is marked as a draft on the page.
+ * at /legal/privacy and /legal/terms (the app and App Store Connect link to them), and the support
+ * page App Store Connect's Support URL points at, served at /support. Only a small Markdown subset
+ * is used — headings, paragraphs, lists, bold and links — and all text is escaped first. A
+ * document that still contains [placeholders] is marked as a draft on the page.
  */
-export type LegalDoc = 'privacy' | 'terms';
+export type LegalDoc = 'privacy' | 'terms' | 'support';
 
-const SOURCES: Record<LegalDoc, { file: string; title: string }> = {
-  privacy: { file: 'privacy-policy.md', title: 'Privacy Policy' },
-  terms: { file: 'terms.md', title: 'Terms of Service' },
+const SOURCES: Record<LegalDoc, { file: string; title: string; draft: string }> = {
+  privacy: { file: 'privacy-policy.md', title: 'Privacy Policy', draft: 'This document still has details to fill in and is not yet in effect.' },
+  terms: { file: 'terms.md', title: 'Terms of Service', draft: 'This document still has details to fill in and is not yet in effect.' },
+  support: { file: 'support.md', title: 'Support', draft: 'This page still has details to fill in.' },
 };
 
 const PLACEHOLDER = /\[[^\]\n]+\](?!\()/;
@@ -28,7 +30,7 @@ function escapeHtml(text: string): string {
 function inline(text: string): string {
   return escapeHtml(text)
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\[([^\]]+)\]\(((?:https:\/\/|mailto:)[^)\s]+)\)/g, '<a href="$2">$1</a>');
+    .replace(/\[([^\]]+)\]\(((?:https:\/\/|mailto:|\/(?!\/))[^)\s]+)\)/g, '<a href="$2">$1</a>');
 }
 
 export function renderMarkdown(markdown: string): string {
@@ -66,10 +68,8 @@ export function renderMarkdown(markdown: string): string {
   return out.join('\n');
 }
 
-function page(title: string, body: string, draft: boolean): string {
-  const banner = draft
-    ? '<p class="draft"><strong>Draft.</strong> This document still has details to fill in and is not yet in effect.</p>\n'
-    : '';
+function page(title: string, body: string, draft: string | null): string {
+  const banner = draft ? `<p class="draft"><strong>Draft.</strong> ${draft}</p>\n` : '';
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -101,11 +101,11 @@ ${banner}${body}
 /** Rendered pages for the documents present in `dir` (missing files are simply not served). */
 export function loadLegalPages(dir: string): Partial<Record<LegalDoc, string>> {
   const pages: Partial<Record<LegalDoc, string>> = {};
-  for (const [doc, { file, title }] of Object.entries(SOURCES) as [LegalDoc, (typeof SOURCES)[LegalDoc]][]) {
+  for (const [doc, { file, title, draft }] of Object.entries(SOURCES) as [LegalDoc, (typeof SOURCES)[LegalDoc]][]) {
     const path = join(dir, file);
     if (!existsSync(path)) continue;
     const markdown = readFileSync(path, 'utf8');
-    pages[doc] = page(title, renderMarkdown(markdown), PLACEHOLDER.test(markdown));
+    pages[doc] = page(title, renderMarkdown(markdown), PLACEHOLDER.test(markdown) ? draft : null);
   }
   return pages;
 }
